@@ -29,6 +29,27 @@ SHELLO_TOOLS: List[ShelloTool] = [
                 "required": ["command"]
             }
         }
+    ),
+    ShelloTool(
+        type="function",
+        function={
+            "name": "analyze_json",
+            "description": "Analyze JSON structure and generate jq paths with data types. "
+                         "Use this when you need to understand the structure of JSON output "
+                         "from commands (like AWS CLI, curl API calls, etc.) to construct "
+                         "proper jq queries. This helps you discover available fields and "
+                         "their types before filtering or extracting data.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "json_input": {
+                        "type": "string",
+                        "description": "The JSON string to analyze. Can be output from a previous command."
+                    }
+                },
+                "required": ["json_input"]
+            }
+        }
     )
 ]
 

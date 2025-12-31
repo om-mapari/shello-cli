@@ -15,6 +15,7 @@ from pathlib import Path
 
 from shello_cli.api.openai_client import ShelloClient
 from shello_cli.tools.bash_tool import BashTool
+from shello_cli.tools.json_analyzer_tool import JsonAnalyzerTool
 from shello_cli.tools.tools import get_all_tools, get_tool_descriptions
 from shello_cli.types import ToolResult
 from shello_cli.agent.template import INSTRUCTION_TEMPLATE
@@ -94,8 +95,9 @@ class ShelloAgent:
             base_url=base_url
         )
         
-        # Initialize the bash tool
+        # Initialize tools
         self._bash_tool = BashTool()
+        self._json_analyzer_tool = JsonAnalyzerTool()
         
         # Initialize conversation tracking
         self._chat_history: List[ChatEntry] = []
@@ -572,6 +574,15 @@ class ShelloAgent:
                     error="No command provided"
                 )
             return self._bash_tool.execute(command)
+        elif function_name == "analyze_json":
+            json_input = arguments.get("json_input", "")
+            if not json_input:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No JSON input provided"
+                )
+            return self._json_analyzer_tool.analyze(json_input)
         else:
             return ToolResult(
                 success=False,
@@ -616,6 +627,19 @@ class ShelloAgent:
                 )
             # Use streaming bash execution
             return self._bash_tool.execute_stream(command)
+        elif function_name == "analyze_json":
+            json_input = arguments.get("json_input", "")
+            if not json_input:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No JSON input provided"
+                )
+            # JSON analyzer doesn't stream, but we yield the output for consistency
+            result = self._json_analyzer_tool.analyze(json_input)
+            if result.output:
+                yield result.output
+            return result
         else:
             return ToolResult(
                 success=False,

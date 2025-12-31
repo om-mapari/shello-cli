@@ -54,6 +54,11 @@ tail -100 logfile.log | grep ERROR
 ```
 
 **JSON Processing**: Use `jq` for parsing (if available on Unix) or `ConvertFrom-Json` in PowerShell
+
+**When working with JSON output:**
+1. If you don't know the JSON structure, use the `analyze_json` tool first to discover available fields and paths
+2. Then use jq or PowerShell to extract the data you need
+
 ```powershell
 # PowerShell
 $data = Get-Content data.json | ConvertFrom-Json
@@ -63,6 +68,11 @@ $data.items | Where-Object {{ $_.status -eq "active" }}
 command | jq '.field1, .field2'
 command | jq '.items[] | select(.status == "active")'
 ```
+
+**Example workflow for unknown JSON:**
+1. Run command that outputs JSON (e.g., `aws s3api list-buckets --output json`)
+2. Use `analyze_json` tool with the output to see available jq paths
+3. Use the discovered paths to extract specific data with jq
 
 **Error Handling**: When commands fail:
 - Check if the command exists for {os_name} with {shell}
