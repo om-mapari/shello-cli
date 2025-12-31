@@ -140,9 +140,13 @@ class ShelloClient:
             # Make the streaming API call
             stream = self._client.chat.completions.create(**request_params)
             
+            if stream is None:
+                raise Exception("API returned None for streaming request")
+            
             # Yield each chunk as it arrives
             for chunk in stream:
-                yield chunk.model_dump()
+                if chunk is not None:
+                    yield chunk.model_dump()
         except Exception as e:
             # Re-raise with descriptive error message
             raise Exception(f"OpenAI API streaming error: {str(e)}") from e

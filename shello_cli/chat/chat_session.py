@@ -48,32 +48,63 @@ class ChatSession:
         self._process_message(user_message)
     
     def _process_message(self, message: str) -> None:
-        """Process a message through the agent and handle the response"""
-        # Use Rich spinner for AI thinking
-        with render_spinner("AI thinking..."):
-            entries = self.agent.process_user_message(message)
+        """Process a message through the agent and handle the response with streaming"""
+        # Use streaming for better UX
+        console.print()
+        console.print("🤖 AI", style="bold blue")
         
-        # Process each entry in the response
-        for entry in entries:
-            if entry.type == "user":
-                # Skip user entries (we already displayed the input)
-                continue
+        accumulated_content = ""
+        current_tool_calls = []
+        
+        try:
+            stream = self.agent.process_user_message_stream(message)
             
-            elif entry.type == "assistant":
-                # Display assistant response
-                if entry.content:
-                    render_ai_response(entry.content)
+            if stream is None:
+                console.print("\n✗ Error: Failed to get response from agent", style="bold red")
+                console.print()
+                return
             
-            elif entry.type == "tool_call":
-                # Display and execute tool calls
-                if entry.tool_calls:
-                    for tool_call in entry.tool_calls:
-                        self._handle_tool_call(tool_call)
+            for chunk in stream:
+                if chunk.type == "content":
+                    # Stream content as it arrives
+                    if chunk.content:
+                        console.print(chunk.content, end="", markup=False)
+                        accumulated_content += chunk.content
+                
+                elif chunk.type == "tool_calls":
+                    # Tool calls received
+                    if chunk.tool_calls:
+                        current_tool_calls = chunk.tool_calls
+                        # Print newline before tool execution
+                        if accumulated_content:
+                            console.print()
+                            console.print()
+                
+                elif chunk.type == "tool_result":
+                    # Display tool execution
+                    if chunk.tool_call:
+                        self._handle_tool_call(chunk.tool_call)
+                    if chunk.tool_result:
+                        self._display_tool_result(chunk.tool_call, chunk.tool_result)
+                
+                elif chunk.type == "done":
+                    # Streaming complete
+                    if accumulated_content:
+                        console.print()
+                    break
             
-            elif entry.type == "tool_result":
-                # Display tool result
-                if entry.tool_result:
-                    self._display_tool_result(entry.tool_call, entry.tool_result)
+            # Final newline after response
+            console.print()
+            
+        except TypeError as e:
+            console.print(f"\n✗ Error: {str(e)}", style="bold red")
+            console.print("This might be due to an API configuration issue.", style="yellow")
+            console.print()
+        except Exception as e:
+            console.print(f"\n✗ Error: {str(e)}", style="bold red")
+            import traceback
+            console.print(traceback.format_exc(), style="dim red")
+            console.print()
     
     def _handle_tool_call(self, tool_call: dict) -> None:
         """Handle a tool call from the AI"""

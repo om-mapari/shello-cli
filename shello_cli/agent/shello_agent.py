@@ -11,10 +11,11 @@ from datetime import datetime
 import json
 import os
 import platform
+from pathlib import Path
 
 from shello_cli.api.openai_client import ShelloClient
 from shello_cli.tools.bash_tool import BashTool
-from shello_cli.tools.tools import get_all_tools
+from shello_cli.tools.tools import get_all_tools, get_tool_descriptions
 from shello_cli.types import ToolResult
 from shello_cli.agent.template import INSTRUCTION_TEMPLATE
 
@@ -103,18 +104,38 @@ class ShelloAgent:
         # Store configuration
         self._max_tool_rounds = max_tool_rounds
         
+        # Load custom instructions if available
+        custom_instructions = self._load_custom_instructions()
+        custom_instructions_section = ""
+        if custom_instructions:
+            custom_instructions_section = f"\n\nCUSTOM INSTRUCTIONS:\n{custom_instructions}\n\nThe above custom instructions should be followed alongside the standard instructions below."
+        
         # Get system information
         os_name = platform.system()
-        shell = os.environ.get('SHELL', 'cmd' if os_name == 'Windows' else 'bash')
-        shell_executable = shell
+        
+        # Detect actual shell being used
+        if os_name == 'Windows':
+            # On Windows, check COMSPEC for the actual shell (cmd.exe or PowerShell)
+            shell = os.environ.get('COMSPEC', 'cmd.exe')
+            shell_name = 'cmd'
+        else:
+            # On Unix-like systems, use SHELL environment variable
+            shell = os.environ.get('SHELL', '/bin/bash')
+            shell_name = os.path.basename(shell)
+        
         cwd = self._bash_tool.get_current_directory()
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
+        # Get tool descriptions dynamically
+        tool_descriptions = get_tool_descriptions()
+        
         # Format the system prompt with current information
         system_prompt = INSTRUCTION_TEMPLATE.format(
+            custom_instructions=custom_instructions_section,
+            tool_descriptions=tool_descriptions,
             os_name=os_name,
-            shell=os.path.basename(shell),
-            shell_executable=shell_executable,
+            shell=shell_name,
+            shell_executable=shell,
             cwd=cwd,
             current_datetime=current_datetime
         )
@@ -124,6 +145,32 @@ class ShelloAgent:
             "role": "system",
             "content": system_prompt
         })
+    
+    def _load_custom_instructions(self) -> Optional[str]:
+        """Load custom instructions from .shello/SHELLO.md if available.
+        
+        Checks in order:
+        1. Current working directory: .shello/SHELLO.md
+        2. User home directory: ~/.shello/SHELLO.md
+        
+        Returns:
+            Optional[str]: Custom instructions content or None if not found
+        """
+        try:
+            # Check current working directory
+            cwd_path = Path.cwd() / ".shello" / "SHELLO.md"
+            if cwd_path.exists():
+                return cwd_path.read_text(encoding='utf-8').strip()
+            
+            # Check user home directory
+            home_path = Path.home() / ".shello" / "SHELLO.md"
+            if home_path.exists():
+                return home_path.read_text(encoding='utf-8').strip()
+            
+            return None
+        except Exception as e:
+            # Silently fail if we can't load custom instructions
+            return None
     
     def process_user_message(self, message: str) -> List[ChatEntry]:
         """Process a user message and return chat entries.
@@ -318,7 +365,7 @@ class ShelloAgent:
                     yield StreamingChunk(type="content", content=content_piece)
                 
                 # Handle tool calls delta
-                if "tool_calls" in delta:
+                if "tool_calls" in delta and delta["tool_calls"] is not None:
                     for tool_call_delta in delta["tool_calls"]:
                         index = tool_call_delta.get("index", 0)
                         

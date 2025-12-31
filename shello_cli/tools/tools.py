@@ -40,3 +40,18 @@ def get_all_tools() -> List[ShelloTool]:
         List[ShelloTool]: A list of all tool definitions in OpenAI function calling format.
     """
     return SHELLO_TOOLS
+
+
+def get_tool_descriptions() -> str:
+    """Generate a formatted string describing all available tools.
+    
+    Returns:
+        str: A formatted string with tool names and descriptions for the system prompt.
+    """
+    descriptions = []
+    for tool in SHELLO_TOOLS:
+        name = tool.function["name"]
+        description = tool.function["description"]
+        descriptions.append(f"- {name}: {description}")
+    
+    return "\n".join(descriptions)
