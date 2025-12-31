@@ -159,8 +159,8 @@ def display_help():
     commands_table.add_column("Description", style="white")
     
     commands_table.add_row("/quit", "Exit the application")
+    commands_table.add_row("/exit", "Exit the application")
     commands_table.add_row("/new", "Start a new conversation")
-    commands_table.add_row("/history", "View and continue previous conversations")
     commands_table.add_row("/about", "Show information about Shello CLI")
     commands_table.add_row("/help", "Show this help message")
     
@@ -210,7 +210,7 @@ def print_welcome_banner(user_info, version):
     banner_content.append("Say Hello to Shello. Making terminals less... terminal".center(55), style="white")
     banner_content.append("\n")
     banner_content.append("\n")
-    banner_content.append(">> Next-Gen CLI Powered by GitLab Duo + jqlang + BLZ CLI <<".center(60), style="bright_blue")
+    banner_content.append(">> AI-Powered CLI with OpenAI Integration <<".center(60), style="bright_blue")
     
     console.print(Panel(
         banner_content,
@@ -230,13 +230,12 @@ def print_welcome_banner(user_info, version):
         username = user_info.get('username', 'unknown')
         console.print(f"\n[bold cyan]👋 {name}[/bold cyan] [bright_black](@{username})[/bright_black] [bright_black]• Shello CLI Ready to assist![/bright_black]")
     else:
-        console.print(f"\n[bold bright_blue]👤 Guest User[/bold bright_blue] [bright_black]• Shello CLI Ready to assist![/bright_black]")
+        console.print(f"\n[bold bright_blue]👤 Welcome![/bold bright_blue] [bright_black]• Shello CLI Ready to assist![/bright_black]")
     
     console.print(f"\n[bold cyan]📋 Available commands:[/bold cyan]")
     console.print("  [bold bright_blue]/about[/bold bright_blue] [bright_black]─[/bright_black] [white]Show information about Shello CLI[/white]")
     console.print("  [bold bright_blue]/quit[/bold bright_blue] [bright_black]─[/bright_black] [white]Exit the application[/white]")
-    console.print("  [bold bright_blue]/new[/bold bright_blue] [bright_black]─[/bright_black] [white]Save current and start a new conversation[/white]")
-    console.print("  [bold bright_blue]/history[/bold bright_blue] [bright_black]─[/bright_black] [white]View and continue from previous conversations[/white]")
+    console.print("  [bold bright_blue]/new[/bold bright_blue] [bright_black]─[/bright_black] [white]Start a new conversation[/white]")
     console.print("  [bold bright_blue]/help[/bold bright_blue] [bright_black]─[/bright_black] [white]Show keyboard shortcuts and help[/white]")
     console.print("  [bold bright_blue]↑/↓[/bold bright_blue] [bright_black]─[/bright_black] [white]Navigate command history[/white]")
     console.print()

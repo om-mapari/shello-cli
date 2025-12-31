@@ -1,6 +1,5 @@
 """ChatSession - Manages the chat session with AI"""
-from shello_cli.commands.command_executor import CommandExecutor
-from shello_cli.chat.template import INSTRUCTION_TEMPLATE
+from shello_cli.agent.shello_agent import ShelloAgent, ChatEntry
 from datetime import datetime
 import os
 from shello_cli.ui.ui_renderer import (
@@ -13,16 +12,15 @@ from shello_cli.ui.ui_renderer import (
 import getpass
 import socket
 from shello_cli.utils.system_info import get_shell_info
+import json
 
 
 class ChatSession:
     """Manages the chat session with AI"""
     
-    def __init__(self, gitlab_client):
-        self.gitlab_client = gitlab_client
-        self.command_executor = CommandExecutor()
+    def __init__(self, agent: ShelloAgent):
+        self.agent = agent
         self.conversation_started = False
-        self.max_output_size = int(os.getenv("MAX_OUTPUT_SIZE", "4000"))
         self.system_info = get_shell_info()
         self.user = getpass.getuser()
         self.hostname = socket.gethostname()
@@ -31,160 +29,91 @@ class ChatSession:
         """Start a new conversation with initial instructions and user message"""
         current_datetime = datetime.now().strftime("%A %B %d, %Y at %I:%M %p")
         
-        # Format the instruction template with system information
-        instruction = INSTRUCTION_TEMPLATE.format(
-            os_name=self.system_info["os_name"],
-            shell=self.system_info["shell"],
-            shell_executable=self.system_info["shell_executable"],
-            cwd=self.system_info["cwd"],
-            current_datetime=current_datetime
+        # Format system context
+        context = (
+            f"Current system information:\n"
+            f"- OS: {self.system_info['os_name']}\n"
+            f"- Shell: {self.system_info['shell']} ({self.system_info['shell_executable']})\n"
+            f"- Working Directory: {self.system_info['cwd']}\n"
+            f"- Date/Time: {current_datetime}\n\n"
+            f"User message: {user_message}"
         )
         
-        # Combine instruction with user message
-        initial_message = f"{instruction}\n\nUser: {user_message}"
-        
-        # Use Rich spinner for AI thinking
-        with render_spinner("AI thinking..."):
-            response = self.gitlab_client.send_message(initial_message)
-        
-        if response:
-            render_ai_response(response)
-            self.conversation_started = True
-            self.process_command_in_response(response)
-        else:
-            console.print("Sorry, I couldn't generate a response. Please try again.", style="bold red")
+        # Process the message through the agent
+        self._process_message(context)
+        self.conversation_started = True
     
     def continue_conversation(self, user_message: str) -> None:
         """Continue an existing conversation with a new user message"""
+        self._process_message(user_message)
+    
+    def _process_message(self, message: str) -> None:
+        """Process a message through the agent and handle the response"""
         # Use Rich spinner for AI thinking
         with render_spinner("AI thinking..."):
-            response = self.gitlab_client.send_message(f"User: {user_message}")
+            entries = self.agent.process_user_message(message)
         
-        if response:
-            render_ai_response(response)
-            self.process_command_in_response(response)
-        else:
-            console.print("Sorry, I couldn't generate a response. Please try again.", style="bold red")
-    
-    def process_command_in_response(self, response: str) -> None:
-        """Process any command in the AI's response"""
-        command, requires_approval, output_filter = self.command_executor.extract_command(response)
-        
-        if not command:
-            return
-        
-        # Step 1: Show command in first box
-        render_terminal_command(
-            command,
-            output_filter,
-            cwd=self.system_info.get("cwd"),
-            user=self.user,
-            hostname=self.hostname
-        )
-        
-        if requires_approval:
-            approval = console.input("[bold]Do you want to execute this command? (y/n): [/bold]").lower()
-            if approval != 'y':
-                console.print("✗ Command execution cancelled.", style="red")
-                self.send_command_result("Command execution was cancelled by the user.")
-                return
-        
-        # Step 2: Show executing animation
-        with render_spinner("⚙ Executing command..."):
-            # Step 3: Execute command and get structured result
-            execution_result = self.command_executor.execute(command, self.system_info)
-        
-        # Get raw output (without return code info)
-        raw_result = execution_result["raw_output"]
-        
-        # Apply output filtering if specified (only on raw output)
-        if output_filter:
-            filtered_result = self.command_executor.apply_output_filter(raw_result, output_filter)
-            console.print(f"ℹ Applied filter: {output_filter}", style="yellow")
-        else:
-            filtered_result = raw_result
-        
-        # Auto-summarize large outputs if no filter was specified
-        if len(filtered_result) > self.max_output_size:
-            filtered_result = self.truncate_output(filtered_result)
-            console.print("⚠ Output was automatically truncated due to large size.", style="yellow")
-        
-        # Add return code information to the filtered result for sending to AI
-        result_with_status = self.command_executor.format_result_with_status(
-            filtered_result,
-            execution_result['returncode']
-        )
-        
-        # Step 4: Show output in second box (spinner automatically disappears)
-        render_terminal_output(
-            result_with_status,
-            cwd=self.system_info.get("cwd"),
-            user=self.user,
-            hostname=self.hostname
-        )
-        
-        # Send the command result back to the AI (with status info and filter info)
-        self.send_command_result(result_with_status, output_filter)
-    
-    def send_command_result(self, result: str, output_filter: str = None) -> None:
-        """Send command execution result back to AI"""
-        # Check if truncation is needed
-        if len(result) > self.max_output_size:
-            truncated_result = self.truncate_output(result)
+        # Process each entry in the response
+        for entry in entries:
+            if entry.type == "user":
+                # Skip user entries (we already displayed the input)
+                continue
             
-            # Include filter information in the message if a filter was applied
-            if output_filter:
-                message = f"Command execution result (truncated due to size, filter applied: {output_filter}):\n\n{truncated_result}\n"
-            else:
-                message = f"Command execution result (truncated due to size):\n\n{truncated_result}\n"
-        else:
-            # Include filter information in the message if a filter was applied
-            if output_filter:
-                message = f"Command execution result (filter applied: {output_filter}):\n\n{result}\n"
-            else:
-                message = f"Command execution result:\n\n{result}\n"
-        
-        # Use Rich spinner for AI thinking
-        with render_spinner("AI processing command results..."):
-            response = self.gitlab_client.send_message(message)
-        
-        if response:
-            render_ai_response(response)
-            # Check if there's another command in the response
-            self.process_command_in_response(response)
-        else:
-            console.print("Sorry, I couldn't generate a response. Please try again.", style="bold red")
+            elif entry.type == "assistant":
+                # Display assistant response
+                if entry.content:
+                    render_ai_response(entry.content)
+            
+            elif entry.type == "tool_call":
+                # Display and execute tool calls
+                if entry.tool_calls:
+                    for tool_call in entry.tool_calls:
+                        self._handle_tool_call(tool_call)
+            
+            elif entry.type == "tool_result":
+                # Display tool result
+                if entry.tool_result:
+                    self._display_tool_result(entry.tool_call, entry.tool_result)
     
-    def truncate_output(self, result: str, max_size: int = None) -> str:
-        """Truncate large output to a manageable size
+    def _handle_tool_call(self, tool_call: dict) -> None:
+        """Handle a tool call from the AI"""
+        function_data = tool_call.get("function", {})
+        function_name = function_data.get("name")
         
-        Args:
-            result: The output string to potentially truncate
-            max_size: Maximum size threshold (defaults to self.max_output_size)
+        if function_name == "bash":
+            # Parse arguments
+            try:
+                arguments_str = function_data.get("arguments", "{}")
+                arguments = json.loads(arguments_str)
+                command = arguments.get("command", "")
+                
+                if command:
+                    # Display the command
+                    render_terminal_command(
+                        command,
+                        None,  # No output filter for now
+                        cwd=self.agent.get_current_directory(),
+                        user=self.user,
+                        hostname=self.hostname
+                    )
+            except json.JSONDecodeError:
+                pass
+    
+    def _display_tool_result(self, tool_call: dict, tool_result) -> None:
+        """Display the result of a tool execution"""
+        function_data = tool_call.get("function", {})
+        function_name = function_data.get("name")
         
-        Returns:
-            Original result if small enough, otherwise truncated version
-        """
-        if max_size is None:
-            max_size = self.max_output_size
-        
-        if len(result) <= max_size:
-            return result
-        
-        lines = result.splitlines()
-        total_lines = len(lines)
-        total_chars = len(result)
-        
-        # Create a truncated version
-        first_part = '\n'.join(lines[:20])
-        last_part = '\n'.join(lines[-20:])
-        
-        truncated_result = (
-            f"Output truncated ({total_lines} lines, {total_chars} characters total):\n"
-            f"--- First 20 lines ---\n"
-            f"{first_part}\n"
-            f"--- Last 20 lines ---\n"
-            f"{last_part}"
-        )
-        
-        return truncated_result
+        if function_name == "bash":
+            # Display the output
+            if tool_result.success:
+                output = tool_result.output or ""
+            else:
+                output = f"Error: {tool_result.error or 'Unknown error'}"
+            
+            render_terminal_output(
+                output,
+                cwd=self.agent.get_current_directory(),
+                user=self.user,
+                hostname=self.hostname
+            )
