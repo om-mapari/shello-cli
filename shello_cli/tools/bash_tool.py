@@ -7,7 +7,8 @@ and managing the current working directory.
 
 import subprocess
 import os
-from typing import Optional
+import platform
+from typing import Optional, Generator
 from shello_cli.types import ToolResult
 
 
@@ -21,6 +22,43 @@ class BashTool:
     def __init__(self):
         """Initialize the bash tool with the current working directory."""
         self._current_directory: str = os.getcwd()
+        
+        # Detect the actual shell being used
+        self._detect_shell()
+    
+    def _detect_shell(self):
+        """Detect which shell to use for command execution."""
+        os_name = platform.system()
+        
+        if os_name == 'Windows':
+            # Check for bash first (Git Bash, WSL, etc.)
+            # Git Bash sets BASH or BASH_VERSION environment variables
+            if os.environ.get('BASH') or os.environ.get('BASH_VERSION'):
+                # Use bash
+                self._shell_type = 'bash'
+                self._shell_executable = None  # Use shell=True default
+            # Check SHELL environment variable for bash (Git Bash on Windows)
+            # Also check SHLVL which is set by bash but not cmd/PowerShell
+            elif (os.environ.get('SHELL') and 'bash' in os.environ.get('SHELL', '').lower()) or \
+                 os.environ.get('SHLVL'):
+                # Use bash
+                self._shell_type = 'bash'
+                self._shell_executable = None  # Use shell=True default
+            # Check if running in PowerShell (but not if bash is present)
+            # PSExecutionPolicyPreference is only set when actually running in PowerShell
+            elif os.environ.get('PSExecutionPolicyPreference') or \
+                 (os.environ.get('PSModulePath') and not os.environ.get('PROMPT', '').startswith('$P$G')):
+                # Use PowerShell
+                self._shell_type = 'powershell'
+                self._shell_executable = 'powershell.exe'
+            else:
+                # Use cmd
+                self._shell_type = 'cmd'
+                self._shell_executable = None  # Use shell=True default
+        else:
+            # Unix-like systems
+            self._shell_type = 'bash'
+            self._shell_executable = None  # Use shell=True default
     
     def execute(self, command: str, timeout: int = 30) -> ToolResult:
         """Execute a bash command and return the result.
@@ -39,15 +77,26 @@ class BashTool:
             return self._handle_cd_command(command)
         
         try:
-            # Execute the command in the current working directory
-            result = subprocess.run(
-                command,
-                shell=True,
-                cwd=self._current_directory,
-                capture_output=True,
-                text=True,
-                timeout=timeout
-            )
+            # Execute the command based on shell type
+            if self._shell_type == 'powershell':
+                # Use PowerShell explicitly
+                result = subprocess.run(
+                    ['powershell.exe', '-Command', command],
+                    cwd=self._current_directory,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout
+                )
+            else:
+                # Use default shell (cmd on Windows, bash on Unix)
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    cwd=self._current_directory,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout
+                )
             
             # Combine stdout and stderr for output
             output = result.stdout
@@ -140,3 +189,104 @@ class BashTool:
             The current working directory path
         """
         return self._current_directory
+    
+    def execute_stream(self, command: str, timeout: int = 30) -> Generator[str, None, ToolResult]:
+        """Execute a bash command and stream output in real-time.
+        
+        Args:
+            command: The bash command to execute
+            timeout: Maximum execution time in seconds (default: 30)
+        
+        Yields:
+            Output chunks as they arrive from the command
+        
+        Returns:
+            ToolResult with final success status and any errors
+        """
+        # Handle cd commands specially to update working directory
+        if command.strip().startswith('cd') and (
+            command.strip() == 'cd' or command.strip().startswith('cd ')
+        ):
+            result = self._handle_cd_command(command)
+            yield result.output or result.error or ""
+            return result
+        
+        try:
+            # Start the process based on shell type
+            if self._shell_type == 'powershell':
+                # Use PowerShell explicitly
+                process = subprocess.Popen(
+                    ['powershell.exe', '-Command', command],
+                    cwd=self._current_directory,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+            else:
+                # Use default shell
+                process = subprocess.Popen(
+                    command,
+                    shell=True,
+                    cwd=self._current_directory,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    bufsize=1,  # Line buffered
+                    universal_newlines=True
+                )
+            
+            accumulated_output = []
+            accumulated_error = []
+            
+            # Read output line by line as it arrives
+            try:
+                # Read from stdout
+                if process.stdout:
+                    for line in iter(process.stdout.readline, ''):
+                        if line:
+                            accumulated_output.append(line)
+                            yield line
+                
+                # Wait for process to complete
+                process.wait(timeout=timeout)
+                
+                # Read any remaining stderr
+                if process.stderr:
+                    stderr_content = process.stderr.read()
+                    if stderr_content:
+                        accumulated_error.append(stderr_content)
+                        yield stderr_content
+                
+            except subprocess.TimeoutExpired:
+                process.kill()
+                return ToolResult(
+                    success=False,
+                    output=''.join(accumulated_output) if accumulated_output else None,
+                    error=f"Command timed out after {timeout} seconds"
+                )
+            
+            # Determine success based on return code
+            output = ''.join(accumulated_output)
+            error = ''.join(accumulated_error)
+            
+            if process.returncode == 0:
+                return ToolResult(
+                    success=True,
+                    output=output if output else "Command completed successfully",
+                    error=None
+                )
+            else:
+                return ToolResult(
+                    success=False,
+                    output=output if output else None,
+                    error=error if error else f"Command failed with exit code {process.returncode}"
+                )
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=f"Error executing command: {str(e)}"
+            )

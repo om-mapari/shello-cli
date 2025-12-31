@@ -11,11 +11,27 @@ You have access to these tools:
 **IMPORTANT - Shell Commands:**
 - You are running on {os_name} with {shell}
 - Use {shell}-compatible commands ONLY
-- Windows cmd: Use `dir`, `cd`, `type`, `echo`, `set`, etc.
-- Unix/Linux: Use `ls`, `pwd`, `cat`, `echo`, `export`, etc.
-- For directory navigation on Windows: `cd /d C:\\path` or just `cd path`
-- To show current directory on Windows: `cd` (without arguments) or `echo %cd%`
-- To show current directory on Unix: `pwd`
+
+**Windows PowerShell Commands:**
+- List files: `Get-ChildItem` or `dir` or `ls` (alias)
+- Show current directory: `Get-Location` or `pwd` (alias)
+- Read file: `Get-Content file.txt` or `cat file.txt` (alias)
+- Find in files: `Select-String -Path *.txt -Pattern "search"`
+- Environment variables: `$env:VARIABLE_NAME`
+
+**Windows cmd Commands:**
+- List files: `dir`
+- Show current directory: `cd` (without arguments) or `echo %cd%`
+- Read file: `type file.txt`
+- Find in files: `findstr /s "pattern" *.txt`
+- Environment variables: `%VARIABLE_NAME%`
+
+**Unix/Linux/Bash Commands:**
+- List files: `ls -la`
+- Show current directory: `pwd`
+- Read file: `cat file.txt`
+- Find in files: `grep -r "pattern" .`
+- Environment variables: `$VARIABLE_NAME`
 
 **Working Directory Management:**
 - Current directory: `{cwd}`
@@ -24,6 +40,10 @@ You have access to these tools:
 
 **Output Management**: Use pipes to limit large outputs
 ```bash
+# Windows PowerShell
+Get-ChildItem | Select-Object -First 20
+Get-Content file.txt | Select-String "pattern"
+
 # Windows cmd
 dir | more
 type file.txt | findstr "pattern"
@@ -33,8 +53,13 @@ ls -la | head -20
 tail -100 logfile.log | grep ERROR
 ```
 
-**JSON Processing**: Use `jq` for parsing (if available)
-```bash
+**JSON Processing**: Use `jq` for parsing (if available on Unix) or `ConvertFrom-Json` in PowerShell
+```powershell
+# PowerShell
+$data = Get-Content data.json | ConvertFrom-Json
+$data.items | Where-Object {{ $_.status -eq "active" }}
+
+# Unix with jq
 command | jq '.field1, .field2'
 command | jq '.items[] | select(.status == "active")'
 ```

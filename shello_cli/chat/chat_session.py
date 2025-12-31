@@ -9,6 +9,8 @@ from shello_cli.ui.ui_renderer import (
     render_terminal_command,
     render_terminal_output
 )
+from rich.markdown import Markdown
+from rich.live import Live
 import getpass
 import socket
 from shello_cli.utils.system_info import get_shell_info
@@ -52,9 +54,10 @@ class ChatSession:
         # Use streaming for better UX
         console.print()
         console.print("🤖 AI", style="bold blue")
+        console.print()  # Add spacing after header
         
         accumulated_content = ""
-        current_tool_calls = []
+        current_tool_call = None
         
         try:
             stream = self.agent.process_user_message_stream(message)
@@ -64,34 +67,45 @@ class ChatSession:
                 console.print()
                 return
             
-            for chunk in stream:
-                if chunk.type == "content":
-                    # Stream content as it arrives
-                    if chunk.content:
-                        console.print(chunk.content, end="", markup=False)
-                        accumulated_content += chunk.content
-                
-                elif chunk.type == "tool_calls":
-                    # Tool calls received
-                    if chunk.tool_calls:
-                        current_tool_calls = chunk.tool_calls
-                        # Print newline before tool execution
-                        if accumulated_content:
+            # Use Live display for streaming markdown updates
+            with Live(Markdown(""), console=console, refresh_per_second=10) as live:
+                for chunk in stream:
+                    if chunk.type == "content":
+                        # Accumulate content and update live markdown display
+                        if chunk.content:
+                            accumulated_content += chunk.content
+                            # Update the live display with current markdown
+                            live.update(Markdown(accumulated_content))
+                    
+                    elif chunk.type == "tool_calls":
+                        # Tool calls received - stop live display and render final markdown
+                        if chunk.tool_calls and accumulated_content:
+                            live.stop()
                             console.print()
-                            console.print()
-                
-                elif chunk.type == "tool_result":
-                    # Display tool execution
-                    if chunk.tool_call:
-                        self._handle_tool_call(chunk.tool_call)
-                    if chunk.tool_result:
-                        self._display_tool_result(chunk.tool_call, chunk.tool_result)
-                
-                elif chunk.type == "done":
-                    # Streaming complete
-                    if accumulated_content:
-                        console.print()
-                    break
+                            accumulated_content = ""  # Reset for next section
+                    
+                    elif chunk.type == "tool_call":
+                        # Individual tool call starting
+                        if chunk.tool_call:
+                            current_tool_call = chunk.tool_call
+                            self._handle_tool_call(chunk.tool_call)
+                    
+                    elif chunk.type == "tool_output":
+                        # Stream tool output as it arrives
+                        if chunk.content:
+                            console.print(chunk.content, end="", markup=False)
+                    
+                    elif chunk.type == "tool_result":
+                        # Tool execution complete
+                        if chunk.tool_result:
+                            # Display final result status if there was an error
+                            if not chunk.tool_result.success and chunk.tool_result.error:
+                                console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
+                            console.print()  # Add spacing after tool output
+                    
+                    elif chunk.type == "done":
+                        # Streaming complete
+                        break
             
             # Final newline after response
             console.print()
@@ -129,22 +143,3 @@ class ChatSession:
                     )
             except json.JSONDecodeError:
                 pass
-    
-    def _display_tool_result(self, tool_call: dict, tool_result) -> None:
-        """Display the result of a tool execution"""
-        function_data = tool_call.get("function", {})
-        function_name = function_data.get("name")
-        
-        if function_name == "bash":
-            # Display the output
-            if tool_result.success:
-                output = tool_result.output or ""
-            else:
-                output = f"Error: {tool_result.error or 'Unknown error'}"
-            
-            render_terminal_output(
-                output,
-                cwd=self.agent.get_current_directory(),
-                user=self.user,
-                hostname=self.hostname
-            )

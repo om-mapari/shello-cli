@@ -45,7 +45,7 @@ class StreamingChunk:
     """Chunk from streaming response.
     
     Attributes:
-        type: Type of chunk ("content", "tool_calls", "tool_result", "done")
+        type: Type of chunk ("content", "tool_calls", "tool_result", "tool_output", "done")
         content: Optional content string
         tool_calls: Optional list of tool calls
         tool_call: Optional single tool call
@@ -115,9 +115,25 @@ class ShelloAgent:
         
         # Detect actual shell being used
         if os_name == 'Windows':
-            # On Windows, check COMSPEC for the actual shell (cmd.exe or PowerShell)
-            shell = os.environ.get('COMSPEC', 'cmd.exe')
-            shell_name = 'cmd'
+            # Check for bash first (Git Bash, WSL, etc.)
+            if os.environ.get('BASH') or os.environ.get('BASH_VERSION'):
+                shell = os.environ.get('BASH', 'bash')
+                shell_name = 'bash'
+            # Check SHELL environment variable for bash (Git Bash on Windows)
+            # Also check SHLVL which is set by bash but not cmd/PowerShell
+            elif (os.environ.get('SHELL') and 'bash' in os.environ.get('SHELL', '').lower()) or \
+                 os.environ.get('SHLVL'):
+                shell = os.environ.get('SHELL', 'bash')
+                shell_name = 'bash'
+            # Check if running in PowerShell (but not if bash is present)
+            # PSExecutionPolicyPreference is only set when actually running in PowerShell
+            elif os.environ.get('PSExecutionPolicyPreference') or \
+                 (os.environ.get('PSModulePath') and not os.environ.get('PROMPT', '').startswith('$P$G')):
+                shell_name = 'powershell'
+                shell = os.environ.get('COMSPEC', 'cmd.exe')
+            else:
+                shell = os.environ.get('COMSPEC', 'cmd.exe')
+                shell_name = 'cmd'
         else:
             # On Unix-like systems, use SHELL environment variable
             shell = os.environ.get('SHELL', '/bin/bash')
@@ -424,7 +440,38 @@ class ShelloAgent:
                 
                 # Execute each tool call
                 for tool_call in accumulated_tool_calls:
-                    tool_result = self._execute_tool(tool_call)
+                    # Yield tool call info first
+                    yield StreamingChunk(
+                        type="tool_call",
+                        tool_call=tool_call
+                    )
+                    
+                    # Execute tool with streaming
+                    tool_stream = self._execute_tool_stream(tool_call)
+                    tool_result = None
+                    
+                    # Stream tool output - manually iterate to catch StopIteration
+                    while True:
+                        try:
+                            output_chunk = next(tool_stream)
+                            # All chunks from the generator are strings (output)
+                            yield StreamingChunk(
+                                type="tool_output",
+                                content=output_chunk,
+                                tool_call=tool_call
+                            )
+                        except StopIteration as e:
+                            # The return value is in the exception
+                            tool_result = e.value
+                            break
+                    
+                    # If we didn't get a result from StopIteration, something went wrong
+                    if tool_result is None:
+                        tool_result = ToolResult(
+                            success=False,
+                            output=None,
+                            error="Tool execution did not return a result"
+                        )
                     
                     # Add tool result to messages
                     self._messages.append({
@@ -525,6 +572,50 @@ class ShelloAgent:
                     error="No command provided"
                 )
             return self._bash_tool.execute(command)
+        else:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=f"Unknown tool: {function_name}"
+            )
+    
+    def _execute_tool_stream(self, tool_call: Dict[str, Any]) -> Generator[str, None, ToolResult]:
+        """Execute a tool call with streaming output.
+        
+        Args:
+            tool_call: The tool call dictionary from the AI response
+        
+        Yields:
+            Output chunks as they arrive from the tool
+        
+        Returns:
+            ToolResult with the final execution result
+        """
+        function_data = tool_call.get("function", {})
+        function_name = function_data.get("name")
+        
+        # Parse arguments
+        try:
+            arguments_str = function_data.get("arguments", "{}")
+            arguments = json.loads(arguments_str)
+        except json.JSONDecodeError as e:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=f"Failed to parse tool arguments: {str(e)}"
+            )
+        
+        # Dispatch to appropriate tool
+        if function_name == "bash":
+            command = arguments.get("command", "")
+            if not command:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No command provided"
+                )
+            # Use streaming bash execution
+            return self._bash_tool.execute_stream(command)
         else:
             return ToolResult(
                 success=False,
