@@ -20,7 +20,8 @@ def load_config_as_env():
     
     # Map config keys to environment variable names
     env_mapping = {
-        "gitlab_url": "GITLAB_URL",
+        "openai_api_key": "OPENAI_API_KEY",
+        "openai_base_url": "OPENAI_BASE_URL",
         "max_output_size": "MAX_OUTPUT_SIZE",
         "debug": "DEBUG"
     }
@@ -50,7 +51,8 @@ def initialize_config():
     """Initialize configuration file if it doesn't exist"""
     # Default values (fallback if no env vars exist)
     default_config = {
-        "gitlab_url": os.getenv("GITLAB_URL", "https://app.gitlab.server.com"),
+        "openai_api_key": os.getenv("OPENAI_API_KEY", ""),
+        "openai_base_url": os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         "max_output_size": int(os.getenv("MAX_OUTPUT_SIZE", "4000")),
         "debug": os.getenv("DEBUG", "false").lower() == "true",
         "theme": "dark",
@@ -73,7 +75,8 @@ def update_config(key, value):
     
     # Update environment variable immediately
     env_mapping = {
-        "gitlab_url": "GITLAB_URL",
+        "openai_api_key": "OPENAI_API_KEY",
+        "openai_base_url": "OPENAI_BASE_URL",
         "max_output_size": "MAX_OUTPUT_SIZE",
         "debug": "DEBUG"
     }
@@ -89,6 +92,7 @@ def update_config(key, value):
 load_config_as_env()
 
 # Application settings (now read from environment variables set above)
-GITLAB_URL = os.getenv("GITLAB_URL", "https://app.gitlab.server.com")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
 DEBUG = os.getenv("DEBUG", "false").lower() == "true"
 MAX_OUTPUT_SIZE = int(os.getenv("MAX_OUTPUT_SIZE", "4000"))
