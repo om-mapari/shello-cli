@@ -9,11 +9,14 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Generator, Any, Dict
 from datetime import datetime
 import json
+import os
+import platform
 
 from shello_cli.api.openai_client import ShelloClient
 from shello_cli.tools.bash_tool import BashTool
 from shello_cli.tools.tools import get_all_tools
 from shello_cli.types import ToolResult
+from shello_cli.agent.template import INSTRUCTION_TEMPLATE
 
 
 @dataclass
@@ -100,11 +103,26 @@ class ShelloAgent:
         # Store configuration
         self._max_tool_rounds = max_tool_rounds
         
+        # Get system information
+        os_name = platform.system()
+        shell = os.environ.get('SHELL', 'cmd' if os_name == 'Windows' else 'bash')
+        shell_executable = shell
+        cwd = self._bash_tool.get_current_directory()
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        # Format the system prompt with current information
+        system_prompt = INSTRUCTION_TEMPLATE.format(
+            os_name=os_name,
+            shell=os.path.basename(shell),
+            shell_executable=shell_executable,
+            cwd=cwd,
+            current_datetime=current_datetime
+        )
+        
         # Add system message
         self._messages.append({
             "role": "system",
-            "content": "You are a helpful AI assistant with access to bash commands. "
-                      "Help the user accomplish their tasks by executing commands when needed."
+            "content": system_prompt
         })
     
     def process_user_message(self, message: str) -> List[ChatEntry]:
