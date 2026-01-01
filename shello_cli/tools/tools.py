@@ -15,15 +15,27 @@ SHELLO_TOOLS: List[ShelloTool] = [
         type="function",
         function={
             "name": "bash",
-            "description": "Execute a bash command in the current working directory. "
-                         "Use this to run shell commands, navigate directories, read files, "
-                         "and perform system operations.",
+            "description": (
+                "Execute a shell command in the current working directory.\n\n"
+                "USE FOR:\n"
+                "- Running shell commands (ls, dir, grep, find, etc.)\n"
+                "- File operations (cat, type, cp, mv, rm)\n"
+                "- Directory navigation (cd)\n"
+                "- System operations and utilities\n"
+                "- AWS CLI, Docker, Git, and other CLI tools\n"
+                "- Piping and filtering with jq, grep, awk\n\n"
+                "RULES:\n"
+                "- Use shell-appropriate commands for the detected OS/shell\n"
+                "- For large outputs, use filtering flags (--max-items, | head, Select-Object -First)\n"
+                "- cd command updates working directory for subsequent commands\n"
+                "- Output is shown directly to user - don't repeat it in your response"
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "The bash command to execute (e.g., 'ls -la', 'cd /tmp', 'cat file.txt')"
+                        "description": "The shell command to execute"
                     }
                 },
                 "required": ["command"]
@@ -34,20 +46,35 @@ SHELLO_TOOLS: List[ShelloTool] = [
         type="function",
         function={
             "name": "analyze_json",
-            "description": "Analyze JSON structure and generate jq paths with data types. "
-                         "Use this when you need to understand the structure of JSON output "
-                         "from commands (like AWS CLI, curl API calls, etc.) to construct "
-                         "proper jq queries. This helps you discover available fields and "
-                         "their types before filtering or extracting data.",
+            "description": (
+                "Execute a command and analyze its JSON output structure.\n\n"
+                "USE FOR:\n"
+                "- Understanding JSON structure from AWS CLI, Docker, curl, etc.\n"
+                "- Discovering jq paths before filtering large JSON outputs\n"
+                "- Preventing terminal flooding from large JSON responses\n\n"
+                "HOW IT WORKS:\n"
+                "1. Pass the COMMAND (not JSON) - tool executes it internally\n"
+                "2. Returns ONLY jq paths with data types (user never sees raw JSON)\n"
+                "3. Use discovered paths to construct filtered bash command with jq\n\n"
+                "EXAMPLE WORKFLOW:\n"
+                "1. analyze_json(command='aws lambda list-functions --output json')\n"
+                "   → Returns: .Functions[].FunctionName | string\n"
+                "2. bash(command=\"aws lambda list-functions --output json | jq '.Functions[].FunctionName'\")\n"
+                "   → Returns clean, filtered output\n\n"
+                "WHEN TO USE:\n"
+                "- You don't know the JSON structure of a command's output\n"
+                "- You expect large JSON that would flood the terminal\n"
+                "- You need to find the right jq path for filtering"
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "json_input": {
+                    "command": {
                         "type": "string",
-                        "description": "The JSON string to analyze. Can be output from a previous command."
+                        "description": "Command that produces JSON output (e.g., 'aws s3api list-buckets', 'docker inspect container_id')"
                     }
                 },
-                "required": ["json_input"]
+                "required": ["command"]
             }
         }
     )
@@ -72,7 +99,9 @@ def get_tool_descriptions() -> str:
     descriptions = []
     for tool in SHELLO_TOOLS:
         name = tool.function["name"]
-        description = tool.function["description"]
-        descriptions.append(f"- {name}: {description}")
+        desc = tool.function["description"]
+        # Get first line as summary for the system prompt
+        summary = desc.split('\n')[0]
+        descriptions.append(f"- {name}: {summary}")
     
     return "\n".join(descriptions)

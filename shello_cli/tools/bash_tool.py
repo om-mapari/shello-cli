@@ -84,8 +84,9 @@ class BashTool:
                     ['powershell.exe', '-Command', command],
                     cwd=self._current_directory,
                     capture_output=True,
-                    text=True,
-                    timeout=timeout
+                    timeout=timeout,
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
                 )
             else:
                 # Use default shell (cmd on Windows, bash on Unix)
@@ -94,8 +95,9 @@ class BashTool:
                     shell=True,
                     cwd=self._current_directory,
                     capture_output=True,
-                    text=True,
-                    timeout=timeout
+                    timeout=timeout,
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
                 )
             
             # Combine stdout and stderr for output
@@ -233,9 +235,9 @@ class BashTool:
                     cwd=self._current_directory,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                     bufsize=1,
-                    universal_newlines=True
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
                 )
             else:
                 # Use default shell
@@ -245,9 +247,9 @@ class BashTool:
                     cwd=self._current_directory,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
-                    text=True,
                     bufsize=1,  # Line buffered
-                    universal_newlines=True
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
                 )
             
             accumulated_output = []
