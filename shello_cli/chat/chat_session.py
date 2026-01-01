@@ -3,14 +3,12 @@ from shello_cli.agent.shello_agent import ShelloAgent, ChatEntry
 from datetime import datetime
 import os
 from shello_cli.ui.ui_renderer import (
-    render_spinner,
-    render_ai_response,
     console,
-    render_terminal_command,
-    render_terminal_output
+    render_terminal_command
 )
 from rich.markdown import Markdown
 from rich.live import Live
+from shello_cli.ui.custom_markdown import EnhancedMarkdown
 import getpass
 import socket
 from shello_cli.utils.system_info import get_shell_info
@@ -53,7 +51,7 @@ class ChatSession:
         """Process a message through the agent and handle the response with streaming"""
         # Use streaming for better UX
         console.print()
-        console.print("🤖 AI", style="bold blue")
+        console.print("✨ AI", style="bold blue")
         console.print()  # Add spacing after header
         
         accumulated_content = ""
@@ -68,14 +66,14 @@ class ChatSession:
                 return
             
             # Use Live display for streaming markdown updates
-            with Live(Markdown(""), console=console, refresh_per_second=10) as live:
+            with Live(EnhancedMarkdown(""), console=console, refresh_per_second=10) as live:
                 for chunk in stream:
                     if chunk.type == "content":
                         # Accumulate content and update live markdown display
                         if chunk.content:
                             accumulated_content += chunk.content
                             # Update the live display with current markdown
-                            live.update(Markdown(accumulated_content))
+                            live.update(EnhancedMarkdown(accumulated_content))
                     
                     elif chunk.type == "tool_calls":
                         # Tool calls received - stop live display and render final markdown

@@ -17,98 +17,11 @@ def print_header(title):
     console.print(f"\n[bold blue]── {title} ──[/bold blue]\n")
 
 
-def render_history_table(threads):
-    """Render conversation history table and return user selection"""
-    console.print("\n[cyan]📜 Conversation History:[/cyan]")
-    
-    if not threads:
-        console.print("No previous conversations found.", style="yellow")
-        return None
-    
-    # Create a rich table
-    table = Table(show_header=True, header_style="bold magenta")
-    table.add_column("#", style="green", width=3)
-    table.add_column("First User Message", style="white", min_width=48)
-    table.add_column("Created At", style="dim", width=20)
-    
-    # Add threads to table with full messages
-    for i, thread in enumerate(threads, 1):
-        full_message = thread.get('FirstUserMessage', 'N/A')
-        created_at = thread.get('CreatedAt', 'N/A')
-        
-        # Display full message without truncation
-        table.add_row(
-            str(i),
-            full_message,  # Full message, no truncation
-            created_at
-        )
-    
-    console.print(table)
-    console.print()
-    console.print("[yellow]0.[/yellow] [white]Go back to main menu[/white]")
-    console.print()
-    
-    # Get user selection
-    while True:
-        try:
-            choice = console.input("Select conversation number (0 to go back): ").strip()
-            
-            if choice == "0":
-                return None
-            
-            choice_num = int(choice)
-            if 1 <= choice_num <= len(threads):
-                selected_thread = threads[choice_num - 1]
-                console.print(f"\n[green]✓ Selected conversation:[/green] {selected_thread['FirstUserMessage']}")
-                return selected_thread['id']
-            else:
-                console.print(f"✗ Please enter a number between 0 and {len(threads)}", style="red")
-        
-        except ValueError:
-            console.print("✗ Please enter a valid number", style="red")
-        except KeyboardInterrupt:
-            console.print("\n")
-            return None
 
-
-def render_markdown(text):
-    """Render markdown text using Rich"""
-    markdown = Markdown(text)
-    console.print(markdown)
-
-
-def clean_execute_command_tags(response):
-    """Remove execute_command XML tags and Action line from the response"""
-    # Remove execute_command XML tags
-    pattern = r'<execute_command>.*?</execute_command>'
-    cleaned = re.sub(pattern, '', response, flags=re.DOTALL)
-    
-    # Remove "Action: execute_command" line
-    action_pattern = r'Action:\s*execute_command\s*\n?'
-    cleaned = re.sub(action_pattern, '', cleaned, flags=re.IGNORECASE)
-    
-    # Clean up multiple newlines
-    cleaned = re.sub(r'\n\s*\n\s*\n+', '\n\n', cleaned)
-    cleaned = cleaned.strip()
-    
-    return cleaned
-
-
-def render_ai_response(response):
-    """Render AI response with simple formatting"""
-    cleaned_response = clean_execute_command_tags(response)
-    
-    console.print()
-    console.print("🤖 AI", style="bold blue")
-    
-    # Render markdown content directly
-    markdown = Markdown(cleaned_response)
-    console.print(markdown)
-    console.print()
 
 
 def render_terminal_command(command, output_filter, cwd=None, user="user", hostname="win"):
-    """Simple terminal command rendering without panels"""
+    """Modern two-line terminal command rendering with box-drawing characters"""
     if cwd:
         try:
             home_path = str(Path.home())
@@ -118,35 +31,34 @@ def render_terminal_command(command, output_filter, cwd=None, user="user", hostn
     else:
         short_cwd = "~"
     
-    # Create the terminal line
-    terminal_line = Text()
+    # First line: top box with user@hostname and path
+    first_line = Text()
+    first_line.append("┌─[", style="white")
+    first_line.append("💻 ", style="blue")
+    first_line.append(user, style="bold green")
+    first_line.append("@", style="white")
+    first_line.append(hostname, style="bold cyan")
+    first_line.append("]─[", style="white")
+    first_line.append(short_cwd, style="bold magenta")
+    first_line.append("]", style="white")
     
     if output_filter:
-        terminal_line.append(f"📊 (Filter: {output_filter})\n", style="yellow")
+        first_line.append("─[", style="white")
+        first_line.append(f"📊 Filter: {output_filter}", style="yellow")
+        first_line.append("]", style="white")
     
-    terminal_line.append("💻 ", style="blue")
-    terminal_line.append(user, style="bold green")
-    terminal_line.append("@", style="white")
-    terminal_line.append(hostname, style="bold green")
-    terminal_line.append(":", style="white")
-    terminal_line.append(short_cwd, style="bold blue")
-    terminal_line.append("$ ", style="white")
-    terminal_line.append(command, style="bright_white bold")
+    console.print(first_line)
     
-    console.print(terminal_line)
+    # Second line: bottom box with command
+    second_line = Text()
+    second_line.append("└─", style="white")
+    second_line.append("$ ", style="bold yellow")
+    second_line.append(command, style="bright_white bold")
+    
+    console.print(second_line)
 
 
-def render_terminal_output(output, cwd=None, user="user", hostname="win"):
-    """Simple terminal output rendering - just plain text"""
-    if output:
-        # Remove ANSI color codes
-        clean_output = re.sub(r'\x1b\[[0-9;]*m', '', output)
-        console.print(clean_output, style="white")
 
-
-def render_spinner(text="Processing..."):
-    """Return a spinner context manager"""
-    return console.status(text, spinner="dots")
 
 
 def display_help():
@@ -210,7 +122,7 @@ def print_welcome_banner(user_info, version):
     banner_content.append("Say Hello to Shello. Making terminals less... terminal".center(55), style="white")
     banner_content.append("\n")
     banner_content.append("\n")
-    banner_content.append(">> AI-Powered CLI with OpenAI Integration <<".center(60), style="bright_blue")
+    banner_content.append(">> AI-Powered CLI with OpenAI Integration <<".center(45), style="bright_blue")
     
     console.print(Panel(
         banner_content,
@@ -219,7 +131,7 @@ def print_welcome_banner(user_info, version):
         width=width,
         expand=False,
         padding=(1, 2),
-        title=f"[bold bright_white]✨ Shello CLI ({version}) ✨[/bold bright_white]",
+        title=f"[bold bright_white]🐚 Shello CLI ({version}) [/bold bright_white]",
         title_align="center"
     ))
     console.print()
