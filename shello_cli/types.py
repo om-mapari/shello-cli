@@ -6,7 +6,10 @@ including tool-related dataclasses for OpenAI function calling integration.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from shello_cli.tools.output_manager import TruncationResult
 
 
 @dataclass
@@ -18,11 +21,13 @@ class ToolResult:
         output: Output string on success
         error: Error message on failure
         data: Optional additional data from the tool
+        truncation_info: Optional truncation metadata
     """
     success: bool
     output: Optional[str] = None
     error: Optional[str] = None
     data: Optional[Any] = None
+    truncation_info: Optional['TruncationResult'] = None
 
 
 @dataclass

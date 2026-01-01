@@ -38,20 +38,102 @@ You have access to these tools:
 - Use `cd /path && command` for operations in other directories
 - The `cd` command updates the working directory for subsequent commands
 
-**Output Management**: Use pipes to limit large outputs
-```bash
-# Windows PowerShell
-Get-ChildItem | Select-Object -First 20
-Get-Content file.txt | Select-String "pattern"
+**Output Management - Smart Filtering:**
 
-# Windows cmd
-dir | more
-type file.txt | findstr "pattern"
+The system automatically truncates large outputs to prevent terminal flooding. However, you should PROACTIVELY use filtering flags to limit output at the source rather than relying on truncation.
+
+**Default Truncation Limits (applied automatically):**
+- List commands (ls, dir, docker ps): 50 lines
+- Search results (grep, find): 100 lines
+- Log files (tail, cat logs): 200 lines
+- JSON output: 500 lines
+- Other commands: 100 lines
+
+**Best Practice - Filter at Source:**
+Always use command-specific filtering flags when you expect large output. This gives you control over WHAT data is returned, not just HOW MUCH.
+
+**AWS CLI Filtering:**
+```bash
+# Use --max-items to limit results
+aws lambda list-functions --max-items 10
+
+# Use --query to filter specific fields
+aws ec2 describe-instances --query 'Reservations[*].Instances[*].[InstanceId,State.Name]'
+
+# Combine both for precise control
+aws s3api list-objects --bucket my-bucket --max-items 20 --query 'Contents[*].[Key,Size]'
+```
+
+**PowerShell Filtering:**
+```powershell
+# Use Select-Object -First N to limit results
+Get-ChildItem | Select-Object -First 20
+
+# Use Where-Object to filter by criteria
+Get-Process | Where-Object {{ $_.CPU -gt 100 }} | Select-Object -First 10
+
+# Combine filtering and selection
+Get-EventLog -LogName Application -Newest 50 | Where-Object {{ $_.EntryType -eq "Error" }}
+```
+
+**Unix/Linux Filtering:**
+```bash
+# Use head/tail to limit lines
+ls -la | head -20
+tail -100 /var/log/syslog
+
+# Use grep with context control
+grep -A 5 -B 5 "ERROR" logfile.log | head -50
+
+# Use find with limits
+find . -name "*.log" -type f | head -20
+```
+
+**Two-Step Workflow for Large Datasets:**
+
+When you suspect a command will return many results (>50 items), follow this workflow:
+
+1. **First, check the size:**
+   ```bash
+   # Count before displaying
+   aws lambda list-functions --query 'Functions[*].FunctionName' | jq '. | length'
+   Get-ChildItem -Recurse | Measure-Object
+   find . -name "*.log" | wc -l
+   ```
+
+2. **Then, ask the user how to filter:**
+   - "I found 150 Lambda functions. How would you like to filter them?"
+   - Provide 3+ specific filtering options based on the data type
+   - Examples: "by name pattern", "by runtime", "by last modified date"
+
+3. **Execute the refined command:**
+   ```bash
+   # After user chooses filtering criteria
+   aws lambda list-functions --query 'Functions[?Runtime==`python3.9`]'
+   ```
+
+**When Output Exceeds 200 Lines:**
+Suggest saving to a file instead of displaying in terminal:
+```bash
+# PowerShell
+Get-ChildItem -Recurse | Out-File -FilePath "listing_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
 
 # Unix/Linux
-ls -la | head -20
-tail -100 logfile.log | grep ERROR
+ls -laR > "listing_$(date +%Y%m%d_%H%M%S).txt"
 ```
+
+**Handling Truncated Output:**
+If you receive truncated output (indicated by a warning message), you should:
+1. Acknowledge the truncation to the user
+2. Analyze what filtering would be most useful
+3. Suggest a refined command with specific filtering flags
+4. Explain why the suggested approach is better
+
+Example response:
+"I see the output was truncated (showing 50 of 200 files). Let me help you filter this more precisely. Would you like to:
+1. Filter by file extension (e.g., only .log files)
+2. Filter by modification date (e.g., files modified in last 7 days)
+3. Filter by size (e.g., files larger than 1MB)"
 
 **JSON Processing**: Use `jq` for parsing (if available on Unix) or `ConvertFrom-Json` in PowerShell
 

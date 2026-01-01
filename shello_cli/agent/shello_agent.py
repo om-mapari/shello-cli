@@ -610,6 +610,9 @@ class ShelloAgent:
             arguments_str = function_data.get("arguments", "{}")
             arguments = json.loads(arguments_str)
         except json.JSONDecodeError as e:
+            # Must be a generator - yield nothing and return error
+            if False:
+                yield  # Make this a generator
             return ToolResult(
                 success=False,
                 output=None,
@@ -620,16 +623,30 @@ class ShelloAgent:
         if function_name == "bash":
             command = arguments.get("command", "")
             if not command:
+                # Must be a generator - yield nothing and return error
+                if False:
+                    yield  # Make this a generator
                 return ToolResult(
                     success=False,
                     output=None,
                     error="No command provided"
                 )
-            # Use streaming bash execution
-            return self._bash_tool.execute_stream(command)
+            # Use streaming bash execution - yield from the generator
+            stream = self._bash_tool.execute_stream(command)
+            result = None
+            try:
+                while True:
+                    chunk = next(stream)
+                    yield chunk
+            except StopIteration as e:
+                result = e.value
+            return result
         elif function_name == "analyze_json":
             json_input = arguments.get("json_input", "")
             if not json_input:
+                # Must be a generator - yield nothing and return error
+                if False:
+                    yield  # Make this a generator
                 return ToolResult(
                     success=False,
                     output=None,
@@ -641,6 +658,9 @@ class ShelloAgent:
                 yield result.output
             return result
         else:
+            # Must be a generator - yield nothing and return error
+            if False:
+                yield  # Make this a generator
             return ToolResult(
                 success=False,
                 output=None,

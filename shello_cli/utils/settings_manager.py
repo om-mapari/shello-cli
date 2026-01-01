@@ -1,10 +1,32 @@
 """Settings manager for user and project configuration."""
 
 from dataclasses import dataclass, field, asdict
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
 import os
+
+
+@dataclass
+class OutputManagementConfig:
+    """Output management configuration.
+    
+    Attributes:
+        enabled: Whether output management is enabled
+        show_warnings: Whether to show truncation warnings
+        limits: Custom truncation limits per output type
+        safety_limit: Maximum lines even with override (default: 1000)
+    """
+    enabled: bool = True
+    show_warnings: bool = True
+    limits: Dict[str, int] = field(default_factory=lambda: {
+        "list": 50,
+        "search": 100,
+        "log": 200,
+        "json": 500,
+        "default": 100
+    })
+    safety_limit: int = 1000
 
 
 @dataclass
@@ -16,6 +38,7 @@ class UserSettings:
     models: List[str] = field(default_factory=lambda: [
         "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"
     ])
+    output_management: Optional[OutputManagementConfig] = None
 
 
 @dataclass
@@ -60,12 +83,24 @@ class SettingsManager:
             with open(self._user_settings_path, 'r') as f:
                 data = json.load(f)
             
+            # Parse output_management if present
+            output_management = None
+            if 'output_management' in data:
+                om_data = data['output_management']
+                output_management = OutputManagementConfig(
+                    enabled=om_data.get('enabled', True),
+                    show_warnings=om_data.get('show_warnings', True),
+                    limits=om_data.get('limits', OutputManagementConfig().limits),
+                    safety_limit=om_data.get('safety_limit', 1000)
+                )
+            
             # Merge loaded data with defaults
             self._user_settings = UserSettings(
                 api_key=data.get('api_key', default_settings.api_key),
                 base_url=data.get('base_url', default_settings.base_url),
                 default_model=data.get('default_model', default_settings.default_model),
-                models=data.get('models', default_settings.models)
+                models=data.get('models', default_settings.models),
+                output_management=output_management
             )
             return self._user_settings
         except (json.JSONDecodeError, IOError) as e:
@@ -78,9 +113,21 @@ class SettingsManager:
         # Ensure directory exists
         self._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Convert to dict and save
+        # Convert to dict
+        settings_dict = {
+            'api_key': settings.api_key,
+            'base_url': settings.base_url,
+            'default_model': settings.default_model,
+            'models': settings.models
+        }
+        
+        # Only include output_management if it's not None
+        if settings.output_management is not None:
+            settings_dict['output_management'] = asdict(settings.output_management)
+        
+        # Save to file
         with open(self._user_settings_path, 'w') as f:
-            json.dump(asdict(settings), f, indent=2)
+            json.dump(settings_dict, f, indent=2)
         
         # Update cached settings
         self._user_settings = settings
@@ -152,3 +199,11 @@ class SettingsManager:
         """Get API base URL"""
         user_settings = self.load_user_settings()
         return user_settings.base_url
+    
+    def get_output_management_config(self) -> OutputManagementConfig:
+        """Get output management config with defaults if not configured"""
+        user_settings = self.load_user_settings()
+        if user_settings.output_management is not None:
+            return user_settings.output_management
+        # Return default config if not configured
+        return OutputManagementConfig()

@@ -104,10 +104,23 @@ class BashTool:
             
             # Determine success based on return code
             if result.returncode == 0:
+                # Process output through OutputManager
+                from shello_cli.tools.output_manager import OutputManager
+                output_manager = OutputManager.from_settings()
+                
+                # Process the output
+                truncation_result = output_manager.process_output(output, command)
+                
+                # Combine output with warning if truncated
+                final_output = truncation_result.output
+                if truncation_result.was_truncated and truncation_result.warning:
+                    final_output = truncation_result.output + truncation_result.warning
+                
                 return ToolResult(
                     success=True,
-                    output=output if output else "Command completed successfully",
-                    error=None
+                    output=final_output if final_output else "Command completed successfully",
+                    error=None,
+                    truncation_info=truncation_result
                 )
             else:
                 return ToolResult(
@@ -240,8 +253,9 @@ class BashTool:
             accumulated_output = []
             accumulated_error = []
             
-            # Read output line by line as it arrives
-            try:
+            # Create a generator for the raw output
+            def raw_output_generator():
+                """Generator that yields raw output from the process."""
                 # Read from stdout
                 if process.stdout:
                     for line in iter(process.stdout.readline, ''):
@@ -250,7 +264,11 @@ class BashTool:
                             yield line
                 
                 # Wait for process to complete
-                process.wait(timeout=timeout)
+                try:
+                    process.wait(timeout=timeout)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    raise
                 
                 # Read any remaining stderr
                 if process.stderr:
@@ -258,14 +276,23 @@ class BashTool:
                     if stderr_content:
                         accumulated_error.append(stderr_content)
                         yield stderr_content
-                
-            except subprocess.TimeoutExpired:
-                process.kill()
-                return ToolResult(
-                    success=False,
-                    output=''.join(accumulated_output) if accumulated_output else None,
-                    error=f"Command timed out after {timeout} seconds"
-                )
+            
+            # Wrap the raw output with OutputManager for streaming truncation
+            from shello_cli.tools.output_manager import OutputManager
+            output_manager = OutputManager.from_settings()
+            
+            # Process stream through OutputManager
+            stream_wrapper = output_manager.process_stream(raw_output_generator(), command)
+            
+            # Yield all chunks from the wrapped stream and capture the return value
+            truncation_result = None
+            try:
+                while True:
+                    chunk = next(stream_wrapper)
+                    yield chunk
+            except StopIteration as e:
+                # The return value is in e.value
+                truncation_result = e.value
             
             # Determine success based on return code
             output = ''.join(accumulated_output)
@@ -275,14 +302,23 @@ class BashTool:
                 return ToolResult(
                     success=True,
                     output=output if output else "Command completed successfully",
-                    error=None
+                    error=None,
+                    truncation_info=truncation_result
                 )
             else:
                 return ToolResult(
                     success=False,
                     output=output if output else None,
-                    error=error if error else f"Command failed with exit code {process.returncode}"
+                    error=error if error else f"Command failed with exit code {process.returncode}",
+                    truncation_info=truncation_result
                 )
+        
+        except subprocess.TimeoutExpired:
+            return ToolResult(
+                success=False,
+                output=''.join(accumulated_output) if accumulated_output else None,
+                error=f"Command timed out after {timeout} seconds"
+            )
         
         except Exception as e:
             return ToolResult(
