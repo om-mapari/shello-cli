@@ -292,10 +292,12 @@ def get_user_input_with_clear(name):
     def submit_input(event):
         event.current_buffer.validate_and_handle()
     
-    # Enhanced style with better completion menu
+    # Enhanced style with modern terminal look
     enhanced_style = Style.from_dict({
-        # Main interface
-        'username': '#00a300 bold',
+        # Modern terminal prompt styling
+        'prompt.icon': '#00d7ff bold',       # Cyan icon
+        'prompt.username': '#00ff87 bold',   # Green username
+        'prompt.arrow': '#00d7ff bold',      # Cyan arrow with box drawing
         
         # Completion menu styling - improved colors and contrast
         'completion-menu': 'bg:#1a1a1a border:#444444',
@@ -317,7 +319,11 @@ def get_user_input_with_clear(name):
     
     try:
         user_input = prompt(
-            [('class:username', f'{name}'), ('', '\n'), ('class:username', '> ')],
+            [
+                ('class:prompt.icon', '🌊 '),
+                ('class:prompt.username', f'{name}'),
+                ('class:prompt.arrow', '\n──└─⟩ '),
+            ],
             key_bindings=bindings,
             complete_style='multi-column',  # Multi-column layout
             multiline=True,

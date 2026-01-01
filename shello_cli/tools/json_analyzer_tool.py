@@ -1,11 +1,14 @@
 """
 JSON analyzer tool for Shello CLI.
 
-This module provides the JsonAnalyzerTool class for analyzing JSON structures
-and generating jq paths with data types.
+This module provides the JsonAnalyzerTool class for executing commands that
+produce JSON output and analyzing the structure to generate jq paths.
 """
 
 import json
+import subprocess
+import os
+import platform
 from typing import List, Dict, Any
 from shello_cli.types import ToolResult
 
@@ -13,21 +16,93 @@ from shello_cli.types import ToolResult
 class JsonAnalyzerTool:
     """JSON structure analyzer tool.
     
-    This tool analyzes JSON data and generates jq paths with data types,
-    helping users understand JSON structure for jq queries.
+    This tool executes a command that produces JSON output, analyzes the
+    JSON structure, and returns jq paths with data types. This helps the AI
+    understand JSON structure without flooding the terminal with large outputs.
     """
     
-    def analyze(self, json_input: str) -> ToolResult:
-        """Analyze JSON structure and return jq paths with data types.
+    def __init__(self):
+        """Initialize the JSON analyzer tool."""
+        self._detect_shell()
+    
+    def _detect_shell(self):
+        """Detect which shell to use for command execution."""
+        os_name = platform.system()
+        
+        if os_name == 'Windows':
+            # Check for bash first (Git Bash, WSL, etc.)
+            if os.environ.get('BASH') or os.environ.get('BASH_VERSION'):
+                self._shell_type = 'bash'
+            elif (os.environ.get('SHELL') and 'bash' in os.environ.get('SHELL', '').lower()) or \
+                 os.environ.get('SHLVL'):
+                self._shell_type = 'bash'
+            elif os.environ.get('PSExecutionPolicyPreference') or \
+                 (os.environ.get('PSModulePath') and not os.environ.get('PROMPT', '').startswith('$P$G')):
+                self._shell_type = 'powershell'
+            else:
+                self._shell_type = 'cmd'
+        else:
+            self._shell_type = 'bash'
+    
+    def analyze(self, command: str, timeout: int = 60) -> ToolResult:
+        """Execute a command and analyze its JSON output structure.
         
         Args:
-            json_input: JSON string to analyze
+            command: The command to execute (should produce JSON output)
+            timeout: Maximum execution time in seconds (default: 60)
         
         Returns:
             ToolResult with jq paths and data types
         """
         try:
-            data = json.loads(json_input)
+            # Execute the command based on shell type
+            if self._shell_type == 'powershell':
+                result = subprocess.run(
+                    ['powershell.exe', '-Command', command],
+                    capture_output=True,
+                    timeout=timeout,
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
+                )
+            else:
+                result = subprocess.run(
+                    command,
+                    shell=True,
+                    capture_output=True,
+                    timeout=timeout,
+                    encoding='utf-8',
+                    errors='replace'  # Replace invalid chars instead of failing
+                )
+            
+            # Check if command failed
+            if result.returncode != 0:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error=f"Command failed: {result.stderr or 'Unknown error'}"
+                )
+            
+            output = result.stdout.strip() if result.stdout else ""
+            
+            # Check if output is empty
+            if not output:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="Command produced no output"
+                )
+            
+            # Try to parse as JSON
+            try:
+                data = json.loads(output)
+            except json.JSONDecodeError as e:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error=f"Command output is not valid JSON: {str(e)}"
+                )
+            
+            # Extract jq paths
             paths = self._extract_paths(data)
             
             # Sort paths for consistent output
@@ -35,26 +110,26 @@ class JsonAnalyzerTool:
             
             # Format output
             output_lines = ["jq path | data type", "=" * 50] + paths
-            output = "\n".join(output_lines)
+            formatted_output = "\n".join(output_lines)
             
             return ToolResult(
                 success=True,
-                output=output,
+                output=formatted_output,
                 error=None
             )
         
-        except json.JSONDecodeError as e:
+        except subprocess.TimeoutExpired:
             return ToolResult(
                 success=False,
                 output=None,
-                error=f"Invalid JSON format: {str(e)}"
+                error=f"Command timed out after {timeout} seconds"
             )
         
         except Exception as e:
             return ToolResult(
                 success=False,
                 output=None,
-                error=f"Error analyzing JSON: {str(e)}"
+                error=f"Error executing command: {str(e)}"
             )
     
     def _extract_paths(self, obj: Any, jq_path: str = "") -> List[str]:

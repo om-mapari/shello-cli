@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 from shello_cli.ui.ui_renderer import (
     console,
-    render_terminal_command
+    render_tool_execution
 )
 from rich.markdown import Markdown
 from rich.live import Live
@@ -51,7 +51,7 @@ class ChatSession:
         """Process a message through the agent and handle the response with streaming"""
         # Use streaming for better UX
         console.print()
-        console.print("✨ AI", style="bold blue")
+        console.print("🐚 Shello", style="bold blue")
         console.print()  # Add spacing after header
         
         accumulated_content = ""
@@ -87,6 +87,7 @@ class ChatSession:
                         if chunk.tool_call:
                             current_tool_call = chunk.tool_call
                             self._handle_tool_call(chunk.tool_call)
+                            console.print()  # Add newline after tool header
                     
                     elif chunk.type == "tool_output":
                         # Stream tool output as it arrives
@@ -119,25 +120,25 @@ class ChatSession:
             console.print()
     
     def _handle_tool_call(self, tool_call: dict) -> None:
-        """Handle a tool call from the AI"""
+        """Handle a tool call from the AI - renders tool execution for any tool"""
         function_data = tool_call.get("function", {})
         function_name = function_data.get("name")
         
-        if function_name == "bash":
-            # Parse arguments
-            try:
-                arguments_str = function_data.get("arguments", "{}")
-                arguments = json.loads(arguments_str)
-                command = arguments.get("command", "")
-                
-                if command:
-                    # Display the command
-                    render_terminal_command(
-                        command,
-                        None,  # No output filter for now
-                        cwd=self.agent.get_current_directory(),
-                        user=self.user,
-                        hostname=self.hostname
-                    )
-            except json.JSONDecodeError:
-                pass
+        if not function_name:
+            return
+        
+        # Parse arguments
+        try:
+            arguments_str = function_data.get("arguments", "{}")
+            arguments = json.loads(arguments_str)
+            
+            # Render tool execution for ALL tools (bash, analyze_json, etc.)
+            render_tool_execution(
+                tool_name=function_name,
+                parameters=arguments,
+                cwd=self.agent.get_current_directory(),
+                user=self.user,
+                hostname=self.hostname
+            )
+        except json.JSONDecodeError:
+            pass

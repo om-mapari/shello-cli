@@ -575,14 +575,14 @@ class ShelloAgent:
                 )
             return self._bash_tool.execute(command)
         elif function_name == "analyze_json":
-            json_input = arguments.get("json_input", "")
-            if not json_input:
+            command = arguments.get("command", "")
+            if not command:
                 return ToolResult(
                     success=False,
                     output=None,
-                    error="No JSON input provided"
+                    error="No command provided"
                 )
-            return self._json_analyzer_tool.analyze(json_input)
+            return self._json_analyzer_tool.analyze(command)
         else:
             return ToolResult(
                 success=False,
@@ -642,18 +642,18 @@ class ShelloAgent:
                 result = e.value
             return result
         elif function_name == "analyze_json":
-            json_input = arguments.get("json_input", "")
-            if not json_input:
+            command = arguments.get("command", "")
+            if not command:
                 # Must be a generator - yield nothing and return error
                 if False:
                     yield  # Make this a generator
                 return ToolResult(
                     success=False,
                     output=None,
-                    error="No JSON input provided"
+                    error="No command provided"
                 )
             # JSON analyzer doesn't stream, but we yield the output for consistency
-            result = self._json_analyzer_tool.analyze(json_input)
+            result = self._json_analyzer_tool.analyze(command)
             if result.output:
                 yield result.output
             return result

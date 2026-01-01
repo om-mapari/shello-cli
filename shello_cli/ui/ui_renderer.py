@@ -58,6 +58,92 @@ def render_terminal_command(command, output_filter, cwd=None, user="user", hostn
     console.print(second_line)
 
 
+def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user", hostname="win"):
+    """Generic tool execution rendering with box-drawing characters.
+    
+    This function renders any tool execution in a consistent format.
+    For bash commands, it shows user@hostname with the command.
+    For other tools, it shows a simpler format with just icon and path.
+    
+    Args:
+        tool_name: Name of the tool being executed (e.g., "bash", "analyze_json")
+        parameters: Dictionary of parameters passed to the tool
+        cwd: Current working directory (optional)
+        user: Username for display
+        hostname: Hostname for display
+    """
+    # Tool icons mapping
+    tool_icons = {
+        "bash": "💻",
+        "analyze_json": "🔍",
+        "python_code_executor": "🐍",
+        "file_read": "📄",
+        "file_write": "✏️",
+        "web_search": "🌐",
+        "default": "🔧"
+    }
+    
+    icon = tool_icons.get(tool_name, tool_icons["default"])
+    
+    if cwd:
+        try:
+            home_path = str(Path.home())
+            short_cwd = cwd.replace(home_path, "~") if home_path in cwd else cwd
+        except Exception:
+            short_cwd = cwd
+    else:
+        short_cwd = "~"
+    
+    # First line: top box - different format for bash vs other tools
+    first_line = Text()
+    first_line.append("┌─[", style="white")
+    
+    if tool_name == "bash":
+        # For bash, show icon + user@hostname
+        first_line.append(f"{icon} ", style="blue")
+        first_line.append(user, style="bold green")
+        first_line.append("@", style="white")
+        first_line.append(hostname, style="bold cyan")
+    else:
+        # For other tools, just show icon (no trailing space)
+        first_line.append(icon, style="blue")
+    
+    first_line.append("]─[", style="white")
+    first_line.append(short_cwd, style="bold magenta")
+    first_line.append("]", style="white")
+    
+    console.print(first_line)
+    
+    # Second line: tool name and main parameter
+    second_line = Text()
+    second_line.append("└─", style="white")
+    
+    if tool_name == "bash":
+        # For bash, show the command directly
+        command = parameters.get("command", "")
+        second_line.append("$ ", style="bold yellow")
+        second_line.append(command, style="bright_white bold")
+    else:
+        # For other tools, show ⟩ then tool name and parameters
+        second_line.append("⟩ ", style="bold yellow")
+        second_line.append(f"{tool_name}", style="bold cyan")
+        second_line.append("(", style="white")
+        
+        # Format parameters
+        param_parts = []
+        for key, value in parameters.items():
+            # Truncate long values
+            str_value = str(value)
+            if len(str_value) > 60:
+                str_value = str_value[:57] + "..."
+            param_parts.append(f"{key}={repr(str_value)}")
+        
+        second_line.append(", ".join(param_parts), style="bright_white")
+        second_line.append(")", style="white")
+    
+    console.print(second_line)
+
+
 
 
 
