@@ -399,8 +399,8 @@ class OutputManager:
     ) -> Generator[str, None, TruncationResult]:
         """Process streaming output with real-time truncation.
         
-        Counts lines in real-time as they arrive, stops yielding after reaching
-        the limit, and yields a truncation warning as the final chunk.
+        Yields output immediately as it arrives, counts lines in real-time,
+        and stops yielding after reaching the limit.
         
         Args:
             stream: Generator yielding output chunks
@@ -423,7 +423,6 @@ class OutputManager:
             
             full_output = ''.join(accumulated_output)
             lines = full_output.split('\n')
-            # Adjust for trailing newline
             if full_output.endswith('\n'):
                 total_lines = len(lines) - 1
             else:
@@ -438,23 +437,9 @@ class OutputManager:
                 warning=None
             )
         
-        # Accumulate output to detect type and count lines
-        accumulated_chunks = []
-        accumulated_output = ""
-        
-        # We need to peek at the output to detect type
-        # Accumulate first few chunks to detect type
-        peek_chunks = []
-        for chunk in stream:
-            peek_chunks.append(chunk)
-            accumulated_output += chunk
-            
-            # After accumulating enough to detect type, break
-            if len(accumulated_output) > 1000:
-                break
-        
-        # Detect output type from accumulated peek
-        output_type = self._type_detector.detect(command, accumulated_output)
+        # For real-time streaming, detect type from command only initially
+        # We'll refine detection after first chunk if needed
+        output_type = self._type_detector.detect(command, "")
         
         # Get appropriate limit
         if override_limit:
@@ -462,62 +447,49 @@ class OutputManager:
         else:
             limit = self.get_limit_for_type(output_type)
         
-        # Yield the peek chunks first
-        for chunk in peek_chunks:
-            yield chunk
-        
-        accumulated_chunks.extend(peek_chunks)
-        
-        # Count lines properly - each line ends with \n
-        # So "line 0\n" is 1 line, "line 0\nline 1\n" is 2 lines
-        def count_lines(text):
-            """Count actual lines in text, handling trailing newlines correctly."""
-            if not text:
-                return 0
-            # Count newlines - that's the number of complete lines
-            return text.count('\n')
-        
-        current_line_count = count_lines(accumulated_output)
+        accumulated_output = ""
+        current_line_count = 0
         truncated = False
+        type_detected = False
         
-        # Continue streaming until limit is reached
         for chunk in stream:
-            accumulated_chunks.append(chunk)
             accumulated_output += chunk
             
-            # Count lines in the accumulated output
-            current_line_count = count_lines(accumulated_output)
+            # Re-detect type after first chunk with actual content (for JSON detection)
+            if not type_detected and len(accumulated_output) > 10:
+                output_type = self._type_detector.detect(command, accumulated_output)
+                if not override_limit:
+                    limit = self.get_limit_for_type(output_type)
+                type_detected = True
+            
+            # Count lines
+            current_line_count = accumulated_output.count('\n')
             
             # Check if we've reached the limit
             if current_line_count >= limit:
-                # We've hit or exceeded the limit
                 truncated = True
-                # Continue consuming the stream to get total count, but don't yield
-                # Consume remaining chunks to get accurate total
+                # Consume remaining chunks to get total count, but don't yield
                 for remaining_chunk in stream:
                     accumulated_output += remaining_chunk
                 break
             
+            # Yield immediately for real-time output
             yield chunk
         
         # Calculate final statistics
-        total_lines = count_lines(accumulated_output)
+        total_lines = accumulated_output.count('\n')
+        if accumulated_output and not accumulated_output.endswith('\n'):
+            total_lines += 1  # Count last line without newline
         
-        # Determine if truncation occurred
-        was_truncated = total_lines > limit
+        was_truncated = truncated or total_lines > limit
         
         if was_truncated:
-            # Truncate the accumulated output to the limit
             lines = accumulated_output.split('\n')
-            # Take first 'limit' complete lines (each ends with \n)
             truncated_lines = lines[:limit]
             truncated_output = '\n'.join(truncated_lines)
-            if accumulated_output.count('\n') >= limit:
-                # Add back the trailing newline if original had it
+            if limit > 0:
                 truncated_output += '\n'
             shown_lines = limit
-            
-            # Format warning
             percentage = int((shown_lines / total_lines) * 100)
             warning = f"\n\n⚠️  Output truncated ({total_lines} lines total, showing first {shown_lines} - {percentage}%)"
             

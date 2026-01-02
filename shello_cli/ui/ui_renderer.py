@@ -247,15 +247,16 @@ def display_about(version):
     """Display about information for Shello CLI"""
     # Create markdown content as a string
     about_markdown = f"""
-# 🚀 Shello CLI
 
-*"Making terminals less... terminal"*
+**🚀 Shello CLI**
 
-## What is Shello CLI?
+*Making terminals less... terminal*
 
-**An intelligent AI assistant that helps you troubleshoot and resolve technical problems through natural conversation and smart command execution.**
+**What is Shello CLI?**
 
-## Key Features
+An intelligent AI assistant that helps you troubleshoot and resolve technical problems through natural conversation and smart command execution.
+
+**Key Features**
 
 - 💬 Intelligent issue diagnosis in plain English
 - ☁️ AWS & Cloud debugging assistance
@@ -264,12 +265,15 @@ def display_about(version):
 - 🔒 Secure local execution
 - 📜 Conversation history management
 
-## Developer
+**Developer**
 
-**Made with ❤️ by Om Mapari**
+- **Made with ❤️ by Om Mapari**
 
-*Version: {version}*
-    """
+---
+
+Version: {version}
+"""
+
     
     # Create a panel with the markdown content
     markdown_content = Markdown(about_markdown)
@@ -277,7 +281,7 @@ def display_about(version):
         markdown_content,
         border_style="cyan",
         box=ROUNDED,
-        title=f"[bold bright_white]ℹ️ About Shello CLI ({version})[/bold bright_white]",
+        title=f"[bold bright_white]🐚 About Shello CLI ({version})[/bold bright_white]",
         title_align="center",
         padding=(1, 2)
     )

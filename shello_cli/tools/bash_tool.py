@@ -227,6 +227,10 @@ class BashTool:
             return result
         
         try:
+            import sys
+            import threading
+            import queue
+            
             # Start the process based on shell type
             if self._shell_type == 'powershell':
                 # Use PowerShell explicitly
@@ -234,10 +238,10 @@ class BashTool:
                     ['powershell.exe', '-Command', command],
                     cwd=self._current_directory,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    bufsize=1,
+                    stderr=subprocess.STDOUT,  # Merge stderr into stdout for real-time output
+                    bufsize=0,  # Unbuffered
                     encoding='utf-8',
-                    errors='replace'  # Replace invalid chars instead of failing
+                    errors='replace'
                 )
             else:
                 # Use default shell
@@ -246,38 +250,61 @@ class BashTool:
                     shell=True,
                     cwd=self._current_directory,
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    bufsize=1,  # Line buffered
+                    stderr=subprocess.STDOUT,  # Merge stderr into stdout for real-time output
+                    bufsize=0,  # Unbuffered
                     encoding='utf-8',
-                    errors='replace'  # Replace invalid chars instead of failing
+                    errors='replace'
                 )
             
             accumulated_output = []
-            accumulated_error = []
+            output_queue = queue.Queue()
+            
+            def reader_thread():
+                """Thread to read output without blocking."""
+                try:
+                    while True:
+                        line = process.stdout.readline()
+                        if line:
+                            output_queue.put(line)
+                        elif process.poll() is not None:
+                            break
+                except Exception:
+                    pass
+                finally:
+                    output_queue.put(None)  # Signal end
+            
+            # Start reader thread
+            thread = threading.Thread(target=reader_thread, daemon=True)
+            thread.start()
             
             # Create a generator for the raw output
             def raw_output_generator():
                 """Generator that yields raw output from the process."""
-                # Read from stdout
-                if process.stdout:
-                    for line in iter(process.stdout.readline, ''):
-                        if line:
-                            accumulated_output.append(line)
-                            yield line
+                while True:
+                    try:
+                        # Wait for output with timeout
+                        line = output_queue.get(timeout=0.1)
+                        if line is None:
+                            break
+                        accumulated_output.append(line)
+                        yield line
+                    except queue.Empty:
+                        # Check if process is still running
+                        if process.poll() is not None:
+                            # Process finished, drain remaining output
+                            while True:
+                                try:
+                                    line = output_queue.get_nowait()
+                                    if line is None:
+                                        break
+                                    accumulated_output.append(line)
+                                    yield line
+                                except queue.Empty:
+                                    break
+                            break
                 
-                # Wait for process to complete
-                try:
-                    process.wait(timeout=timeout)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    raise
-                
-                # Read any remaining stderr
-                if process.stderr:
-                    stderr_content = process.stderr.read()
-                    if stderr_content:
-                        accumulated_error.append(stderr_content)
-                        yield stderr_content
+                # Wait for thread to finish
+                thread.join(timeout=1)
             
             # Wrap the raw output with OutputManager for streaming truncation
             from shello_cli.tools.output_manager import OutputManager
@@ -298,9 +325,8 @@ class BashTool:
             
             # Determine success based on return code
             output = ''.join(accumulated_output)
-            error = ''.join(accumulated_error)
             
-            if process.returncode == 0:
+            if process.returncode == 0 or process.returncode is None:
                 return ToolResult(
                     success=True,
                     output=output if output else "Command completed successfully",
@@ -311,7 +337,7 @@ class BashTool:
                 return ToolResult(
                     success=False,
                     output=output if output else None,
-                    error=error if error else f"Command failed with exit code {process.returncode}",
+                    error=f"Command failed with exit code {process.returncode}",
                     truncation_info=truncation_result
                 )
         
