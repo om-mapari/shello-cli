@@ -675,6 +675,71 @@ class ShelloAgent:
         """
         return self._chat_history.copy()
     
+    def add_system_message(self, message: str) -> None:
+        """Add a system message to the conversation context.
+        
+        Used for notifying the AI about events like user interrupts.
+        
+        Args:
+            message: The system message to add
+        """
+        self._messages.append({
+            "role": "system",
+            "content": message
+        })
+        # Also add to chat history for tracking
+        self._chat_history.append(ChatEntry(
+            type="system",
+            content=message,
+            timestamp=datetime.now()
+        ))
+    
+    def add_interrupted_tool_response(self, tool_call_id: str, command: str) -> None:
+        """Add a tool response for an interrupted tool call.
+        
+        This ensures the message history stays valid (matching tool calls with responses).
+        
+        Args:
+            tool_call_id: The ID of the interrupted tool call
+            command: The command that was interrupted
+        """
+        self._messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "content": json.dumps({
+                "success": False,
+                "output": None,
+                "error": f"Execution interrupted by user (Ctrl+C). Command: {command}"
+            })
+        })
+        # Add to chat history
+        self._chat_history.append(ChatEntry(
+            type="tool_result",
+            content=f"[Interrupted by user] {command}",
+            timestamp=datetime.now()
+        ))
+    
+    def get_pending_tool_calls(self) -> list:
+        """Get any pending tool calls that don't have responses.
+        
+        Returns:
+            List of tool call IDs that need responses
+        """
+        # Find assistant messages with tool_calls
+        tool_call_ids = set()
+        tool_response_ids = set()
+        
+        for msg in self._messages:
+            if msg.get("role") == "assistant" and msg.get("tool_calls"):
+                for tc in msg["tool_calls"]:
+                    tool_call_ids.add(tc.get("id"))
+            elif msg.get("role") == "tool":
+                tool_response_ids.add(msg.get("tool_call_id"))
+        
+        # Return IDs that have calls but no responses
+        pending = tool_call_ids - tool_response_ids
+        return list(pending)
+    
     def get_current_directory(self) -> str:
         """Get the current working directory.
         

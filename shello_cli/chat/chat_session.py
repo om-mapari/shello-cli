@@ -24,10 +24,20 @@ class ChatSession:
         self.system_info = get_shell_info()
         self.user = getpass.getuser()
         self.hostname = socket.gethostname()
+        self._last_interrupted = False  # Track if last execution was interrupted
+        self._interrupted_command = None  # Store the interrupted command
     
     def start_conversation(self, user_message: str) -> None:
         """Start a new conversation with initial instructions and user message"""
         current_datetime = datetime.now().strftime("%A %B %d, %Y at %I:%M %p")
+        
+        # Check if previous execution was interrupted
+        if self._last_interrupted:
+            interrupt_context = f"\n\n[SYSTEM: Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}]"
+            self._last_interrupted = False
+            self._interrupted_command = None
+        else:
+            interrupt_context = ""
         
         # Format system context
         context = (
@@ -36,7 +46,7 @@ class ChatSession:
             f"- Shell: {self.system_info['shell']} ({self.system_info['shell_executable']})\n"
             f"- Working Directory: {self.system_info['cwd']}\n"
             f"- Date/Time: {current_datetime}\n\n"
-            f"User message: {user_message}"
+            f"User message: {user_message}{interrupt_context}"
         )
         
         # Process the message through the agent
@@ -45,6 +55,13 @@ class ChatSession:
     
     def continue_conversation(self, user_message: str) -> None:
         """Continue an existing conversation with a new user message"""
+        # Check if previous execution was interrupted
+        if self._last_interrupted:
+            interrupt_context = f"\n\n[SYSTEM: Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}]"
+            user_message = user_message + interrupt_context
+            self._last_interrupted = False
+            self._interrupted_command = None
+        
         self._process_message(user_message)
     
     def _process_message(self, message: str) -> None:
@@ -56,6 +73,7 @@ class ChatSession:
         
         accumulated_content = ""
         current_tool_call = None
+        current_command = None  # Track current executing command
         
         try:
             stream = self.agent.process_user_message_stream(message)
@@ -86,6 +104,17 @@ class ChatSession:
                         # Individual tool call starting
                         if chunk.tool_call:
                             current_tool_call = chunk.tool_call
+                            # Extract command for interrupt tracking
+                            func_data = chunk.tool_call.get("function", {})
+                            if func_data.get("name") == "bash":
+                                try:
+                                    args = json.loads(func_data.get("arguments", "{}"))
+                                    current_command = args.get("command", "")
+                                except:
+                                    current_command = "unknown command"
+                            else:
+                                current_command = f"{func_data.get('name', 'tool')} execution"
+                            
                             self._handle_tool_call(chunk.tool_call)
                             console.print()  # Add newline after tool header
                     
@@ -96,6 +125,7 @@ class ChatSession:
                     
                     elif chunk.type == "tool_result":
                         # Tool execution complete
+                        current_command = None  # Clear command tracking
                         if chunk.tool_result:
                             # Display final result status if there was an error
                             if not chunk.tool_result.success and chunk.tool_result.error:
@@ -108,6 +138,21 @@ class ChatSession:
             
             # Final newline after response
             console.print()
+            
+        except KeyboardInterrupt:
+            # User pressed Ctrl+C - interrupt execution
+            console.print("\n")
+            console.print("⚠️  Interrupted by user (Ctrl+C)", style="bold yellow")
+            console.print()
+            
+            # Store interrupt state for next message
+            self._last_interrupted = True
+            self._interrupted_command = current_command or "AI response"
+            
+            # Add tool responses for any pending tool calls to keep message history valid
+            pending_tool_calls = self.agent.get_pending_tool_calls()
+            for tool_call_id in pending_tool_calls:
+                self.agent.add_interrupted_tool_response(tool_call_id, self._interrupted_command)
             
         except TypeError as e:
             console.print(f"\n✗ Error: {str(e)}", style="bold red")
