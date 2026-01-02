@@ -15,7 +15,7 @@ except ImportError:
     pyperclip = None
 
 # Create history file path in shello_cli directory (consistent with other config)
-history_file = APP_DIR / ".bai_shell_history"
+history_file = APP_DIR / ".shello_history"
 command_history = FileHistory(str(history_file))
 
 

@@ -138,7 +138,7 @@ class TestShelloAgentProperties:
         """
         # Create agent with mocked client and bash tool
         with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient, \
-             patch('shello_cli.agent.shello_agent.BashTool') as MockBashTool:
+             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
             
             # Setup mock client to return a tool call
             mock_client_instance = MockClient.return_value
@@ -225,12 +225,12 @@ class TestShelloAgentUnitTests:
         with patch('shello_cli.agent.shello_agent.ShelloClient'):
             agent = ShelloAgent(api_key="test-key", max_tool_rounds=5)
             
-            assert agent._max_tool_rounds == 5
+            assert agent._message_processor._max_tool_rounds == 5
     
     def test_get_current_directory(self):
         """Test get_current_directory returns bash tool's directory."""
         with patch('shello_cli.agent.shello_agent.ShelloClient'), \
-             patch('shello_cli.agent.shello_agent.BashTool') as MockBashTool:
+             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
             
             mock_bash_instance = MockBashTool.return_value
             mock_bash_instance.get_current_directory.return_value = "/test/dir"
@@ -276,17 +276,15 @@ class TestShelloAgentUnitTests:
             agent = ShelloAgent(api_key="test-key")
             entries = agent.process_user_message("Hi")
             
-            # Should have user entry and assistant entry
-            assert len(entries) >= 2
-            assert entries[0].type == "user"
-            assert entries[0].content == "Hi"
-            assert entries[-1].type == "assistant"
-            assert entries[-1].content == "Hello!"
+            # Should have assistant entry (user entry is added to history but not returned in entries)
+            assert len(entries) >= 1
+            assert entries[0].type == "assistant"
+            assert entries[0].content == "Hello!"
     
     def test_process_message_with_tool_call(self):
         """Test processing a message that requires a tool call."""
         with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient, \
-             patch('shello_cli.agent.shello_agent.BashTool') as MockBashTool:
+             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
             
             mock_client_instance = MockClient.return_value
             mock_client_instance.chat.side_effect = [
@@ -329,9 +327,8 @@ class TestShelloAgentUnitTests:
             agent = ShelloAgent(api_key="test-key")
             entries = agent.process_user_message("Run echo test")
             
-            # Should have user, tool_call, tool_result, and assistant entries
-            assert len(entries) >= 4
-            assert entries[0].type == "user"
+            # Should have tool_call, tool_result, and assistant entries (user entry not returned)
+            assert len(entries) >= 3
             assert any(e.type == "tool_call" for e in entries)
             assert any(e.type == "tool_result" for e in entries)
             assert entries[-1].type == "assistant"
@@ -349,7 +346,7 @@ class TestShelloAgentUnitTests:
                 }
             }
             
-            result = agent._execute_tool(tool_call)
+            result = agent._tool_executor.execute_tool(tool_call)
             
             assert result.success is False
             assert "Failed to parse tool arguments" in result.error
@@ -367,7 +364,7 @@ class TestShelloAgentUnitTests:
                 }
             }
             
-            result = agent._execute_tool(tool_call)
+            result = agent._tool_executor.execute_tool(tool_call)
             
             assert result.success is False
             assert "Unknown tool" in result.error
@@ -385,7 +382,7 @@ class TestShelloAgentUnitTests:
                 }
             }
             
-            result = agent._execute_tool(tool_call)
+            result = agent._tool_executor.execute_tool(tool_call)
             
             assert result.success is False
             assert "No command provided" in result.error
@@ -399,8 +396,7 @@ class TestShelloAgentUnitTests:
             agent = ShelloAgent(api_key="test-key")
             entries = agent.process_user_message("test")
             
-            # Should have user entry and error entry
-            assert len(entries) >= 2
-            assert entries[0].type == "user"
-            assert entries[-1].type == "assistant"
-            assert "Error communicating with AI" in entries[-1].content
+            # Should have error entry (user entry is added to history but not returned in entries)
+            assert len(entries) >= 1
+            assert entries[0].type == "assistant"
+            assert "Error communicating with AI" in entries[0].content
