@@ -86,11 +86,7 @@ pytest tests/test_openai_client.py -v
 
 ## Supported Models
 
-The client supports any OpenAI-compatible API endpoint. Popular options include:
-
-- **OpenAI:** `gpt-4o`, `gpt-4o-mini`, `gpt-4-turbo`, `gpt-3.5-turbo`
-- **OpenRouter:** `mistralai/devstral-2512:free`, `anthropic/claude-3-opus`, etc.
-- **Local models:** Any model served via OpenAI-compatible API
+The client supports any OpenAI-compatible API endpoint.
 
 ## API Providers
 

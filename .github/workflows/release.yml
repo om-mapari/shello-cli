@@ -1,0 +1,179 @@
+name: Build and Release
+
+on:
+    push:
+        tags:
+            - "v*" # Triggers on version tags like v1.0.0, v1.2.3, etc.
+    workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+    build-windows:
+        runs-on: windows-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+                  pip install pyinstaller
+
+            - name: Build with PyInstaller
+              run: pyinstaller shello.spec --clean
+
+            - name: Test executable
+              run: dist\shello.exe --version
+
+            - name: Upload Windows artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: shello-windows
+                  path: dist/shello.exe
+
+    build-linux:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+                  pip install pyinstaller
+
+            - name: Build with PyInstaller
+              run: pyinstaller shello.spec --clean
+
+            - name: Test executable
+              run: ./dist/shello --version
+
+            - name: Upload Linux artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: shello-linux
+                  path: dist/shello
+
+    build-macos:
+        runs-on: macos-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: "3.11"
+
+            - name: Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install -r requirements.txt
+                  pip install pyinstaller
+
+            - name: Build with PyInstaller
+              run: pyinstaller shello.spec --clean
+
+            - name: Test executable
+              run: ./dist/shello --version
+
+            - name: Upload macOS artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: shello-macos
+                  path: dist/shello
+
+    create-release:
+        needs: [build-windows, build-linux, build-macos]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Download Windows artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: shello-windows
+                  path: ./artifacts/windows
+
+            - name: Download Linux artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: shello-linux
+                  path: ./artifacts/linux
+
+            - name: Download macOS artifact
+              uses: actions/download-artifact@v4
+              with:
+                  name: shello-macos
+                  path: ./artifacts/macos
+
+            - name: Create release archives
+              run: |
+                  cd artifacts/windows
+                  zip ../../shello-windows.zip shello.exe
+                  cd ../linux
+                  chmod +x shello
+                  tar -czf ../../shello-linux.tar.gz shello
+                  cd ../macos
+                  chmod +x shello
+                  tar -czf ../../shello-macos.tar.gz shello
+                  cd ../..
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  files: |
+                      shello-windows.zip
+                      shello-linux.tar.gz
+                      shello-macos.tar.gz
+                  body: |
+                      ## Shello CLI ${{ github.ref_name }}
+
+                      AI Assistant with Command Execution
+
+                      ### Installation
+
+                      **Windows:**
+                      1. Download `shello-windows.zip`
+                      2. Extract `shello.exe`
+                      3. Add to PATH or copy to `C:\Windows\System32`
+                      4. Run: `shello --version`
+
+                      **Linux:**
+                      ```bash
+                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello-linux.tar.gz
+                      tar -xzf shello-linux.tar.gz
+                      sudo mv shello /usr/local/bin/
+                      sudo chmod +x /usr/local/bin/shello
+                      shello --version
+                      ```
+
+                      **macOS:**
+                      ```bash
+                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello-macos.tar.gz
+                      tar -xzf shello-macos.tar.gz
+                      sudo mv shello /usr/local/bin/
+                      sudo chmod +x /usr/local/bin/shello
+                      shello --version
+                      ```
+
+                      ### What's Changed
+                      - See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+                  draft: false
+                  prerelease: false
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
