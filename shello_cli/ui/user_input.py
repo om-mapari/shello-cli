@@ -6,7 +6,7 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, merge_completers
 import os
 from pathlib import Path
-from shello_cli.config import APP_DIR
+from shello_cli.constants import APP_DIR
 
 # Add this for clipboard support
 try:

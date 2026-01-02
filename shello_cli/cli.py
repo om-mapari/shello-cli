@@ -20,7 +20,9 @@ def create_new_session(settings_manager):
     """Create a new ShelloAgent and chat session"""
     api_key = settings_manager.get_api_key()
     if not api_key:
-        console.print("✗ [red]No API key found. Please set OPENAI_API_KEY environment variable or configure in settings.[/red]")
+        console.print("✗ [red]No API key found.[/red]")
+        console.print("💡 [yellow]Run 'shello setup' to configure your API key.[/yellow]")
+        console.print("   Or set OPENAI_API_KEY environment variable.\n")
         sys.exit(1)
     
     base_url = settings_manager.get_base_url()
@@ -137,6 +139,89 @@ def config():
     if project_settings.model:
         console.print(f"  Project Model Override: {project_settings.model}")
     console.print()
+
+
+@cli.command()
+def setup():
+    """Interactive setup wizard for first-time configuration"""
+    from shello_cli.utils.settings_manager import UserSettings
+    from pathlib import Path
+    
+    settings_manager = SettingsManager.get_instance()
+    user_settings_path = Path.home() / ".shello_cli" / "user-settings.json"
+    
+    console.print("\n🌊 [bold cyan]Welcome to Shello CLI Setup![/bold cyan]\n")
+    
+    # Check if settings already exist
+    if user_settings_path.exists():
+        console.print("⚠ [yellow]Settings file already exists.[/yellow]")
+        overwrite = click.confirm("Do you want to reconfigure?", default=False)
+        if not overwrite:
+            console.print("✓ [green]Setup cancelled. Use 'shello config' to view current settings.[/green]\n")
+            return
+        console.print()
+    
+    # API Provider selection
+    console.print("📡 [bold]Select API Provider:[/bold]")
+    console.print("  1. OpenAI (https://api.openai.com/v1)")
+    console.print("  2. OpenRouter (https://openrouter.ai/api/v1)")
+    console.print("  3. Custom URL")
+    
+    provider_choice = click.prompt("\nChoose provider", type=click.IntRange(1, 3), default=1)
+    
+    if provider_choice == 1:
+        base_url = "https://api.openai.com/v1"
+        default_model = "gpt-4o"
+        models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
+    elif provider_choice == 2:
+        base_url = "https://openrouter.ai/api/v1"
+        default_model = "mistralai/devstral-2512:free"
+        models = ["mistralai/devstral-2512:free", "gpt-4o", "gpt-4o-mini"]
+    else:
+        base_url = click.prompt("Enter custom API base URL", type=str)
+        default_model = click.prompt("Enter default model name", type=str)
+        models = [default_model]
+    
+    console.print(f"\n✓ Base URL: [cyan]{base_url}[/cyan]")
+    
+    # API Key
+    console.print("\n🔑 [bold]API Key Configuration:[/bold]")
+    api_key = click.prompt("Enter your API key", type=str, hide_input=True)
+    
+    if not api_key or len(api_key) < 10:
+        console.print("✗ [red]Invalid API key. Setup cancelled.[/red]\n")
+        return
+    
+    console.print("✓ API key received")
+    
+    # Model selection
+    console.print(f"\n🤖 [bold]Default Model:[/bold]")
+    console.print(f"  Suggested: {default_model}")
+    use_default = click.confirm("Use suggested model?", default=True)
+    
+    if not use_default:
+        default_model = click.prompt("Enter model name", type=str, default=default_model)
+    
+    console.print(f"✓ Default model: [cyan]{default_model}[/cyan]")
+    
+    # Save settings
+    console.print("\n💾 [bold]Saving configuration...[/bold]")
+    
+    new_settings = UserSettings(
+        api_key=api_key,
+        base_url=base_url,
+        default_model=default_model,
+        models=models
+    )
+    
+    try:
+        settings_manager.save_user_settings(new_settings)
+        console.print("✓ [green]Configuration saved successfully![/green]")
+        console.print(f"  Location: [dim]{user_settings_path}[/dim]")
+        console.print("\n🚀 [bold green]Setup complete! You can now run 'shello' to start chatting.[/bold green]\n")
+    except Exception as e:
+        console.print(f"✗ [red]Failed to save settings: {str(e)}[/red]\n")
+        sys.exit(1)
 
 
 if __name__ == '__main__':

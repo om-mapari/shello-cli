@@ -5,6 +5,7 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
 import os
+from shello_cli.constants import APP_DIR
 
 
 @dataclass

@@ -13,7 +13,7 @@ An AI-powered terminal assistant that doesn't just suggest commands—it execute
 **One-line installation:**
 
 ```powershell
-# Windows (PowerShell - Run as Administrator)
+# Windows (PowerShell - Recommended, no admin needed)
 Invoke-WebRequest -Uri "https://github.com/om-mapari/shello-cli/releases/latest/download/shello.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\shello.exe"
 ```
 
@@ -25,12 +25,19 @@ curl -L https://github.com/om-mapari/shello-cli/releases/latest/download/shello 
 curl -L https://github.com/om-mapari/shello-cli/releases/latest/download/shello-macos -o /tmp/shello && sudo mv /tmp/shello /usr/local/bin/shello && sudo chmod +x /usr/local/bin/shello
 ```
 
-**Set your API key:**
+**Verify installation:**
 
 ```bash
-mkdir -p ~/.shello_cli
-echo '{"api_key": "your-key", "base_url": "https://openrouter.ai/api/v1"}' > ~/.shello_cli/user-settings.json
+shello --version
 ```
+
+**Configure (first time):**
+
+```bash
+shello setup
+```
+
+The interactive wizard will guide you through API key and model configuration.
 
 **Start chatting:**
 
@@ -67,25 +74,41 @@ While chatting:
 - `/quit` - Exit
 
 CLI commands:
+- `shello setup` - Interactive configuration wizard
 - `shello config` - Show current settings
 - `shello --version` - Display version
 
 ## Configuration
+
+### Quick Setup (Recommended)
+
+Run the interactive setup wizard:
+
+```bash
+shello setup
+```
+
+This will guide you through:
+- API provider selection (OpenAI, OpenRouter, or custom)
+- API key configuration
+- Default model selection
+
+### Manual Configuration
 
 **Global settings:** `~/.shello_cli/user-settings.json`
 ```json
 {
   "api_key": "your-api-key",
   "base_url": "https://openrouter.ai/api/v1",
-  "models": ["openai/gpt-4o", "anthropic/claude-3.5-sonnet"],
-  "model": "openai/gpt-4o"
+  "default_model": "mistralai/devstral-2512:free",
+  "models": ["mistralai/devstral-2512:free", "gpt-4o", "gpt-4o-mini"]
 }
 ```
 
 **Project settings:** `.shello/settings.json` (overrides global)
 ```json
 {
-  "model": "anthropic/claude-3.5-sonnet"
+  "model": "gpt-4o-mini"
 }
 ```
 
@@ -94,7 +117,7 @@ CLI commands:
 export OPENAI_API_KEY="your-api-key"
 ```
 
-See [SETUP.md](SETUP.md) for detailed configuration options.
+See [FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md) for detailed configuration options.
 
 ## Install from Source
 
@@ -125,7 +148,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Links
 
-- 📖 [Setup Guide](SETUP.md)
+- 📖 [First-Time Setup Guide](FIRST_TIME_SETUP.md)
+- 🔧 [Development Setup](SETUP.md)
 - 📝 [Changelog](CHANGELOG.md)
 - 🐛 [Report Issues](https://github.com/om-mapari/shello-cli/issues)
 - 🚀 [Latest Release](https://github.com/om-mapari/shello-cli/releases/latest)
