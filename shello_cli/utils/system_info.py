@@ -1,7 +1,9 @@
 """System information utilities for Shello CLI"""
 import os
 import platform
-import subprocess
+from datetime import datetime
+from pathlib import Path
+from typing import Optional, Tuple
 
 
 def get_shell_info():
@@ -57,3 +59,49 @@ def get_shell_info():
             "shell_executable": os.environ.get("SHELL", "bash"),
             "cwd": os.getcwd()
         }
+
+
+def detect_shell() -> Tuple[str, str]:
+    """Detect the current shell being used.
+    
+    Returns:
+        Tuple of (shell_name, shell_executable)
+    """
+    info = get_shell_info()
+    return info['shell'], info['shell_executable']
+
+
+def load_custom_instructions() -> Optional[str]:
+    """Load custom instructions from .shello/SHELLO.md if available.
+    
+    Checks in order:
+    1. Current working directory: .shello/SHELLO.md
+    2. User home directory: ~/.shello/SHELLO.md
+    
+    Returns:
+        Optional[str]: Custom instructions content or None if not found
+    """
+    try:
+        # Check current working directory
+        cwd_path = Path.cwd() / ".shello" / "SHELLO.md"
+        if cwd_path.exists():
+            return cwd_path.read_text(encoding='utf-8').strip()
+        
+        # Check user home directory
+        home_path = Path.home() / ".shello" / "SHELLO.md"
+        if home_path.exists():
+            return home_path.read_text(encoding='utf-8').strip()
+        
+        return None
+    except Exception:
+        # Silently fail if we can't load custom instructions
+        return None
+
+
+def get_current_datetime() -> str:
+    """Get the current date and time as a formatted string.
+    
+    Returns:
+        Current datetime in format "YYYY-MM-DD HH:MM:SS"
+    """
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")

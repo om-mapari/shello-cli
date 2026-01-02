@@ -16,7 +16,7 @@ from shello_cli.agent.template import INSTRUCTION_TEMPLATE
 from shello_cli.agent.models import ChatEntry, StreamingChunk
 from shello_cli.agent.tool_executor import ToolExecutor
 from shello_cli.agent.message_processor import MessageProcessor
-from shello_cli.agent.system_info import (
+from shello_cli.utils.system_info import (
     detect_shell,
     load_custom_instructions,
     get_current_datetime
