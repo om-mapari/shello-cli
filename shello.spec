@@ -1,0 +1,75 @@
+# -*- mode: python ; coding: utf-8 -*-
+
+block_cipher = None
+
+a = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=[],
+    datas=[
+        ('shello_cli', 'shello_cli'),
+    ],
+    hiddenimports=[
+        'shello_cli',
+        'shello_cli.cli',
+        'shello_cli.agent',
+        'shello_cli.agent.shello_agent',
+        'shello_cli.chat',
+        'shello_cli.chat.chat_session',
+        'shello_cli.ui',
+        'shello_cli.ui.ui_renderer',
+        'shello_cli.ui.user_input',
+        'shello_cli.utils',
+        'shello_cli.utils.settings_manager',
+        'shello_cli.tools',
+        'shello_cli.api',
+        'shello_cli.commands',
+        'click',
+        'rich',
+        'prompt_toolkit',
+        'pydantic',
+        'requests',
+        'urllib3',
+        'dotenv',
+        'keyring',
+        'pyperclip',
+        'openai',
+    ],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[
+        'pytest',
+        'hypothesis',
+        'test',
+        'tests',
+    ],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    [],
+    name='shello',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    runtime_tmpdir=None,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)

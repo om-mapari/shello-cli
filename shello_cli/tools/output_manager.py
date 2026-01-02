@@ -465,8 +465,8 @@ class OutputManager:
             # Count lines
             current_line_count = accumulated_output.count('\n')
             
-            # Check if we've reached the limit
-            if current_line_count >= limit:
+            # Check if we've EXCEEDED the limit (not just reached it)
+            if current_line_count > limit:
                 truncated = True
                 # Consume remaining chunks to get total count, but don't yield
                 for remaining_chunk in stream:
@@ -481,7 +481,8 @@ class OutputManager:
         if accumulated_output and not accumulated_output.endswith('\n'):
             total_lines += 1  # Count last line without newline
         
-        was_truncated = truncated or total_lines > limit
+        # Only truncated if we stopped early (total > limit)
+        was_truncated = total_lines > limit
         
         if was_truncated:
             lines = accumulated_output.split('\n')
