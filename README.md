@@ -10,23 +10,19 @@ An AI-powered terminal assistant that doesn't just suggest commands—it execute
 
 ## Quick Start
 
-**Download and run** (no installation needed):
+**One-line installation:**
+
+```powershell
+# Windows (PowerShell - Run as Administrator)
+Invoke-WebRequest -Uri "https://github.com/om-mapari/shello-cli/releases/latest/download/shello.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\shello.exe"
+```
 
 ```bash
-# Windows
-curl -L https://github.com/om-mapari/shello-cli/releases/latest/download/shello-windows.zip -o shello.zip
-tar -xf shello.zip
-move shello.exe C:\Windows\System32\
-
 # Linux
-wget https://github.com/om-mapari/shello-cli/releases/latest/download/shello-linux.tar.gz
-tar -xzf shello-linux.tar.gz
-sudo mv shello /usr/local/bin/ && sudo chmod +x /usr/local/bin/shello
+curl -L https://github.com/om-mapari/shello-cli/releases/latest/download/shello -o /tmp/shello && sudo mv /tmp/shello /usr/local/bin/shello && sudo chmod +x /usr/local/bin/shello
 
 # macOS
-wget https://github.com/om-mapari/shello-cli/releases/latest/download/shello-macos.tar.gz
-tar -xzf shello-macos.tar.gz
-sudo mv shello /usr/local/bin/ && sudo chmod +x /usr/local/bin/shello
+curl -L https://github.com/om-mapari/shello-cli/releases/latest/download/shello-macos -o /tmp/shello && sudo mv /tmp/shello /usr/local/bin/shello && sudo chmod +x /usr/local/bin/shello
 ```
 
 **Set your API key:**

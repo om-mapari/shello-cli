@@ -121,15 +121,20 @@ jobs:
                   name: shello-macos
                   path: ./artifacts/macos
 
-            - name: Create release archives
+            - name: Prepare release files
               run: |
+                  # Copy raw executables
+                  cp artifacts/windows/shello.exe shello.exe
+                  cp artifacts/linux/shello shello
+                  cp artifacts/macos/shello shello-macos
+                  chmod +x shello shello-macos
+
+                  # Create archives for backup
                   cd artifacts/windows
                   zip ../../shello-windows.zip shello.exe
                   cd ../linux
-                  chmod +x shello
                   tar -czf ../../shello-linux.tar.gz shello
                   cd ../macos
-                  chmod +x shello
                   tar -czf ../../shello-macos.tar.gz shello
                   cd ../..
 
@@ -137,6 +142,9 @@ jobs:
               uses: softprops/action-gh-release@v1
               with:
                   files: |
+                      shello.exe
+                      shello
+                      shello-macos
                       shello-windows.zip
                       shello-linux.tar.gz
                       shello-macos.tar.gz
@@ -145,31 +153,29 @@ jobs:
 
                       AI Assistant with Command Execution
 
-                      ### Installation
+                      ### Quick Installation
 
-                      **Windows:**
-                      1. Download `shello-windows.zip`
-                      2. Extract `shello.exe`
-                      3. Add to PATH or copy to `C:\Windows\System32`
-                      4. Run: `shello --version`
+                      **Windows (PowerShell - Run as Administrator):**
+                      ```powershell
+                      Invoke-WebRequest -Uri "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\shello.exe"
+                      ```
 
                       **Linux:**
                       ```bash
-                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello-linux.tar.gz
-                      tar -xzf shello-linux.tar.gz
-                      sudo mv shello /usr/local/bin/
-                      sudo chmod +x /usr/local/bin/shello
-                      shello --version
+                      curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello -o /tmp/shello && sudo mv /tmp/shello /usr/local/bin/shello && sudo chmod +x /usr/local/bin/shello
                       ```
 
                       **macOS:**
                       ```bash
-                      wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello-macos.tar.gz
-                      tar -xzf shello-macos.tar.gz
-                      sudo mv shello /usr/local/bin/
-                      sudo chmod +x /usr/local/bin/shello
-                      shello --version
+                      curl -L https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/shello-macos -o /tmp/shello && sudo mv /tmp/shello /usr/local/bin/shello && sudo chmod +x /usr/local/bin/shello
                       ```
+
+                      ### Manual Installation
+
+                      Download the executable for your platform:
+                      - **Windows:** `shello.exe` (or `shello-windows.zip`)
+                      - **Linux:** `shello` (or `shello-linux.tar.gz`)
+                      - **macOS:** `shello-macos` (or `shello-macos.tar.gz`)
 
                       ### What's Changed
                       - See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
