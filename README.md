@@ -4,9 +4,34 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-> Yet another AI CLI tool - but built with practical usecase in mind.
+> **Not just another AI CLI tool.** Built with intelligent output management, semantic analysis, and production-ready features.
 
-An AI-powered terminal assistant that doesn't just suggest commands—it executes them for you. Chat naturally, get real-time results, and stop copy-pasting from ChatGPT.
+An AI-powered terminal assistant that doesn't just suggest commands—it executes them intelligently. Chat naturally, get real-time results with smart truncation, and access cached output when you need more context.
+
+## Why Shello is Different
+
+Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-world terminal usage:
+
+- **🧠 Smart Output Management** - Character-based truncation with semantic analysis keeps errors visible even in massive outputs
+- **💾 Output Caching** - Retrieve specific sections from previous commands without re-execution (5-min cache)
+- **📊 JSON Intelligence** - Auto-analyzes large JSON with jq paths instead of flooding your terminal
+- **🎯 Context-Aware Truncation** - Different strategies for different commands (logs show end, lists show start, builds show both)
+- **⚡ Progress Bar Compression** - Collapses repetitive progress output to final state
+- **🔍 Semantic Line Detection** - Critical errors always visible regardless of position in output
+- **🛠️ Production-Ready** - Comprehensive test suite with property-based testing for correctness guarantees
+
+## Technical Highlights
+
+**For developers who care about the details:**
+
+- **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
+- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor working in concert
+- **LRU cache with TTL** - Sequential cache IDs (cmd_001, cmd_002...) with 5-minute expiration
+- **Streaming architecture** - User sees real-time output, AI gets processed summary
+- **Zero data loss** - Full output always cached, retrieve any section on demand
+- **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
+
+See [design.md](.kiro/specs/output-management/design.md) for architecture details.
 
 ## Quick Start
 
@@ -47,24 +72,74 @@ shello
 
 ## What Can It Do?
 
+### Real-World Examples
+
 ```
 "Check disk usage and show me the largest directories"
+→ Executes, truncates intelligently, shows you what matters
+
 "List all Docker containers and their status"
+→ Smart truncation keeps headers and critical info visible
+
 "Find all TODO comments in my Python files"
+→ Semantic analysis ensures you see all matches, not just first 100 lines
+
 "Analyze the structure of my AWS Lambda functions"
+→ Large JSON? Auto-analyzed with jq paths, raw cached for retrieval
+
 "Show me what's using port 3000"
+→ Errors always visible even in verbose output
+```
+
+### Smart Output Management in Action
+
+When you run a command that produces large output:
+
+```bash
+🐚 Shello> npm install
+# ... installation output streams in real-time ...
+# ... AI sees truncated version with summary ...
+
+───────────────────────────────────────────────────────────
+📊 OUTPUT SUMMARY
+───────────────────────────────────────────────────────────
+Total: 45,000 chars (850 lines) | Shown: 8,000 chars (150 lines)
+Strategy: FIRST_LAST (20% first + 80% last)
+Optimizations: Progress bars compressed (saved 200 lines)
+Semantic: 3 critical, 5 high, 142 low importance lines shown
+
+💾 Cache ID: cmd_001 (expires in 5 min)
+💡 Use get_cached_output(cache_id="cmd_001", lines="-100") to see last 100 lines
+───────────────────────────────────────────────────────────
+
+🐚 Shello> get me the last 50 lines from that install
+# AI automatically uses: get_cached_output(cache_id="cmd_001", lines="-50")
+# Shows you exactly what you need
 ```
 
 Shello understands context, executes commands in real-time, and works with bash, PowerShell, cmd, or Git Bash.
 
 ## Key Features
 
-- **Execute commands** - AI runs them for you with streaming output
-- **Smart JSON handling** - Analyzes structure before flooding your terminal
-- **Multi-platform** - Windows, Linux, macOS with automatic shell detection
-- **Flexible AI** - Works with OpenAI, OpenRouter, or local models (LM Studio, Ollama)
+### Intelligent Output Management
+- **Character-based limits** - 5K-20K chars depending on command type (not arbitrary line counts)
+- **Smart truncation strategies** - Logs show end, lists show start, builds show both ends
+- **Semantic analysis** - Errors, warnings, and critical info always visible
+- **Progress bar compression** - npm install with 500 progress lines? Compressed to final state
+- **Output caching** - Retrieve any section from last 5 minutes without re-running commands
+
+### Advanced Features
+- **JSON intelligence** - Large JSON auto-analyzed with jq paths, raw data cached
+- **Multi-platform** - Windows, Linux, macOS with automatic shell detection (bash/PowerShell/cmd)
+- **Flexible AI** - OpenAI, OpenRouter, or local models (LM Studio, Ollama)
 - **Project configs** - Team-specific settings via `.shello/settings.json`
 - **Custom instructions** - Add project context in `.shello/SHELLO.md`
+
+### Developer Experience
+- **Real-time streaming** - See output as it happens, AI gets smart summary
+- **Context preservation** - Working directory persists across commands
+- **Property-based testing** - 105+ tests with formal correctness properties
+- **Type-safe** - Full type hints and dataclass models
 
 ## Commands
 
