@@ -92,14 +92,44 @@ class JsonAnalyzerTool:
                     error="Command produced no output"
                 )
             
+            # Delegate to analyze_json_string
+            return self.analyze_json_string(output)
+        
+        except subprocess.TimeoutExpired:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=f"Command timed out after {timeout} seconds"
+            )
+        
+        except Exception as e:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=f"Error executing command: {str(e)}"
+            )
+    
+    def analyze_json_string(self, json_string: str) -> ToolResult:
+        """Analyze a JSON string and return jq paths with data types.
+        
+        This method analyzes JSON that's already been captured, without executing a command.
+        Used by output management when JSON output exceeds character limits.
+        
+        Args:
+            json_string: The JSON string to analyze
+        
+        Returns:
+            ToolResult with jq paths and data types
+        """
+        try:
             # Try to parse as JSON
             try:
-                data = json.loads(output)
+                data = json.loads(json_string)
             except json.JSONDecodeError as e:
                 return ToolResult(
                     success=False,
                     output=None,
-                    error=f"Command output is not valid JSON: {str(e)}"
+                    error=f"String is not valid JSON: {str(e)}"
                 )
             
             # Extract jq paths
@@ -118,18 +148,11 @@ class JsonAnalyzerTool:
                 error=None
             )
         
-        except subprocess.TimeoutExpired:
-            return ToolResult(
-                success=False,
-                output=None,
-                error=f"Command timed out after {timeout} seconds"
-            )
-        
         except Exception as e:
             return ToolResult(
                 success=False,
                 output=None,
-                error=f"Error executing command: {str(e)}"
+                error=f"Error analyzing JSON: {str(e)}"
             )
     
     def _extract_paths(self, obj: Any, jq_path: str = "") -> List[str]:
