@@ -5,29 +5,75 @@ from typing import Optional, List, Dict, Any
 from pathlib import Path
 import json
 import os
-from shello_cli.constants import APP_DIR
+from shello_cli.constants import (
+    APP_DIR,
+    DEFAULT_CHAR_LIMITS,
+    DEFAULT_STRATEGIES,
+    DEFAULT_FIRST_RATIO,
+    DEFAULT_LAST_RATIO,
+    DEFAULT_CACHE_TTL_SECONDS,
+    DEFAULT_CACHE_MAX_SIZE_MB,
+)
+
+
+@dataclass
+class FirstLastRatioConfig:
+    """Configuration for FIRST_LAST truncation strategy ratio."""
+    first: float = DEFAULT_FIRST_RATIO
+    last: float = DEFAULT_LAST_RATIO
+
+
+@dataclass
+class SemanticConfig:
+    """Configuration for semantic truncation."""
+    enabled: bool = True
+    always_show_critical: bool = True
+
+
+@dataclass
+class CompressionConfig:
+    """Configuration for progress bar compression."""
+    enabled: bool = True
+
+
+@dataclass
+class CacheConfig:
+    """Configuration for output caching."""
+    enabled: bool = True
+    ttl_seconds: int = DEFAULT_CACHE_TTL_SECONDS
+    max_size_mb: int = DEFAULT_CACHE_MAX_SIZE_MB
 
 
 @dataclass
 class OutputManagementConfig:
-    """Output management configuration.
+    """Output management configuration with character-based limits.
     
     Attributes:
         enabled: Whether output management is enabled
-        show_warnings: Whether to show truncation warnings
-        limits: Custom truncation limits per output type
-        safety_limit: Maximum lines even with override (default: 1000)
+        show_summary: Whether to show truncation summary
+        limits: Character limits per output type (merged with defaults)
+        strategies: Truncation strategies per output type (merged with defaults)
+        first_last_ratio: Ratio for FIRST_LAST strategy
+        semantic: Semantic truncation configuration
+        compression: Progress bar compression configuration
+        cache: Output caching configuration
     """
     enabled: bool = True
-    show_warnings: bool = True
-    limits: Dict[str, int] = field(default_factory=lambda: {
-        "list": 50,
-        "search": 100,
-        "log": 200,
-        "json": 500,
-        "default": 100
-    })
-    safety_limit: int = 1000
+    show_summary: bool = True
+    limits: Dict[str, int] = field(default_factory=lambda: DEFAULT_CHAR_LIMITS.copy())
+    strategies: Dict[str, str] = field(default_factory=lambda: DEFAULT_STRATEGIES.copy())
+    first_last_ratio: FirstLastRatioConfig = field(default_factory=FirstLastRatioConfig)
+    semantic: SemanticConfig = field(default_factory=SemanticConfig)
+    compression: CompressionConfig = field(default_factory=CompressionConfig)
+    cache: CacheConfig = field(default_factory=CacheConfig)
+    
+    def get_limit(self, output_type: str) -> int:
+        """Get character limit for output type, falling back to default."""
+        return self.limits.get(output_type, self.limits.get("default", DEFAULT_CHAR_LIMITS["default"]))
+    
+    def get_strategy(self, output_type: str) -> str:
+        """Get truncation strategy for output type, falling back to default."""
+        return self.strategies.get(output_type, self.strategies.get("default", DEFAULT_STRATEGIES["default"]))
 
 
 @dataclass
@@ -88,11 +134,59 @@ class SettingsManager:
             output_management = None
             if 'output_management' in data:
                 om_data = data['output_management']
+                
+                # Parse nested configs
+                first_last_ratio = FirstLastRatioConfig()
+                if 'first_last_ratio' in om_data:
+                    flr = om_data['first_last_ratio']
+                    first_last_ratio = FirstLastRatioConfig(
+                        first=flr.get('first', DEFAULT_FIRST_RATIO),
+                        last=flr.get('last', DEFAULT_LAST_RATIO)
+                    )
+                
+                semantic = SemanticConfig()
+                if 'semantic' in om_data:
+                    sem = om_data['semantic']
+                    semantic = SemanticConfig(
+                        enabled=sem.get('enabled', True),
+                        always_show_critical=sem.get('always_show_critical', True)
+                    )
+                
+                compression = CompressionConfig()
+                if 'compression' in om_data:
+                    comp = om_data['compression']
+                    compression = CompressionConfig(
+                        enabled=comp.get('enabled', True)
+                    )
+                
+                cache = CacheConfig()
+                if 'cache' in om_data:
+                    c = om_data['cache']
+                    cache = CacheConfig(
+                        enabled=c.get('enabled', True),
+                        ttl_seconds=c.get('ttl_seconds', DEFAULT_CACHE_TTL_SECONDS),
+                        max_size_mb=c.get('max_size_mb', DEFAULT_CACHE_MAX_SIZE_MB)
+                    )
+                
+                # Merge user limits with defaults
+                limits = DEFAULT_CHAR_LIMITS.copy()
+                if 'limits' in om_data:
+                    limits.update(om_data['limits'])
+                
+                # Merge user strategies with defaults
+                strategies = DEFAULT_STRATEGIES.copy()
+                if 'strategies' in om_data:
+                    strategies.update(om_data['strategies'])
+                
                 output_management = OutputManagementConfig(
                     enabled=om_data.get('enabled', True),
-                    show_warnings=om_data.get('show_warnings', True),
-                    limits=om_data.get('limits', OutputManagementConfig().limits),
-                    safety_limit=om_data.get('safety_limit', 1000)
+                    show_summary=om_data.get('show_summary', True),
+                    limits=limits,
+                    strategies=strategies,
+                    first_last_ratio=first_last_ratio,
+                    semantic=semantic,
+                    compression=compression,
+                    cache=cache
                 )
             
             # Merge loaded data with defaults
