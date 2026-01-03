@@ -75,17 +75,21 @@ Directory Changes:
 </shell_commands>
 
 <output_management>
-The system auto-truncates large outputs. But YOU should proactively filter at the source.
+Large outputs are auto-truncated with character limits (5K-20K depending on type). Filter at source when possible.
 
-Default Truncation Limits:
-- List commands (ls, dir, docker ps): 50 lines
-- Search results (grep, find): 100 lines
-- Log files: 200 lines
-- JSON output: 500 lines
-- Other: 100 lines
+When truncated, you'll see a summary with Cache ID at the END:
+  💾 Cache ID: cmd_001 (expires in 5 min)
+  💡 Use get_cached_output(cache_id="cmd_001", lines="-100") to see last 100 lines
 
-Best Practice - Filter at Source:
-Use command flags to control output BEFORE truncation kicks in.
+Retrieve cached output:
+  get_cached_output(cache_id="cmd_001", lines="-100")  # Last 100 lines
+  get_cached_output(cache_id="cmd_002", lines="+50")   # First 50 lines
+  get_cached_output(cache_id="cmd_003", lines="+20,-80")  # First 20 + last 80
+  get_cached_output(cache_id="cmd_004")  # Full output (50K limit)
+
+JSON >20K chars: Auto-analyzed with json_analyzer_tool (returns jq paths, raw cached).
+
+Best practice - filter at source:
 
 AWS CLI:
   aws lambda list-functions --max-items 10
@@ -109,18 +113,15 @@ Two-Step Workflow for Large Datasets:
 
 3. Execute refined command with user's chosen filter
 
-When Output Exceeds 200 Lines:
+When Output Exceeds Safety Limit:
 Suggest saving to file:
   # PowerShell
   Get-ChildItem -Recurse | Out-File -FilePath "listing.txt"
   # Unix
   ls -laR > listing.txt
 
-Handling Truncated Output:
-If you see a truncation warning:
-1. Acknowledge it briefly
-2. Suggest 2-3 specific filtering options
-3. Let user choose, then execute refined command
+Semantic Truncation:
+The system automatically preserves important lines (errors, warnings, summaries) even if they're in the middle of output. You'll see semantic stats in the truncation summary showing how many critical/high/medium importance lines were included.
 </output_management>
 
 <json_handling>
