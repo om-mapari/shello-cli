@@ -7,6 +7,7 @@ providing a registry of tools that the AI agent can invoke.
 
 from typing import List
 from shello_cli.types import ShelloTool
+from shello_cli.constants import GET_CACHED_OUTPUT_DESCRIPTION
 
 
 # Registry of all available tools in OpenAI function calling format
@@ -75,6 +76,27 @@ SHELLO_TOOLS: List[ShelloTool] = [
                     }
                 },
                 "required": ["command"]
+            }
+        }
+    ),
+    ShelloTool(
+        type="function",
+        function={
+            "name": "get_cached_output",
+            "description": GET_CACHED_OUTPUT_DESCRIPTION,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cache_id": {
+                        "type": "string",
+                        "description": "Cache ID from truncation summary (e.g., 'cmd_001')"
+                    },
+                    "lines": {
+                        "type": "string",
+                        "description": "Line selection: '+N' (first N), '-N' (last N), '+N,-M' (first+last), 'N-M' (range)"
+                    }
+                },
+                "required": ["cache_id"]
             }
         }
     )
