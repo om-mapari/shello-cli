@@ -10,6 +10,8 @@ import os
 import platform
 from typing import Optional, Generator
 from shello_cli.types import ToolResult
+from shello_cli.tools.output.cache import OutputCache
+from shello_cli.tools.output.manager import OutputManager
 
 
 class BashTool:
@@ -19,9 +21,19 @@ class BashTool:
     and maintains the current working directory state across commands.
     """
     
-    def __init__(self):
-        """Initialize the bash tool with the current working directory."""
+    def __init__(self, output_cache: Optional[OutputCache] = None):
+        """Initialize the bash tool with the current working directory.
+        
+        Args:
+            output_cache: Optional shared OutputCache instance. If None, creates a new one.
+        """
         self._current_directory: str = os.getcwd()
+        
+        # Create or use shared OutputCache
+        self._output_cache = output_cache or OutputCache()
+        
+        # Create OutputManager with shared cache
+        self._output_manager = OutputManager(cache=self._output_cache)
         
         # Detect the actual shell being used
         self._detect_shell()
@@ -106,17 +118,13 @@ class BashTool:
             
             # Determine success based on return code
             if result.returncode == 0:
-                # Process output through OutputManager
-                from shello_cli.tools.output_manager import OutputManager
-                output_manager = OutputManager.from_settings()
+                # Process output through new OutputManager
+                truncation_result = self._output_manager.process_output(output, command)
                 
-                # Process the output
-                truncation_result = output_manager.process_output(output, command)
-                
-                # Combine output with warning if truncated
+                # Combine output with summary if truncated
                 final_output = truncation_result.output
-                if truncation_result.was_truncated and truncation_result.warning:
-                    final_output = truncation_result.output + truncation_result.warning
+                if truncation_result.was_truncated and truncation_result.summary:
+                    final_output = truncation_result.output + '\n' + truncation_result.summary
                 
                 return ToolResult(
                     success=True,
@@ -204,6 +212,14 @@ class BashTool:
             The current working directory path
         """
         return self._current_directory
+    
+    def get_output_cache(self) -> OutputCache:
+        """Get the shared OutputCache instance.
+        
+        Returns:
+            The OutputCache instance used by this BashTool
+        """
+        return self._output_cache
     
     def execute_stream(self, command: str, timeout: int = 30) -> Generator[str, None, ToolResult]:
         """Execute a bash command and stream output in real-time.
@@ -306,26 +322,20 @@ class BashTool:
                 # Wait for thread to finish
                 thread.join(timeout=1)
             
-            # Wrap the raw output with OutputManager for streaming truncation
-            from shello_cli.tools.output_manager import OutputManager
-            output_manager = OutputManager.from_settings()
+            # Wrap the raw output with new OutputManager for streaming
+            stream_wrapper = self._output_manager.process_stream(raw_output_generator(), command)
             
-            # Process stream through OutputManager
-            stream_wrapper = output_manager.process_stream(raw_output_generator(), command)
+            # Yield all chunks from the wrapped stream
+            for chunk in stream_wrapper:
+                yield chunk
             
-            # Yield all chunks from the wrapped stream and capture the return value
-            truncation_result = None
-            try:
-                while True:
-                    chunk = next(stream_wrapper)
-                    yield chunk
-            except StopIteration as e:
-                # The return value is in e.value
-                truncation_result = e.value
-            
-            # Determine success based on return code
+            # Get the full output for the result
             output = ''.join(accumulated_output)
             
+            # Process through OutputManager to get truncation info
+            truncation_result = self._output_manager.process_output(output, command)
+            
+            # Determine success based on return code
             if process.returncode == 0 or process.returncode is None:
                 return ToolResult(
                     success=True,
