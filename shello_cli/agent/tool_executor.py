@@ -9,6 +9,8 @@ from typing import Dict, Any, Generator
 
 from shello_cli.tools.bash_tool import BashTool
 from shello_cli.tools.json_analyzer_tool import JsonAnalyzerTool
+from shello_cli.tools.get_cached_output_tool import GetCachedOutputTool
+from shello_cli.tools.output.cache import OutputCache
 from shello_cli.types import ToolResult
 
 
@@ -17,8 +19,13 @@ class ToolExecutor:
     
     def __init__(self):
         """Initialize the tool executor with available tools."""
-        self._bash_tool = BashTool()
+        # Create shared cache instance
+        self._output_cache = OutputCache()
+        
+        # Initialize tools with shared cache
+        self._bash_tool = BashTool(output_cache=self._output_cache)
         self._json_analyzer_tool = JsonAnalyzerTool()
+        self._get_cached_output_tool = GetCachedOutputTool(self._output_cache)
     
     def execute_tool(self, tool_call: Dict[str, Any]) -> ToolResult:
         """Execute a tool call and return the result.
@@ -62,6 +69,16 @@ class ToolExecutor:
                     error="No command provided"
                 )
             return self._json_analyzer_tool.analyze(command)
+        elif function_name == "get_cached_output":
+            cache_id = arguments.get("cache_id", "")
+            lines = arguments.get("lines")
+            if not cache_id:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No cache_id provided"
+                )
+            return self._get_cached_output_tool.execute(cache_id, lines)
         else:
             return ToolResult(
                 success=False,
@@ -133,6 +150,23 @@ class ToolExecutor:
                 )
             # JSON analyzer doesn't stream, but we yield the output for consistency
             result = self._json_analyzer_tool.analyze(command)
+            if result.output:
+                yield result.output
+            return result
+        elif function_name == "get_cached_output":
+            cache_id = arguments.get("cache_id", "")
+            lines = arguments.get("lines")
+            if not cache_id:
+                # Must be a generator - yield nothing and return error
+                if False:
+                    yield  # Make this a generator
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No cache_id provided"
+                )
+            # get_cached_output doesn't stream, but we yield the output for consistency
+            result = self._get_cached_output_tool.execute(cache_id, lines)
             if result.output:
                 yield result.output
             return result
