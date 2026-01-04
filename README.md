@@ -197,6 +197,13 @@ API client code to see what might be causing this?
 - **Property-based testing** - 1,400+ tests with formal correctness properties
 - **Type-safe** - Full type hints and dataclass models
 
+### Command Trust and Safety
+- **Smart allowlist/denylist** - Configure which commands execute automatically vs require approval
+- **AI safety integration** - AI can flag dangerous commands for review
+- **YOLO mode** - Bypass approval checks for trusted scripts and CI/CD
+- **Critical warnings** - Denylist commands show prominent warnings before execution
+- **Flexible approval modes** - Choose between AI-driven or user-driven approval workflows
+
 ## Commands
 
 While chatting:
@@ -249,6 +256,192 @@ export OPENAI_API_KEY="your-api-key"
 ```
 
 See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed configuration options.
+
+## Command Trust and Safety
+
+Shello includes a comprehensive trust and safety system to protect you from accidentally executing dangerous commands while maintaining a smooth workflow for safe operations.
+
+### How It Works
+
+The trust system evaluates every command before execution using this flow:
+
+1. **Denylist Check** - Critical warnings for dangerous commands (highest priority)
+2. **YOLO Mode** - Bypass checks for automation (if enabled)
+3. **Allowlist Check** - Auto-execute safe commands without approval
+4. **AI Safety Flag** - AI can indicate if a command is safe (in ai_driven mode)
+5. **Approval Dialog** - Interactive prompt for commands requiring review
+
+### Configuration
+
+Add a `command_trust` section to your `~/.shello_cli/user-settings.json`:
+
+```json
+{
+  "api_key": "your-api-key",
+  "default_model": "gpt-4o",
+  "command_trust": {
+    "enabled": true,
+    "yolo_mode": false,
+    "approval_mode": "user_driven",
+    "allowlist": [
+      "ls",
+      "ls *",
+      "pwd",
+      "cd *",
+      "git status",
+      "git log*",
+      "git diff*",
+      "npm test"
+    ],
+    "denylist": [
+      "sudo rm -rf *",
+      "git push --force",
+      "docker system prune -a"
+    ]
+  }
+}
+```
+
+### Configuration Options
+
+**`enabled`** (boolean, default: `true`)
+- Enable or disable the trust system entirely
+- When disabled, all commands execute without checks
+
+**`yolo_mode`** (boolean, default: `false`)
+- Bypass approval checks for automation and CI/CD
+- Still shows critical warnings for denylist commands
+- Can also be enabled per-session with `--yolo` flag
+
+**`approval_mode`** (string, default: `"user_driven"`)
+- `"user_driven"` - Always prompt for non-allowlist commands
+- `"ai_driven"` - Trust AI safety flags; only prompt when AI flags as unsafe
+
+**`allowlist`** (array of strings)
+- Commands that execute without approval
+- User-defined allowlist replaces defaults
+- Supports exact match, wildcards (`git *`), and regex (`^git (status|log)$`)
+
+**`denylist`** (array of strings)
+- Commands that show critical warnings before execution
+- User patterns are added to default denylist (additive for safety)
+- Default denylist includes: `rm -rf /`, `dd if=/dev/zero*`, `mkfs*`, etc.
+- Supports exact match, wildcards, and regex
+
+### Pattern Matching Examples
+
+**Exact match:**
+```json
+"allowlist": ["git status", "npm test"]
+```
+
+**Wildcard patterns:**
+```json
+"allowlist": [
+  "git *",           // Matches: git status, git log, git diff, etc.
+  "npm run *",       // Matches: npm run test, npm run build, etc.
+  "ls *"             // Matches: ls -la, ls -lh, etc.
+]
+```
+
+**Regex patterns:**
+```json
+"allowlist": [
+  "^git (status|log|diff)$",     // Matches only: git status, git log, git diff
+  "^npm (test|run test)$"        // Matches only: npm test, npm run test
+]
+```
+
+### YOLO Mode
+
+For automation and CI/CD environments where you trust all commands:
+
+**Enable via config:**
+```json
+{
+  "command_trust": {
+    "yolo_mode": true
+  }
+}
+```
+
+**Enable per-session:**
+```bash
+shello --yolo
+```
+
+**Important:** YOLO mode still respects the denylist and shows critical warnings for dangerous commands.
+
+### AI Safety Integration
+
+When `approval_mode` is set to `"ai_driven"`, the AI can indicate whether commands are safe:
+
+- **AI says safe** (`is_safe: true`) → Execute without approval (after allowlist check)
+- **AI says unsafe** (`is_safe: false`) → Show approval dialog with warning
+- **AI doesn't specify** → Show approval dialog
+
+The AI can also override the allowlist in `ai_driven` mode if it detects danger.
+
+### Approval Dialog
+
+When a command requires approval, you'll see an interactive dialog:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  ⚠️  COMMAND APPROVAL REQUIRED                          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ⚠️ CRITICAL: This command is in DENYLIST!              │
+│                                                          │
+│  Command: rm -rf node_modules                           │
+│  Directory: /home/user/project                          │
+│                                                          │
+│  [A] Approve    [D] Deny                                │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+Press **A** to approve or **D** to deny execution.
+
+### Default Patterns
+
+**Default Allowlist** (safe commands that execute automatically):
+- Navigation: `ls`, `pwd`, `cd`
+- Git read-only: `git status`, `git log`, `git diff`, `git show`, `git branch`
+- File viewing: `cat`, `less`, `more`, `head`, `tail`
+- Search: `grep`, `find`, `rg`, `ag`
+- Process inspection: `ps`, `top`, `htop`
+- Network inspection: `ping`, `curl -I`, `wget --spider`
+- Package inspection: `npm list`, `pip list`, `pip show`
+
+**Default Denylist** (dangerous commands that always show warnings):
+- Destructive filesystem: `rm -rf /`, `rm -rf /*`, `rm -rf ~`
+- Disk operations: `dd if=/dev/zero*`, `mkfs*`, `format*`
+- System modifications: `chmod -R 777 /`, `chown -R * /`
+- Dangerous redirects: `> /dev/sda`
+
+### Best Practices
+
+1. **Start with defaults** - The default allowlist covers most safe operations
+2. **Add project-specific commands** - Extend allowlist for your workflow (e.g., `npm run dev`)
+3. **Use wildcards carefully** - `git *` is safe, but `rm *` is not
+4. **Never remove denylist defaults** - User denylist patterns are additive for safety
+5. **Use YOLO mode sparingly** - Only in trusted automation environments
+6. **Review AI warnings** - When AI flags a command as unsafe, take it seriously
+
+### Disabling Trust System
+
+If you prefer to disable all safety checks:
+
+```json
+{
+  "command_trust": {
+    "enabled": false
+  }
+}
+```
+
+**Warning:** This removes all protections. Use with caution.
 
 ## Install from Source
 

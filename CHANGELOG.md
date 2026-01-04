@@ -5,6 +5,43 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-01-05
+
+### Added
+
+#### Command Trust and Safety System
+- **Trust Manager**: Evaluates commands before execution through 5-step flow (Denylist → YOLO → Allowlist → AI Safety → Approval)
+- **Pattern Matcher**: Supports exact match, wildcards (`git *`), and regex (`^git (status|log)$`)
+- **Approval Dialog**: Interactive UI for command approval with keyboard controls (A/D)
+- **Default Allowlist**: Safe commands execute automatically (ls, pwd, git status, cat, grep, etc.)
+- **Default Denylist**: Dangerous commands require approval (rm -rf /, dd, mkfs, format, etc.)
+- **YOLO Mode**: Bypass approval checks via config or `--yolo` flag (still respects denylist)
+- **AI Safety Integration**: Required `is_safe` parameter in bash tool for AI command evaluation
+- **Configuration**: Flexible trust settings in `~/.shello_cli/user-settings.json`
+  - `approval_mode`: "user_driven" (default) or "ai_driven"
+  - `allowlist`: User patterns replace defaults
+  - `denylist`: User patterns added to defaults (additive for safety)
+
+### Changed
+- **Bash Tool**: Added required `is_safe` parameter, trust evaluation before execution
+- **Direct Executor**: Integrated with trust system for direct commands
+- **Settings Manager**: New CommandTrustConfig with validation and safe defaults
+- **Tool Definitions**: Updated bash tool description with SAFETY section
+
+### Testing
+- 550+ tests covering pattern matching, trust evaluation, configuration, and integration
+- 8 property-based tests validating correctness properties
+
+### Documentation
+- Comprehensive README section on Command Trust and Safety
+- Enhanced inline documentation with examples
+- Complete design document with architecture and evaluation flow
+
+### Security
+- Protection against dangerous commands with denylist
+- Audit logging of all trust decisions
+- Safe defaults on errors or invalid configuration
+
 ## [0.3.0] - 2026-01-04
 
 ### Added
@@ -351,6 +388,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.0
+[0.3.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.3.0
 [0.2.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.1.0
