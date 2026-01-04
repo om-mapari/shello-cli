@@ -11,10 +11,10 @@ class GetCachedOutputTool:
     Tool for AI to retrieve specific line ranges from cached command output.
     
     This tool allows the AI agent to access full command output even when
-    the bash_tool truncated it. The cache stores outputs for 5 minutes.
+    the bash_tool truncated it. The cache persists for the entire conversation.
     
     Parameters:
-        cache_id: str - Cache ID from truncation summary (e.g., "cmd_001")
+        cache_id: str - Cache ID from tool result (e.g., "cmd_001")
         lines: Optional[str] - Line specification:
             "+N"    - First N lines
             "-N"    - Last N lines
@@ -66,9 +66,8 @@ class GetCachedOutputTool:
                 error=(
                     f"Cache miss for '{cache_id}'. "
                     f"Possible reasons:\n"
-                    f"  - Cache expired (TTL: 5 minutes)\n"
-                    f"  - Invalid cache ID\n"
-                    f"  - Cache was cleared\n\n"
+                    f"  - Invalid cache ID (check the cache_id from tool result)\n"
+                    f"  - Cache evicted due to size limit (100MB max)\n\n"
                     f"Solution: Re-run the original command to regenerate output."
                 )
             )

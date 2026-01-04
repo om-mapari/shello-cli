@@ -32,7 +32,7 @@ DEFAULT_STRATEGIES = {
     "json": "first_only",
     "install": "first_last",
     "build": "first_last",
-    "test": "first_last",
+    "test": "first_last",    
     "default": "first_last",
 }
 
@@ -41,8 +41,7 @@ DEFAULT_FIRST_RATIO = 0.2   # 20% from beginning
 DEFAULT_LAST_RATIO = 0.8    # 80% from end
 
 # Cache settings
-DEFAULT_CACHE_TTL_SECONDS = 300  # 5 minutes
-DEFAULT_CACHE_MAX_SIZE_MB = 10   # 10MB total cache size
+DEFAULT_CACHE_MAX_SIZE_MB = 100   # 100MB total cache size (no TTL - persists for conversation)
 
 # =============================================================================
 # COMMAND DETECTION PATTERNS
@@ -188,7 +187,7 @@ Strategy: {strategy}
 {optimizations}
 {semantic_stats}
 
-💾 Cache ID: {cache_id} (expires in 5 min)
+💾 Cache ID: {cache_id}
 💡 {suggestion}
 ───────────────────────────────────────────────────────────
 """
@@ -200,7 +199,7 @@ JSON_ANALYZER_SUMMARY_TEMPLATE = """
 Total: {total_chars:,} chars | JSON structure analyzed using json_analyzer_tool
 Above: jq paths for querying the data
 
-💾 Cache ID: {cache_id} (expires in 5 min)
+💾 Cache ID: {cache_id}
 💡 Use get_cached_output(cache_id="{cache_id}", lines="+50") to see first 50 lines of raw JSON
 ───────────────────────────────────────────────────────────
 """
@@ -209,17 +208,31 @@ Above: jq paths for querying the data
 # TOOL DESCRIPTIONS
 # =============================================================================
 
-GET_CACHED_OUTPUT_DESCRIPTION = """Retrieve specific lines from cached command output.
+GET_CACHED_OUTPUT_DESCRIPTION = """Retrieve full or partial command output from cache.
 
-Use when bash_tool output was truncated and you need more context.
+WHEN TO USE:
+- When you need to see more of a command's output (truncated or not)
+- When you want to analyze specific sections of previous output
+- When you need to reference earlier command results
+- When user asks to "show more", "see the rest", "check the full output"
+
+IMPORTANT:
+- Every bash command execution returns a cache_id in the tool result
+- Cache persists for the entire conversation (cleared on /new or exit)
+- You can retrieve from ANY previous command in this conversation
 
 Parameters:
-- cache_id (required): Cache ID from truncation summary (e.g., "cmd_001")
+- cache_id (required): Cache ID from tool result (e.g., "cmd_001", "cmd_002")
 - lines (optional): Line selection format:
-  - "+N": First N lines (e.g., "+50")
-  - "-N": Last N lines (e.g., "-100") 
-  - "+N,-M": First N + last M (e.g., "+20,-80")
-  - "N-M": Lines N to M (e.g., "100-200")
-  - Omit for full output
+  - "+N": First N lines (e.g., "+50" for first 50 lines)
+  - "-N": Last N lines (e.g., "-100" for last 100 lines) 
+  - "+N,-M": First N + last M (e.g., "+20,-80" for first 20 and last 80)
+  - "N-M": Lines N to M (e.g., "100-200" for lines 100-200)
+  - Omit to get full output (50K char safety limit)
 
-Cache expires after 5 minutes. For install/build commands, use "-100" to see result."""
+EXAMPLES:
+- get_cached_output(cache_id="cmd_001", lines="-100")  # Last 100 lines of cmd_001
+- get_cached_output(cache_id="cmd_005")  # Full output of cmd_005
+- get_cached_output(cache_id="cmd_003", lines="+50,-50")  # First 50 + last 50
+
+TIP: For install/build commands, use lines="-100" to see the end where success/failure appears."""

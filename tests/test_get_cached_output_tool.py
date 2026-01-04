@@ -61,23 +61,20 @@ class TestGetCachedOutputTool:
         expected = "\n".join([f"Line {i}" for i in range(10, 21)])
         assert result.output == expected
     
-    def test_cache_miss_expired(self):
-        """Test handling of expired cache entries."""
-        # Create cache with very short TTL
-        short_cache = OutputCache(ttl_seconds=0)
-        tool = GetCachedOutputTool(short_cache)
+    def test_cache_persists(self):
+        """Test that cache entries persist (no TTL expiration)."""
+        # Store an entry
+        cache_id = self.cache.store("test", "output")
         
-        cache_id = short_cache.store("test", "output")
-        
-        # Wait a moment for expiration
+        # Wait a moment
         import time
-        time.sleep(0.1)
+        time.sleep(0.5)
         
-        result = tool.execute(cache_id)
+        # Should still be available (no TTL)
+        result = self.tool.execute(cache_id)
         
-        assert result.error is not None
-        assert "Cache miss" in result.error
-        assert "expired" in result.error.lower()
+        assert result.error is None
+        assert result.output == "output"
     
     def test_cache_miss_invalid_id(self):
         """Test handling of invalid cache ID."""
@@ -168,5 +165,5 @@ class TestGetCachedOutputTool:
         
         assert 'total_entries' in stats
         assert 'total_size_bytes' in stats
-        assert 'ttl_seconds' in stats
+        assert 'max_size_mb' in stats
         assert stats['total_entries'] >= 1  # At least our test entry

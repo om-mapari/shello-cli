@@ -300,9 +300,9 @@ class TestSummaryCompleteness:
             strategy_name = result.strategy.value.replace('_', ' ').upper()
             assert strategy_name in summary, f"Summary must show strategy name: {strategy_name}"
             
-            # Must have cache expiration info
-            assert "expires" in summary.lower(), "Summary must mention cache expiration"
-            assert "5 min" in summary, "Summary must show 5 minute expiration"
+            # Must have cache ID (no expiration - persists for conversation)
+            assert "Cache ID:" in summary, "Summary must show cache ID"
+            assert result.cache_id in summary, f"Summary must show cache_id: {result.cache_id}"
             
             # Must have suggestion for get_cached_output
             assert "get_cached_output" in summary, "Summary must suggest get_cached_output"

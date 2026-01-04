@@ -11,7 +11,6 @@ from shello_cli.constants import (
     DEFAULT_STRATEGIES,
     DEFAULT_FIRST_RATIO,
     DEFAULT_LAST_RATIO,
-    DEFAULT_CACHE_TTL_SECONDS,
     DEFAULT_CACHE_MAX_SIZE_MB,
 )
 
@@ -40,7 +39,6 @@ class CompressionConfig:
 class CacheConfig:
     """Configuration for output caching."""
     enabled: bool = True
-    ttl_seconds: int = DEFAULT_CACHE_TTL_SECONDS
     max_size_mb: int = DEFAULT_CACHE_MAX_SIZE_MB
 
 
@@ -164,7 +162,6 @@ class SettingsManager:
                     c = om_data['cache']
                     cache = CacheConfig(
                         enabled=c.get('enabled', True),
-                        ttl_seconds=c.get('ttl_seconds', DEFAULT_CACHE_TTL_SECONDS),
                         max_size_mb=c.get('max_size_mb', DEFAULT_CACHE_MAX_SIZE_MB)
                     )
                 

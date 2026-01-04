@@ -28,7 +28,7 @@ class TestOutputCacheProperties:
         
         Validates: Requirements 14.1, 15.1
         """
-        cache = OutputCache(ttl_seconds=300, max_size_mb=10)
+        cache = OutputCache(max_size_mb=10)
         
         # Store output
         cache_id = cache.store(command, output)
@@ -50,32 +50,33 @@ class TestOutputCacheProperties:
 
 
 class TestOutputCacheTTL:
-    """Tests for TTL expiration."""
+    """Tests for cache persistence (no TTL expiration)."""
     
-    def test_ttl_expiration(self):
-        """Test that entries expire after TTL."""
-        cache = OutputCache(ttl_seconds=1, max_size_mb=10)  # 1 second TTL
+    def test_no_ttl_expiration(self):
+        """Test that entries persist indefinitely (no TTL)."""
+        cache = OutputCache(max_size_mb=10)
         
         cache_id = cache.store("test command", "test output")
         
         # Should be retrievable immediately
         assert cache.get(cache_id) == "test output"
         
-        # Wait for expiration
+        # Wait a bit
         time.sleep(1.1)
         
-        # Should be expired now
-        assert cache.get(cache_id) is None
+        # Should still be available (no TTL expiration)
+        assert cache.get(cache_id) == "test output"
     
-    def test_ttl_not_expired(self):
-        """Test that entries are retrievable before TTL."""
-        cache = OutputCache(ttl_seconds=10, max_size_mb=10)
+    def test_cache_persists_across_gets(self):
+        """Test that entries persist across multiple get operations."""
+        cache = OutputCache(max_size_mb=10)
         
         cache_id = cache.store("test command", "test output")
         
-        # Should be retrievable within TTL
-        time.sleep(0.5)
-        assert cache.get(cache_id) == "test output"
+        # Multiple gets should all succeed
+        for _ in range(5):
+            time.sleep(0.1)
+            assert cache.get(cache_id) == "test output"
 
 
 class TestOutputCacheLRU:
@@ -84,7 +85,7 @@ class TestOutputCacheLRU:
     def test_lru_eviction_on_size_limit(self):
         """Test that LRU eviction occurs when size limit is exceeded."""
         # Small cache: 1KB max
-        cache = OutputCache(ttl_seconds=300, max_size_mb=0.001)
+        cache = OutputCache(max_size_mb=0.001)
         
         # Store first entry (should fit)
         cache_id_1 = cache.store("cmd1", "x" * 500)  # 500 bytes
@@ -105,7 +106,7 @@ class TestOutputCacheLRU:
     def test_lru_access_updates_order(self):
         """Test that accessing an entry updates its position in LRU order."""
         # Small cache: 1KB max
-        cache = OutputCache(ttl_seconds=300, max_size_mb=0.001)
+        cache = OutputCache(max_size_mb=0.001)
         
         # Store two entries
         cache_id_1 = cache.store("cmd1", "x" * 500)
@@ -193,18 +194,21 @@ class TestOutputCacheSequentialIDs:
         assert id3 == "cmd_003"
     
     def test_id_counter_increments(self):
-        """Test that counter increments even after eviction."""
-        cache = OutputCache(ttl_seconds=1, max_size_mb=10)
+        """Test that counter increments and resets on clear."""
+        cache = OutputCache(max_size_mb=10)
         
         id1 = cache.store("cmd1", "output1")
         assert id1 == "cmd_001"
         
-        # Wait for expiration
-        time.sleep(1.1)
-        
-        # Next ID should still increment
         id2 = cache.store("cmd2", "output2")
         assert id2 == "cmd_002"
+        
+        # Clear cache (simulates /new command)
+        cache.clear()
+        
+        # Counter should reset after clear
+        id3 = cache.store("cmd3", "output3")
+        assert id3 == "cmd_001"  # Resets to 001
 
 
 class TestOutputCacheStats:
@@ -212,7 +216,7 @@ class TestOutputCacheStats:
     
     def test_get_stats(self):
         """Test that stats are accurate."""
-        cache = OutputCache(ttl_seconds=300, max_size_mb=10)
+        cache = OutputCache(max_size_mb=10)
         
         # Empty cache
         stats = cache.get_stats()
@@ -229,7 +233,7 @@ class TestOutputCacheStats:
         assert stats['next_id'] == 3
     
     def test_clear(self):
-        """Test that clear removes all entries."""
+        """Test that clear removes all entries and resets counter."""
         cache = OutputCache()
         
         cache.store("cmd1", "output1")
@@ -242,3 +246,4 @@ class TestOutputCacheStats:
         stats = cache.get_stats()
         assert stats['total_entries'] == 0
         assert stats['total_size_bytes'] == 0
+        assert stats['next_id'] == 1  # Counter reset

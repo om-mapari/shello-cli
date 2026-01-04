@@ -7,28 +7,27 @@ from .types import CacheEntry
 
 class OutputCache:
     """
-    Cache for command outputs with sequential IDs and TTL/LRU eviction.
+    Cache for command outputs with sequential IDs and LRU eviction.
     
     Cache IDs are sequential: cmd_001, cmd_002, cmd_003...
-    Counter resets on app restart (no persistence needed).
+    Counter resets on app restart or new conversation (no persistence needed).
     
     Features:
     - Sequential cache IDs (cmd_001, cmd_002, ...)
-    - TTL expiration (default 5 minutes)
-    - LRU eviction when size exceeds limit (default 10MB)
+    - No TTL expiration - cache persists for entire conversation
+    - LRU eviction when size exceeds limit (default 100MB)
+    - Automatic cleanup on conversation end (/new command or app exit)
     """
     
-    def __init__(self, ttl_seconds: int = 300, max_size_mb: int = 10):
+    def __init__(self, max_size_mb: int = 100):
         """Initialize the output cache.
         
         Args:
-            ttl_seconds: Time-to-live for cache entries in seconds (default: 300 = 5 minutes)
-            max_size_mb: Maximum total cache size in megabytes (default: 10MB)
+            max_size_mb: Maximum total cache size in megabytes (default: 100MB)
         """
         self._cache: Dict[str, CacheEntry] = {}
-        self._ttl = ttl_seconds
         self._max_size = max_size_mb * 1024 * 1024  # Convert to bytes
-        self._counter = 0  # Resets on restart
+        self._counter = 0  # Resets on restart or /new
         self._access_order: list[str] = []  # Track access order for LRU
     
     def _generate_cache_id(self) -> str:
@@ -39,20 +38,6 @@ class OutputCache:
         """
         self._counter += 1
         return f"cmd_{self._counter:03d}"
-    
-    def _evict_expired(self) -> None:
-        """Remove expired entries based on TTL."""
-        current_time = time.time()
-        expired_ids = [
-            cache_id
-            for cache_id, entry in self._cache.items()
-            if current_time - entry.created_at > self._ttl
-        ]
-        
-        for cache_id in expired_ids:
-            del self._cache[cache_id]
-            if cache_id in self._access_order:
-                self._access_order.remove(cache_id)
     
     def _get_total_size(self) -> int:
         """Calculate total size of all cached entries in bytes.
@@ -80,9 +65,6 @@ class OutputCache:
         Returns:
             Cache ID for later retrieval (e.g., "cmd_001")
         """
-        # Evict expired entries first
-        self._evict_expired()
-        
         # Generate new cache ID
         cache_id = self._generate_cache_id()
         
@@ -104,28 +86,16 @@ class OutputCache:
         return cache_id
     
     def get(self, cache_id: str) -> Optional[str]:
-        """Get cached output or None if expired/not found.
+        """Get cached output or None if not found.
         
         Args:
             cache_id: The cache ID to retrieve
             
         Returns:
-            Cached output string, or None if not found or expired
+            Cached output string, or None if not found
         """
-        # Evict expired entries
-        self._evict_expired()
-        
         # Check if entry exists
         if cache_id not in self._cache:
-            return None
-        
-        entry = self._cache[cache_id]
-        
-        # Check if expired (double-check after eviction)
-        if time.time() - entry.created_at > self._ttl:
-            del self._cache[cache_id]
-            if cache_id in self._access_order:
-                self._access_order.remove(cache_id)
             return None
         
         # Update access order (move to end = most recently used)
@@ -133,7 +103,7 @@ class OutputCache:
             self._access_order.remove(cache_id)
         self._access_order.append(cache_id)
         
-        return entry.output
+        return self._cache[cache_id].output
     
     def get_lines(self, cache_id: str, line_spec: str) -> Optional[str]:
         """Get specific lines from cached output.
@@ -206,9 +176,10 @@ class OutputCache:
             return None
     
     def clear(self) -> None:
-        """Clear all cached entries."""
+        """Clear all cached entries and reset counter."""
         self._cache.clear()
         self._access_order.clear()
+        self._counter = 0  # Reset counter for new conversation
     
     def get_stats(self) -> dict:
         """Get cache statistics.
@@ -221,6 +192,5 @@ class OutputCache:
             'total_size_bytes': self._get_total_size(),
             'total_size_mb': self._get_total_size() / (1024 * 1024),
             'max_size_mb': self._max_size / (1024 * 1024),
-            'ttl_seconds': self._ttl,
             'next_id': self._counter + 1
         }
