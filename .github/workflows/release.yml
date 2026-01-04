@@ -183,7 +183,8 @@ jobs:
                       - **macOS:** `shello-macos` (or `shello-macos.tar.gz`)
 
                       ### What's Changed
-                      - See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGEL
+
+                      See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for full release notes.
                   draft: false
                   prerelease: false
               env:
