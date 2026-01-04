@@ -175,6 +175,11 @@ class ShelloClient:
             print(f"Note: Chunks will be processed by the stream iterator")
         else:
             try:
+                # Check if response has been read
+                if not hasattr(response, "_content"):
+                    # Response hasn't been read yet, read it now
+                    response.read()
+                
                 body = json.loads(response.text)
                 
                 # Extract key information from response
@@ -214,7 +219,7 @@ class ShelloClient:
                 
             except Exception as e:
                 print(f"Body: <unable to parse: {e}>")
-                print(response.text[:200])
+                # Don't try to access response.text if it failed above
         
         print("="*80 + "\n")
     

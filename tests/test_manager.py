@@ -153,14 +153,21 @@ class TestJSONAnalyzerFallback:
         Validates: Requirements 5.1, 5.2
         """
         # Generate valid JSON of specified size
-        items_needed = json_size // 100  # Rough estimate
+        # Each item is roughly 100 chars, so we need more items to reach the target size
+        items_needed = (json_size // 100) + 50  # Add buffer to ensure we exceed the limit
         large_json = json.dumps({
             "items": [{"id": i, "data": "x" * 50} for i in range(items_needed)]
         }, indent=2)
         
-        # Ensure it exceeds 20K
-        if len(large_json) < 20001:
-            large_json += " " * (20001 - len(large_json))
+        # Ensure it exceeds 20K by adding more items if needed
+        while len(large_json) < 20001:
+            items_needed += 10
+            large_json = json.dumps({
+                "items": [{"id": i, "data": "x" * 50} for i in range(items_needed)]
+            }, indent=2)
+        
+        # Verify the JSON is actually large enough
+        assert len(large_json) > 20000, f"Generated JSON is only {len(large_json)} chars"
         
         # Create manager with or without analyzer
         analyzer = JsonAnalyzerTool() if has_analyzer else None
@@ -170,7 +177,7 @@ class TestJSONAnalyzerFallback:
         result = manager.process_output(large_json, command)
         
         # Should always be truncated (exceeds limit)
-        assert result.was_truncated, "JSON exceeding 20K should be truncated"
+        assert result.was_truncated, f"JSON exceeding 20K should be truncated (size: {len(large_json)})"
         
         if has_analyzer:
             # Should use json_analyzer

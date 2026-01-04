@@ -199,14 +199,16 @@ class TestContextManagerUnitTests:
         assert isinstance(record.timestamp, datetime)
         assert record.directory == "/home/user"
     
-    def test_context_includes_output_first_line(self):
-        """Test that context includes first line of output."""
+    def test_context_does_not_include_output(self):
+        """Test that context does not include output (feature removed)."""
         manager = ContextManager()
         manager.record_command("ls", "file1.txt\nfile2.txt\nfile3.txt", True, "/home/user")
         
         context = manager.get_context_for_ai()
         
-        assert "Output: file1.txt" in context, "Context should include first line of output"
+        # Output should NOT be included in context
+        assert "Output:" not in context, "Context should not include output line"
+        assert "file1.txt" not in context, "Context should not include output content"
     
     def test_context_with_empty_output(self):
         """Test context generation with empty output."""
