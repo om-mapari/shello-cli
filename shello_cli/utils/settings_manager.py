@@ -12,7 +12,14 @@ from shello_cli.constants import (
     DEFAULT_FIRST_RATIO,
     DEFAULT_LAST_RATIO,
     DEFAULT_CACHE_MAX_SIZE_MB,
+    DEFAULT_ALLOWLIST,
+    DEFAULT_DENYLIST,
+    DEFAULT_APPROVAL_MODE,
 )
+from rich.console import Console
+
+# Console for displaying warnings
+console = Console()
 
 
 @dataclass
@@ -40,6 +47,16 @@ class CacheConfig:
     """Configuration for output caching."""
     enabled: bool = True
     max_size_mb: int = DEFAULT_CACHE_MAX_SIZE_MB
+
+
+@dataclass
+class CommandTrustConfig:
+    """Command trust and safety configuration."""
+    enabled: bool = True
+    yolo_mode: bool = False
+    approval_mode: str = DEFAULT_APPROVAL_MODE
+    allowlist: List[str] = field(default_factory=lambda: DEFAULT_ALLOWLIST.copy())
+    denylist: List[str] = field(default_factory=lambda: DEFAULT_DENYLIST.copy())
 
 
 @dataclass
@@ -84,6 +101,7 @@ class UserSettings:
         "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"
     ])
     output_management: Optional[OutputManagementConfig] = None
+    command_trust: Optional[CommandTrustConfig] = None
 
 
 @dataclass
@@ -186,13 +204,56 @@ class SettingsManager:
                     cache=cache
                 )
             
+            # Parse command_trust if present
+            command_trust = None
+            if 'command_trust' in data:
+                ct_data = data['command_trust']
+                
+                # Allowlist: User can override defaults completely
+                allowlist = DEFAULT_ALLOWLIST.copy()
+                if 'allowlist' in ct_data:
+                    allowlist = ct_data['allowlist']
+                
+                # Denylist: ALWAYS merge user patterns with defaults (additive for safety)
+                denylist = DEFAULT_DENYLIST.copy()
+                if 'denylist' in ct_data:
+                    # Add user patterns to defaults (no duplicates)
+                    user_denylist = ct_data['denylist']
+                    for pattern in user_denylist:
+                        if pattern not in denylist:
+                            denylist.append(pattern)
+                
+                command_trust = CommandTrustConfig(
+                    enabled=ct_data.get('enabled', True),
+                    yolo_mode=ct_data.get('yolo_mode', False),
+                    approval_mode=ct_data.get('approval_mode', DEFAULT_APPROVAL_MODE),
+                    allowlist=allowlist,
+                    denylist=denylist  # Always includes defaults + user additions
+                )
+                
+                # Validate configuration
+                try:
+                    # Import here to avoid circular dependency
+                    from shello_cli.trust.trust_manager import validate_config
+                    validate_config(command_trust)
+                except Exception as e:
+                    # Validation failed, fall back to defaults and warn user
+                    console.print(
+                        f"[yellow]⚠️  Warning: Invalid command_trust configuration: {e}[/yellow]"
+                    )
+                    console.print(
+                        "[yellow]   Falling back to safe default settings.[/yellow]"
+                    )
+                    command_trust = CommandTrustConfig()  # Use defaults
+            
             # Merge loaded data with defaults
             self._user_settings = UserSettings(
                 api_key=data.get('api_key', default_settings.api_key),
                 base_url=data.get('base_url', default_settings.base_url),
                 default_model=data.get('default_model', default_settings.default_model),
                 models=data.get('models', default_settings.models),
-                output_management=output_management
+                output_management=output_management,
+                command_trust=command_trust
             )
             return self._user_settings
         except (json.JSONDecodeError, IOError) as e:
@@ -216,6 +277,10 @@ class SettingsManager:
         # Only include output_management if it's not None
         if settings.output_management is not None:
             settings_dict['output_management'] = asdict(settings.output_management)
+        
+        # Only include command_trust if it's not None
+        if settings.command_trust is not None:
+            settings_dict['command_trust'] = asdict(settings.command_trust)
         
         # Save to file
         with open(self._user_settings_path, 'w') as f:
@@ -299,3 +364,25 @@ class SettingsManager:
             return user_settings.output_management
         # Return default config if not configured
         return OutputManagementConfig()
+    
+    def get_command_trust_config(self) -> CommandTrustConfig:
+        """Get command trust config with defaults if not configured"""
+        user_settings = self.load_user_settings()
+        if user_settings.command_trust is not None:
+            return user_settings.command_trust
+        # Return default config if not configured
+        return CommandTrustConfig()
+    
+    def enable_yolo_mode_for_session(self) -> None:
+        """Enable YOLO mode for the current session (does not persist to file)"""
+        user_settings = self.load_user_settings()
+        
+        # Get or create command_trust config
+        if user_settings.command_trust is None:
+            user_settings.command_trust = CommandTrustConfig()
+        
+        # Enable YOLO mode
+        user_settings.command_trust.yolo_mode = True
+        
+        # Update cached settings (but don't save to file)
+        self._user_settings = user_settings
