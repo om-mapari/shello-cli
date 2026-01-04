@@ -98,15 +98,30 @@ class MessageProcessor:
                 for tool_call in tool_calls:
                     tool_result = self._tool_executor.execute_tool(tool_call)
                     
+                    # Prepare tool result content
+                    tool_result_content = {
+                        "success": tool_result.success,
+                        "output": tool_result.output,
+                        "error": tool_result.error
+                    }
+                    
+                    # Include truncation info if available
+                    if tool_result.truncation_info:
+                        trunc = tool_result.truncation_info
+                        tool_result_content["truncation"] = {
+                            "was_truncated": trunc.was_truncated,
+                            "cache_id": trunc.cache_id,
+                            "total_chars": trunc.total_chars,
+                            "shown_chars": trunc.shown_chars,
+                            "total_lines": trunc.total_lines,
+                            "shown_lines": trunc.shown_lines
+                        }
+                    
                     # Add tool result to messages
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.get("id"),
-                        "content": json.dumps({
-                            "success": tool_result.success,
-                            "output": tool_result.output,
-                            "error": tool_result.error
-                        })
+                        "content": json.dumps(tool_result_content)
                     })
                     
                     # Create entry for tool result
@@ -295,15 +310,30 @@ class MessageProcessor:
                             error="Tool execution did not return a result"
                         )
                     
+                    # Prepare tool result content
+                    tool_result_content = {
+                        "success": tool_result.success,
+                        "output": tool_result.output,
+                        "error": tool_result.error
+                    }
+                    
+                    # Include truncation info if available
+                    if tool_result.truncation_info:
+                        trunc = tool_result.truncation_info
+                        tool_result_content["truncation"] = {
+                            "was_truncated": trunc.was_truncated,
+                            "cache_id": trunc.cache_id,
+                            "total_chars": trunc.total_chars,
+                            "shown_chars": trunc.shown_chars,
+                            "total_lines": trunc.total_lines,
+                            "shown_lines": trunc.shown_lines
+                        }
+                    
                     # Add tool result to messages
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.get("id"),
-                        "content": json.dumps({
-                            "success": tool_result.success,
-                            "output": tool_result.output,
-                            "error": tool_result.error
-                        })
+                        "content": json.dumps(tool_result_content)
                     })
                     
                     # Yield tool result chunk

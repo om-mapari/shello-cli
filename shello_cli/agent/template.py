@@ -77,17 +77,23 @@ Directory Changes:
 <output_management>
 Large outputs are auto-truncated with character limits (5K-20K depending on type). Filter at source when possible.
 
+IMPORTANT - Cache IDs:
+- EVERY command execution returns a cache_id in the tool result (e.g., cmd_001, cmd_002, cmd_003...)
+- Cache persists for the ENTIRE conversation (no expiration)
+- Cache is cleared only on /new command or app exit
+- You can retrieve output from ANY previous command using get_cached_output tool
+
 When truncated, you'll see a summary with Cache ID at the END:
-  💾 Cache ID: cmd_001 (expires in 5 min)
+  💾 Cache ID: cmd_001
   💡 Use get_cached_output(cache_id="cmd_001", lines="-100") to see last 100 lines
 
-Retrieve cached output:
+Retrieve cached output anytime:
   get_cached_output(cache_id="cmd_001", lines="-100")  # Last 100 lines
   get_cached_output(cache_id="cmd_002", lines="+50")   # First 50 lines
   get_cached_output(cache_id="cmd_003", lines="+20,-80")  # First 20 + last 80
   get_cached_output(cache_id="cmd_004")  # Full output (50K limit)
 
-JSON >20K chars: Auto-analyzed with json_analyzer_tool (returns jq paths, raw cached).
+JSON >20K chars: Auto-analyzed with analyze_json (returns jq paths, raw cached).
 
 Best practice - filter at source:
 
