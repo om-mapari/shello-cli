@@ -227,7 +227,7 @@ This will guide you through:
 export OPENAI_API_KEY="your-api-key"
 ```
 
-See [SETUP.md](SETUP.md) for detailed configuration options.
+See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed configuration options.
 
 ## Install from Source
 
@@ -258,8 +258,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Links
 
-- 📖 [First-Time Setup Guide](FIRST_TIME_SETUP.md)
-- 🔧 [Development Setup](SETUP.md)
+- 🔧 [Development Setup](DEVELOPMENT_SETUP.md)
 - 📝 [Changelog](CHANGELOG.md)
 - 🐛 [Report Issues](https://github.com/om-mapari/shello-cli/issues)
 - 🚀 [Latest Release](https://github.com/om-mapari/shello-cli/releases/latest)

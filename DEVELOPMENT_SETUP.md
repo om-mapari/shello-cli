@@ -4,13 +4,7 @@ This guide is for developers who want to contribute to or modify Shello CLI.
 
 ## Quick Start for Users
 
-If you just want to use Shello CLI, run:
-
-```bash
-shello setup
-```
-
-This interactive wizard will configure everything you need.
+If you just want to use Shello CLI, see [README.md](README.md) for installation instructions.
 
 ## CLI Commands
 
@@ -20,6 +14,13 @@ This interactive wizard will configure everything you need.
 - `shello config` - Display current configuration
 - `shello --version` - Show version information
 - `shello --help` - Show help message
+
+### Development Commands
+```bash
+python main.py setup   # Interactive configuration wizard
+python main.py chat    # Start chat session
+python main.py config  # Show current configuration
+```
 
 ### In-Chat Commands
 - `/new` - Start a new conversation
@@ -88,19 +89,7 @@ Contains API credentials and default preferences:
         "mistralai/devstral-2512:free",
         "gpt-4o",
         "gpt-4o-mini"
-    ],
-    "output_management": {
-        "enabled": true,
-        "show_warnings": true,
-        "limits": {
-            "list": 50,
-            "search": 100,
-            "log": 200,
-            "json": 500,
-            "default": 100
-        },
-        "safety_limit": 1000
-    }
+    ]
 }
 ```
 
@@ -134,17 +123,53 @@ When working in this project:
 - Follow PEP 8 style guidelines
 ```
 
+### 4. Output Management Configuration
+
+Output management settings are defined in `shello_cli/constants.py`:
+
+```python
+# Character limits per output type
+DEFAULT_CHAR_LIMITS = {
+    "list": 5_000,       # ~1.2K tokens
+    "search": 10_000,    # ~2.5K tokens
+    "log": 15_000,       # ~3.7K tokens
+    "json": 20_000,      # ~5K tokens
+    "install": 8_000,    # ~2K tokens
+    "build": 8_000,      # ~2K tokens
+    "test": 15_000,      # ~3.7K tokens
+    "default": 8_000,    # ~2K tokens
+    "safety": 50_000,    # ~12.5K tokens (hard max)
+}
+
+# Truncation strategies
+DEFAULT_STRATEGIES = {
+    "list": "first_only",
+    "search": "first_only",
+    "log": "last_only",
+    "json": "first_only",
+    "install": "first_last",
+    "build": "first_last",
+    "test": "first_last",
+    "default": "first_last",
+}
+
+# Cache settings
+DEFAULT_CACHE_MAX_SIZE_MB = 100  # 100MB, no TTL
+```
+
+To customize these settings, modify `shello_cli/constants.py` directly.
+
 ## Configuration Hierarchy
 
 Settings are loaded in this order (later overrides earlier):
-1. Default values (hardcoded)
+1. Default values (in `shello_cli/constants.py`)
 2. User settings (`~/.shello_cli/user-settings.json`)
 3. Environment variables (`OPENAI_API_KEY`)
 4. Project settings (`.shello/settings.json`)
 
 ## Testing
 
-### Run all tests (excluding integration tests):
+### Run all tests:
 ```bash
 pytest tests/ -v
 ```
@@ -154,14 +179,14 @@ pytest tests/ -v
 pytest tests/ -v -k "property"
 ```
 
-### Run integration tests (requires API key):
-```bash
-pytest tests/ -v -m integration
-```
-
 ### Run specific test file:
 ```bash
 pytest tests/test_openai_client.py -v
+```
+
+### Run with coverage:
+```bash
+pytest tests/ --cov=shello_cli --cov-report=html
 ```
 
 ## Supported Models
@@ -214,7 +239,7 @@ File permissions are handled automatically by the application.
 ## Troubleshooting
 
 ### "No API key found" error
-1. Run `shello setup` to configure interactively
+1. Run `python main.py setup` to configure interactively
 2. Or check that `~/.shello_cli/user-settings.json` exists and contains `api_key`
 3. Or set the `OPENAI_API_KEY` environment variable
 
@@ -237,7 +262,7 @@ File permissions are handled automatically by the application.
 
 ### View current configuration
 ```bash
-shello config
+python main.py config
 ```
 
 ## Development
@@ -246,28 +271,41 @@ shello config
 ```
 shello_cli/
 ├── agent/
-│   └── shello_agent.py          # Main agent logic
+│   ├── message_processor.py     # Message processing logic
+│   ├── shello_agent.py          # Main agent logic
+│   ├── template.py              # System prompt template
+│   └── tool_executor.py         # Tool execution
 ├── api/
 │   └── openai_client.py         # OpenAI-compatible API client
 ├── chat/
 │   └── chat_session.py          # Chat session management
 ├── commands/
-│   └── command_executor.py      # Command execution
+│   ├── command_detector.py      # Direct command detection
+│   ├── context_manager.py       # Command history tracking
+│   └── direct_executor.py       # Direct command execution
 ├── tools/
 │   ├── bash_tool.py             # Bash command execution
-│   └── tools.py                 # Tool definitions
+│   ├── get_cached_output_tool.py # Cache retrieval tool
+│   └── output/                  # Output management system
+│       ├── cache.py             # Output caching
+│       ├── compressor.py        # Progress bar compression
+│       ├── manager.py           # Output manager
+│       ├── semantic.py          # Semantic line analysis
+│       ├── truncator.py         # Smart truncation
+│       └── type_detector.py     # Output type detection
 ├── ui/
 │   ├── ui_renderer.py           # Terminal UI rendering
 │   └── user_input.py            # User input handling
 ├── utils/
+│   ├── output_utils.py          # Output utility functions
 │   └── settings_manager.py      # Configuration management
 ├── cli.py                       # CLI entry point
 ├── constants.py                 # Application constants
 └── types.py                     # Type definitions
 
 tests/
-├── test_openai_client.py              # Unit & property tests
-└── test_openai_client_integration.py  # Integration tests
+├── test_*.py                    # Unit tests
+└── ...                          # 1,400+ tests total
 ```
 
 ### Running the Application
@@ -279,9 +317,9 @@ python main.py
 
 **With specific command:**
 ```bash
-python main.py setup
-python main.py config
-python main.py chat
+python main.py setup   # Run setup wizard
+python main.py config  # Show configuration
+python main.py chat    # Start chat session
 ```
 
 ### Adding New Models
@@ -299,7 +337,7 @@ Edit your user settings file to add new models:
 }
 ```
 
-Or use `shello setup` to reconfigure interactively.
+Or use `python main.py setup` to reconfigure interactively.
 
 ### Running Property-Based Tests
 
@@ -307,7 +345,7 @@ Property-based tests use Hypothesis to generate test cases:
 
 ```bash
 # Run with verbose output
-pytest tests/test_openai_client.py::TestShelloClientProperties -v -s
+pytest tests/test_output_cache.py -v -s
 
 # Increase number of examples
 pytest tests/ --hypothesis-show-statistics
@@ -328,6 +366,8 @@ chmod +x build.sh && ./build.sh
 
 ## Additional Resources
 
+- [README.md](README.md) - Main documentation
 - [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
 - [CHANGELOG.md](CHANGELOG.md) - Version history
+- [docs/HOW_TO_RELEASE.md](docs/HOW_TO_RELEASE.md) - Release process
 - [BUILD_INSTRUCTIONS.md](BUILD_INSTRUCTIONS.md) - Build process details
