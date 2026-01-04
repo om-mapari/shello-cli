@@ -227,7 +227,7 @@ This will guide you through:
 export OPENAI_API_KEY="your-api-key"
 ```
 
-See [FIRST_TIME_SETUP.md](FIRST_TIME_SETUP.md) for detailed configuration options.
+See [SETUP.md](SETUP.md) for detailed configuration options.
 
 ## Install from Source
 
