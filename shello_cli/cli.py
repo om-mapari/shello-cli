@@ -56,10 +56,16 @@ def cli(ctx):
 @cli.command()
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option("--new", is_flag=True, help="Start a new conversation")
-def chat(debug, new):
+@click.option("--yolo", is_flag=True, help="Enable YOLO mode (bypass approval checks)")
+def chat(debug, new, yolo):
     """Start a chat session with AI"""
     # Get settings manager
     settings_manager = SettingsManager.get_instance()
+    
+    # Enable YOLO mode if flag is set
+    if yolo:
+        settings_manager.enable_yolo_mode_for_session()
+        console.print("⚠️  [yellow]YOLO MODE ENABLED - Approval checks bypassed (denylist still active)[/yellow]\n")
     
     # Create initial session
     try:

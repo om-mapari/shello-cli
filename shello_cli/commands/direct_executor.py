@@ -65,12 +65,65 @@ class DirectExecutor:
         else:
             self._shell_type = 'bash'
     
-    def execute(self, command: str, args: Optional[str] = None) -> ExecutionResult:
+    def _evaluate_command_trust(self, command: str, is_safe: Optional[bool] = None) -> Optional[ExecutionResult]:
+        """Evaluate command safety using TrustManager.
+        
+        Args:
+            command: The command to evaluate
+            is_safe: Optional AI safety flag
+            
+        Returns:
+            ExecutionResult with error if command was denied, None if command should execute
+        """
+        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.trust.trust_manager import TrustManager, TrustConfig
+        
+        # Get trust configuration from settings
+        settings_manager = SettingsManager.get_instance()
+        trust_config_data = settings_manager.get_command_trust_config()
+        
+        # Convert CommandTrustConfig to TrustConfig
+        trust_config = TrustConfig(
+            enabled=trust_config_data.enabled,
+            yolo_mode=trust_config_data.yolo_mode,
+            approval_mode=trust_config_data.approval_mode,
+            allowlist=trust_config_data.allowlist,
+            denylist=trust_config_data.denylist
+        )
+        
+        # Create TrustManager and evaluate command
+        trust_manager = TrustManager(trust_config)
+        eval_result = trust_manager.evaluate(
+            command=command,
+            is_safe=is_safe,
+            current_directory=self._current_directory
+        )
+        
+        # If approval is required, show dialog
+        if eval_result.requires_approval:
+            approved = trust_manager.handle_approval_dialog(
+                command=command,
+                warning_message=eval_result.warning_message,
+                current_directory=self._current_directory
+            )
+            
+            if not approved:
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error="Command execution denied by user"
+                )
+        
+        # Command approved or doesn't require approval
+        return None
+    
+    def execute(self, command: str, args: Optional[str] = None, is_safe: Optional[bool] = None) -> ExecutionResult:
         """Execute a direct command and return the result.
         
         Args:
             command: The command to execute (e.g., 'ls', 'cd', 'pwd')
             args: Optional arguments for the command
+            is_safe: Optional AI safety flag indicating if command is safe
         
         Returns:
             ExecutionResult with execution details
@@ -79,6 +132,11 @@ class DirectExecutor:
         full_command = command
         if args:
             full_command = f"{command} {args}"
+        
+        # Evaluate command safety with TrustManager
+        trust_result = self._evaluate_command_trust(full_command, is_safe)
+        if trust_result is not None:
+            return trust_result
         
         # Handle cd commands specially
         if command.strip() == 'cd' or command.strip().startswith('cd '):
