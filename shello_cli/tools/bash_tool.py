@@ -12,6 +12,7 @@ from typing import Optional, Generator
 from shello_cli.types import ToolResult
 from shello_cli.tools.output.cache import OutputCache
 from shello_cli.tools.output.manager import OutputManager
+from shello_cli.utils.output_utils import strip_line_padding
 
 
 class BashTool:
@@ -115,6 +116,10 @@ class BashTool:
             # Combine stdout and stderr for output
             output = result.stdout
             error = result.stderr
+            
+            # Strip trailing whitespace from each line (removes PowerShell padding)
+            # This preserves structure but removes unnecessary spaces that inflate char counts
+            output = strip_line_padding(output)
             
             # Determine success based on return code
             if result.returncode == 0:
@@ -332,8 +337,34 @@ class BashTool:
             # Get the full output for the result
             output = ''.join(accumulated_output)
             
-            # Process through OutputManager to get truncation info
-            truncation_result = self._output_manager.process_output(output, command)
+            # Strip trailing whitespace from each line (removes PowerShell padding)
+            # This must match what process_output does to ensure consistent char counts
+            output = strip_line_padding(output)
+            
+            # NOTE: Do NOT call process_output() again here!
+            # process_stream() already calls process_output() internally at the end of the stream.
+            # Calling it again would cause double-caching and skip cache IDs.
+            # Instead, we get the truncation info from the cache using the last stored entry.
+            
+            # Get truncation info from the most recent cache entry
+            # The cache stores the result, so we can retrieve stats
+            cache_stats = self._output_cache.get_stats()
+            last_cache_id = f"cmd_{cache_stats['next_id'] - 1:03d}" if cache_stats['next_id'] > 1 else None
+            
+            # Create a minimal truncation result for the return value
+            from .output.types import TruncationResult, OutputType, TruncationStrategy
+            truncation_result = TruncationResult(
+                output=output,
+                was_truncated=False,
+                total_chars=len(output),
+                shown_chars=len(output),
+                total_lines=output.count('\n') + 1,
+                shown_lines=output.count('\n') + 1,
+                output_type=OutputType.DEFAULT,
+                strategy=TruncationStrategy.FIRST_LAST,
+                cache_id=last_cache_id,
+                summary=""
+            )
             
             # Determine success based on return code
             if process.returncode == 0 or process.returncode is None:

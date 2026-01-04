@@ -13,6 +13,7 @@ from ...constants import (
     JSON_ANALYZER_SUMMARY_TEMPLATE,
     TRUNCATION_SUMMARY_TEMPLATE,
 )
+from ...utils.output_utils import strip_line_padding
 
 
 class OutputManager:
@@ -58,6 +59,10 @@ class OutputManager:
         Returns:
             TruncationResult with processed output and metadata
         """
+        # Step 0: Strip trailing whitespace from each line (removes PowerShell padding)
+        # This preserves structure but removes unnecessary spaces that inflate char counts
+        output = strip_line_padding(output)
+        
         # Step 1: Store in cache first
         cache_id = self.cache.store(command, output)
         
@@ -242,7 +247,7 @@ class OutputManager:
 ───────────────────────────────────────────────────────────
 Optimizations: Progress bars compressed (saved {lines_saved} lines)
 
-💾 Cache ID: {result.cache_id} (expires in 5 min)
+💾 Cache ID: {result.cache_id}
 ───────────────────────────────────────────────────────────
 """.strip()
         
