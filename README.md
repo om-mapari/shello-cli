@@ -12,8 +12,9 @@ An AI-powered terminal assistant that doesn't just suggest commands—it execute
 
 Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-world terminal usage:
 
+- **⚡ Direct Command Execution** - Common commands (ls, cd, pwd, grep) execute instantly without AI overhead
 - **🧠 Smart Output Management** - Character-based truncation with semantic analysis keeps errors visible even in massive outputs
-- **💾 Output Caching** - Retrieve specific sections from previous commands without re-execution (5-min cache)
+- **💾 Persistent Output Cache** - Retrieve any previous command output throughout the conversation (100MB cache, no expiration)
 - **📊 JSON Intelligence** - Auto-analyzes large JSON with jq paths instead of flooding your terminal
 - **🎯 Context-Aware Truncation** - Different strategies for different commands (logs show end, lists show start, builds show both)
 - **⚡ Progress Bar Compression** - Collapses repetitive progress output to final state
@@ -24,14 +25,16 @@ Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-
 
 **For developers who care about the details:**
 
+- **Hybrid execution model** - Direct shell execution for simple commands, AI routing for complex queries
 - **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
 - **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor working in concert
-- **LRU cache with TTL** - Sequential cache IDs (cmd_001, cmd_002...) with 5-minute expiration
+- **Persistent LRU cache** - Sequential cache IDs (cmd_001, cmd_002...), 100MB limit, conversation-scoped
 - **Streaming architecture** - User sees real-time output, AI gets processed summary
 - **Zero data loss** - Full output always cached, retrieve any section on demand
 - **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
+- **PowerShell optimization** - Strips column padding to reduce character count by 2-3x
 
-See [design.md](.kiro/specs/output-management/design.md) for architecture details.
+See [design.md](docs/design.md) for architecture details.
 
 ## Quick Start
 
@@ -75,8 +78,22 @@ shello
 ### Real-World Examples
 
 ```
+# Direct commands execute instantly (no AI call)
+🐚 user [~/projects]
+──└─⟩ ls -la
+# Executes immediately, output cached as cmd_001
+
+🐚 user [~/projects]
+──└─⟩ cd myapp
+# Directory changes instantly
+
+🐚 user [~/projects/myapp]
+──└─⟩ pwd
+# Shows current directory
+
+# Natural language queries route to AI
 "Check disk usage and show me the largest directories"
-→ Executes, truncates intelligently, shows you what matters
+→ AI analyzes request, executes commands, truncates intelligently
 
 "List all Docker containers and their status"
 → Smart truncation keeps headers and critical info visible
@@ -89,6 +106,9 @@ shello
 
 "Show me what's using port 3000"
 → Errors always visible even in verbose output
+
+"Show me the last 100 lines from cmd_001"
+→ AI retrieves from cache without re-execution
 ```
 
 ### Smart Output Management in Action
@@ -96,7 +116,8 @@ shello
 When you run a command that produces large output:
 
 ```bash
-🐚 Shello> npm install
+🐚 user [~/project]
+──└─⟩ npm install
 # ... installation output streams in real-time ...
 # ... AI sees truncated version with summary ...
 
@@ -108,25 +129,38 @@ Strategy: FIRST_LAST (20% first + 80% last)
 Optimizations: Progress bars compressed (saved 200 lines)
 Semantic: 3 critical, 5 high, 142 low importance lines shown
 
-💾 Cache ID: cmd_001 (expires in 5 min)
-💡 Use get_cached_output(cache_id="cmd_001", lines="-100") to see last 100 lines
+💾 Cache ID: cmd_002
+💡 Use get_cached_output(cache_id="cmd_002", lines="-100") to see last 100 lines
 ───────────────────────────────────────────────────────────
 
-🐚 Shello> get me the last 50 lines from that install
-# AI automatically uses: get_cached_output(cache_id="cmd_001", lines="-50")
+🐚 user [~/project]
+──└─⟩ get me the last 50 lines from that install
+# AI automatically uses: get_cached_output(cache_id="cmd_002", lines="-50")
 # Shows you exactly what you need
+
+# Cache persists throughout conversation - retrieve anytime
+🐚 user [~/project]
+──└─⟩ show me the full output from cmd_001
+# Retrieves complete output from earlier command
 ```
 
 Shello understands context, executes commands in real-time, and works with bash, PowerShell, cmd, or Git Bash.
 
 ## Key Features
 
+### Direct Command Execution
+- **Zero-latency commands** - Common shell commands (ls, cd, pwd, cat, grep, etc.) execute instantly
+- **Automatic routing** - Detects direct commands vs natural language queries
+- **Directory persistence** - cd changes persist across commands
+- **Context awareness** - AI sees history of direct commands when needed
+- **Shared caching** - Direct and AI-executed commands use same cache
+
 ### Intelligent Output Management
 - **Character-based limits** - 5K-20K chars depending on command type (not arbitrary line counts)
 - **Smart truncation strategies** - Logs show end, lists show start, builds show both ends
 - **Semantic analysis** - Errors, warnings, and critical info always visible
 - **Progress bar compression** - npm install with 500 progress lines? Compressed to final state
-- **Output caching** - Retrieve any section from last 5 minutes without re-running commands
+- **Persistent caching** - Retrieve any command output throughout conversation (100MB cache, no expiration)
 
 ### Advanced Features
 - **JSON intelligence** - Large JSON auto-analyzed with jq paths, raw data cached
@@ -138,7 +172,8 @@ Shello understands context, executes commands in real-time, and works with bash,
 ### Developer Experience
 - **Real-time streaming** - See output as it happens, AI gets smart summary
 - **Context preservation** - Working directory persists across commands
-- **Property-based testing** - 105+ tests with formal correctness properties
+- **Directory-aware prompt** - Shows current directory with abbreviated paths
+- **Property-based testing** - 1,400+ tests with formal correctness properties
 - **Type-safe** - Full type hints and dataclass models
 
 ## Commands
