@@ -9,10 +9,15 @@ from shello_cli.ui.ui_renderer import (
     print_welcome_banner,
     print_header,
     display_help,
-    display_about
+    display_about,
+    render_direct_command_output
 )
 from shello_cli.ui.user_input import get_user_input_with_clear
 from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.commands.command_detector import CommandDetector, InputType
+from shello_cli.commands.direct_executor import DirectExecutor
+from shello_cli.commands.context_manager import ContextManager
+from shello_cli.tools.bash_tool import BashTool
 import shello_cli as version_module
 
 
@@ -62,10 +67,22 @@ def chat(debug, new):
         
         # Get user name from environment or use default
         name = os.environ.get('USER', os.environ.get('USERNAME', 'User'))
+        
+        # Get hostname for display
+        import socket
+        hostname = socket.gethostname()
     except Exception as e:
         console.print(f"✗ [red]Failed to initialize agent: {str(e)}[/red]")
         console.print("⚠ [yellow]Please check your API key and settings[/yellow]")
         sys.exit(1)
+    
+    # Initialize command detection and execution components
+    command_detector = CommandDetector()
+    direct_executor = DirectExecutor()
+    context_manager = ContextManager()
+    
+    # Connect direct executor to agent's bash tool for shared caching
+    direct_executor.set_bash_tool(agent.get_bash_tool())
     
     # Clear screen
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -76,7 +93,9 @@ def chat(debug, new):
     # Main chat loop
     while True:
         try:
-            user_input = get_user_input_with_clear(name)
+            # Get current directory for prompt
+            current_directory = direct_executor.get_current_directory()
+            user_input = get_user_input_with_clear(name, current_directory)
             
             if user_input is None:  # Handle Ctrl+C or Ctrl+D
                 console.print("\n\n👋 Goodbye! Thanks for using Shello CLI", style="yellow")
@@ -88,8 +107,16 @@ def chat(debug, new):
                 break
             
             elif user_input.lower() == "/new":
+                # Clear cache before creating new session
+                agent.clear_cache()
+                
                 # Create completely new session
                 agent, chat_session = create_new_session(settings_manager)
+                context_manager.clear_history()
+                
+                # Reconnect direct executor to new agent's bash tool
+                direct_executor.set_bash_tool(agent.get_bash_tool())
+                
                 console.print("\n\n✓ [green]Starting new conversation...[/green]")
                 print_header("New conversation started")
                 continue
@@ -108,13 +135,63 @@ def chat(debug, new):
             if not user_input.strip():
                 continue
             
-            # Start or continue conversation
-            if not chat_session.conversation_started:
-                chat_session.start_conversation(user_input)
+            # Detect if input is a direct command or AI query
+            detection_result = command_detector.detect(user_input)
+            
+            if detection_result.input_type == InputType.DIRECT_COMMAND:
+                # Execute command directly without AI
+                execution_result = direct_executor.execute(
+                    detection_result.command,
+                    detection_result.args
+                )
+                
+                # Render command header
+                console.print()
+                render_direct_command_output(
+                    command=user_input,
+                    cwd=current_directory,
+                    user=name,
+                    hostname=hostname
+                )
+                
+                # Display output
+                if execution_result.success:
+                    if execution_result.output:
+                        console.print(execution_result.output)
+                else:
+                    if execution_result.error:
+                        console.print(f"[red]{execution_result.error}[/red]")
+                
+                console.print()  # Add spacing after output
+                
+                # Record command in context for AI awareness
+                context_manager.record_command(
+                    command=user_input,
+                    output=execution_result.output,
+                    success=execution_result.success,
+                    directory=current_directory,
+                    cache_id=execution_result.cache_id  # Include cache_id
+                )
             else:
-                chat_session.continue_conversation(user_input)
+                # Route to AI processing
+                # Include context from direct commands if any
+                ai_context = context_manager.get_context_for_ai()
+                
+                # Prepend context to user message if available
+                if ai_context:
+                    enhanced_input = f"{ai_context}\n\nUser query: {user_input}"
+                else:
+                    enhanced_input = user_input
+                
+                # Start or continue conversation
+                if not chat_session.conversation_started:
+                    chat_session.start_conversation(enhanced_input)
+                else:
+                    chat_session.continue_conversation(enhanced_input)
         
         except KeyboardInterrupt:
+            # Clear cache on Ctrl+C
+            agent.clear_cache()
             console.print("\n\n👋 Goodbye! Thanks for using Shello CLI", style="yellow")
             break
         except Exception as e:
