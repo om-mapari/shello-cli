@@ -187,3 +187,10 @@ class ToolExecutor:
             The current working directory path
         """
         return self._bash_tool.get_current_directory()
+    
+    def clear_cache(self) -> None:
+        """Clear the output cache.
+        
+        This should be called when starting a new conversation or ending the session.
+        """
+        self._output_cache.clear()

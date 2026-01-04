@@ -275,3 +275,18 @@ class ShelloAgent:
             model: The model name to use
         """
         self._client.set_model(model)
+    
+    def clear_cache(self) -> None:
+        """Clear the output cache.
+        
+        This should be called when starting a new conversation or ending the session.
+        """
+        self._tool_executor.clear_cache()
+    
+    def get_bash_tool(self):
+        """Get the bash tool instance for direct command caching.
+        
+        Returns:
+            The BashTool instance used by the agent
+        """
+        return self._tool_executor._bash_tool
