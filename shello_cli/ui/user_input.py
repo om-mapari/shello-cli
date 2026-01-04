@@ -8,6 +8,36 @@ import os
 from pathlib import Path
 from shello_cli.constants import APP_DIR
 
+
+def abbreviate_path(path: str) -> str:
+    """Replace home directory with ~ for cleaner display.
+    
+    Args:
+        path: The full path to abbreviate
+        
+    Returns:
+        Path with home directory replaced by ~
+    """
+    home_dir = str(Path.home())
+    if path.startswith(home_dir):
+        return "~" + path[len(home_dir):]
+    return path
+
+
+def truncate_path(path: str, max_length: int = 40) -> str:
+    """Truncate long paths to maintain prompt readability.
+    
+    Args:
+        path: The path to truncate
+        max_length: Maximum length for the path (default: 40)
+        
+    Returns:
+        Truncated path prefixed with "..." if longer than max_length
+    """
+    if len(path) <= max_length:
+        return path
+    return "..." + path[-(max_length - 3):]
+
 # Add this for clipboard support
 try:
     import pyperclip
@@ -218,8 +248,42 @@ path_completer = EnhancedPathCompleter()
 merged_completer = merge_completers([bai_completer, path_completer])
 
 
-def get_user_input_with_clear(name):
-    """Get user input with enhanced completion UI"""
+def build_prompt_parts(name: str, current_directory: str = None):
+    """Build prompt parts for display.
+    
+    Args:
+        name: Username to display
+        current_directory: Current working directory path (optional)
+        
+    Returns:
+        List of tuples (style, text) for prompt_toolkit
+    """
+    prompt_parts = [
+        ('class:prompt.icon', '🌊 '),
+        ('class:prompt.username', f'{name}'),
+    ]
+    
+    # Add directory if provided
+    if current_directory:
+        display_path = abbreviate_path(current_directory)
+        display_path = truncate_path(display_path, max_length=40)
+        prompt_parts.append(('class:prompt.path', f' [{display_path}]'))
+    
+    prompt_parts.append(('class:prompt.arrow', '\n──└─⟩ '))
+    
+    return prompt_parts
+
+
+def get_user_input_with_clear(name, current_directory=None):
+    """Get user input with enhanced completion UI.
+    
+    Args:
+        name: Username to display in prompt
+        current_directory: Current working directory path (optional)
+        
+    Returns:
+        User input string or None if interrupted
+    """
     bindings = KeyBindings()
     
     @bindings.add('c-x')
@@ -297,6 +361,7 @@ def get_user_input_with_clear(name):
         # Modern terminal prompt styling
         'prompt.icon': '#00d7ff bold',       # Cyan icon
         'prompt.username': '#00ff87 bold',   # Green username
+        'prompt.path': '#ffaf00',            # Orange path
         'prompt.arrow': '#00d7ff bold',      # Cyan arrow with box drawing
         
         # Completion menu styling - improved colors and contrast
@@ -317,13 +382,12 @@ def get_user_input_with_clear(name):
         'completion-menu.scrollbar': 'bg:#333333',
     })
     
+    # Build prompt parts with optional directory
+    prompt_parts = build_prompt_parts(name, current_directory)
+    
     try:
         user_input = prompt(
-            [
-                ('class:prompt.icon', '🌊 '),
-                ('class:prompt.username', f'{name}'),
-                ('class:prompt.arrow', '\n──└─⟩ '),
-            ],
+            prompt_parts,
             key_bindings=bindings,
             complete_style='multi-column',  # Multi-column layout
             multiline=True,
