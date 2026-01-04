@@ -5,6 +5,127 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-01-04
+
+### Added
+
+#### Direct Command Execution
+- **Command Detection System**: Automatically detects and routes direct shell commands vs AI queries
+  - Recognizes common Unix commands (ls, pwd, cd, cat, grep, find, etc.)
+  - Recognizes Windows commands (dir, cls, type, copy, del, etc.)
+  - Routes recognized commands directly to shell without AI processing
+  - Falls back to AI for natural language queries and complex requests
+
+- **Direct Executor**: Fast command execution without AI overhead
+  - Executes commands directly in current shell environment
+  - Maintains directory state across commands (cd persistence)
+  - Automatic shell detection (bash, PowerShell, cmd)
+  - Real-time output streaming
+  - Integrated with output caching system
+  - 30-second timeout for safety
+
+- **Context Manager**: Tracks direct command history for AI awareness
+  - Records last 10 direct commands with output
+  - Provides context to AI when switching from direct to AI mode
+  - Includes cache IDs for AI to retrieve full output
+  - Marks commands as sent to avoid duplicate context
+  - Clears on /new command
+
+- **Enhanced Prompt**: Directory-aware prompt display
+  - Shows current working directory in prompt
+  - Abbreviates home directory as ~
+  - Truncates long paths for readability (40 char max)
+  - Color-coded path display (orange)
+  - Updates dynamically as directory changes
+
+- **Direct Command UI**: Clean rendering for direct command execution
+  - Terminal-style header without AI branding
+  - Shows user@hostname and current directory
+  - Command prompt with $ indicator
+  - Distinguishes direct execution from AI-processed commands
+
+### Changed
+
+- **Cache System Improvements**:
+  - Removed TTL expiration - cache persists for entire conversation
+  - Increased cache size from 10MB to 100MB
+  - Cache cleared only on /new command or app exit
+  - Counter resets on new conversation for clean cache IDs
+  - Updated all references to remove expiration mentions
+
+- **PowerShell Output Handling**:
+  - Strips trailing whitespace from each line (removes column padding)
+  - Reduces character count by 2-3x for PowerShell commands
+  - Preserves output structure and readability
+  - Applied consistently across bash_tool and direct_executor
+
+- **Tool Result Metadata**:
+  - Added truncation metadata to tool results sent to AI
+  - Includes cache_id, total_chars, shown_chars, total_lines, shown_lines
+  - AI can see truncation status and make informed decisions
+  - Enables smarter use of get_cached_output tool
+
+- **API Debug Logging**:
+  - Added detailed HTTP request/response logging for OpenAI API
+  - Logs full message content, tool calls, and parameters
+  - Shows token usage and model information
+  - Helps debug tool calling and prompt issues
+  - Enabled via debug flag in ShelloClient
+
+- **Agent Cache Management**:
+  - Added clear_cache() method to ShelloAgent
+  - Automatically clears cache on /new command
+  - Clears cache on Ctrl+C exit
+  - Provides get_bash_tool() for shared caching with direct executor
+
+### Testing
+
+- **Direct Command Execution Tests**: 233 tests for direct executor
+  - Command execution across different shells
+  - Directory change handling
+  - Error handling and timeouts
+  - Output caching integration
+
+- **Command Detection Tests**: 201 tests for command detector
+  - Direct command recognition
+  - AI query detection
+  - Edge cases and empty input
+
+- **Context Manager Tests**: 241 tests for context management
+  - Command recording and history
+  - AI context generation
+  - History limits and clearing
+
+- **Cache Sequential ID Tests**: 193 tests for cache ID generation
+  - Sequential ID generation
+  - Counter reset on clear
+  - LRU eviction behavior
+
+- **CLI Integration Tests**: 119 tests for end-to-end workflows
+  - Direct command execution flow
+  - AI query routing
+  - Context switching
+
+- **User Input Tests**: 235 tests for prompt display
+  - Directory abbreviation
+  - Path truncation
+  - Prompt formatting
+
+- **Output Utils Tests**: 106 tests for PowerShell padding removal
+  - Line padding stripping
+  - Structure preservation
+  - Edge cases
+
+### Technical Details
+
+- **Modular Command System**: New commands/ submodule with clean separation
+  - command_detector.py - Input classification
+  - direct_executor.py - Direct command execution
+  - context_manager.py - History and context tracking
+- **Shared Caching**: Direct executor and bash_tool share same cache instance
+- **Zero Latency**: Direct commands execute immediately without API calls
+- **Seamless Integration**: Transparent switching between direct and AI modes
+
 ## [0.2.0] - 2026-01-03
 
 ### Added
@@ -230,5 +351,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.2.0...HEAD
 [0.2.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.2.0
 [0.1.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.1.0
