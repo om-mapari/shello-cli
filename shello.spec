@@ -6,9 +6,7 @@ a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        ('shello_cli', 'shello_cli'),
-    ],
+    datas=[],  # Removed - code is already collected via hiddenimports
     hiddenimports=[
         'shello_cli',
         'shello_cli.cli',
@@ -39,10 +37,29 @@ a = Analysis(
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
+        # Testing
         'pytest',
         'hypothesis',
         'test',
         'tests',
+        '_pytest',
+        'coverage',
+        # Unused stdlib modules (heavy)
+        'tkinter',
+        'tk',
+        'tcl',
+        'unittest',
+        'xmlrpc',
+        'multiprocessing',
+        'pydoc',
+        'doctest',
+        'sqlite3',
+        # Build tools
+        'distutils',
+        'setuptools',
+        'pkg_resources',
+        'pip',
+        'wheel',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -62,7 +79,7 @@ exe = EXE(
     name='shello',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,
+    strip=False,  # Disabled on Windows (no GNU strip available)
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,
