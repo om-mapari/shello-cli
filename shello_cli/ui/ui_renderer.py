@@ -58,6 +58,49 @@ def render_terminal_command(command, output_filter, cwd=None, user="user", hostn
     console.print(second_line)
 
 
+def render_direct_command_output(command: str, cwd=None, user="user", hostname="win"):
+    """Render direct command execution header without AI branding.
+    
+    This function renders direct command execution in a consistent terminal format
+    without the "🐚 Shello" header, to differentiate from AI-processed commands.
+    
+    Args:
+        command: The command being executed
+        cwd: Current working directory (optional)
+        user: Username for display
+        hostname: Hostname for display
+    """
+    if cwd:
+        try:
+            home_path = str(Path.home())
+            short_cwd = cwd.replace(home_path, "~") if home_path in cwd else cwd
+        except Exception:
+            short_cwd = cwd
+    else:
+        short_cwd = "~"
+    
+    # First line: top box with user@hostname and path
+    first_line = Text()
+    first_line.append("┌─[", style="white")
+    first_line.append("💻 ", style="blue")
+    first_line.append(user, style="bold green")
+    first_line.append("@", style="white")
+    first_line.append(hostname, style="bold cyan")
+    first_line.append("]─[", style="white")
+    first_line.append(short_cwd, style="bold magenta")
+    first_line.append("]", style="white")
+    
+    console.print(first_line)
+    
+    # Second line: command with $ prompt
+    second_line = Text()
+    second_line.append("└─", style="white")
+    second_line.append("$ ", style="bold yellow")
+    second_line.append(command, style="bright_white bold")
+    
+    console.print(second_line)
+
+
 def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user", hostname="win"):
     """Generic tool execution rendering with box-drawing characters.
     
