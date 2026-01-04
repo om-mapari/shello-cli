@@ -39,6 +39,59 @@ class BashTool:
         # Detect the actual shell being used
         self._detect_shell()
     
+    def _evaluate_command_trust(self, command: str, is_safe: Optional[bool] = None) -> ToolResult:
+        """Evaluate command safety using TrustManager.
+        
+        Args:
+            command: The command to evaluate
+            is_safe: Optional AI safety flag
+            
+        Returns:
+            ToolResult with success=True if command should execute,
+            or success=False with error message if command was denied
+        """
+        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.trust.trust_manager import TrustManager, TrustConfig
+        
+        # Get trust configuration from settings
+        settings_manager = SettingsManager.get_instance()
+        trust_config_data = settings_manager.get_command_trust_config()
+        
+        # Convert CommandTrustConfig to TrustConfig
+        trust_config = TrustConfig(
+            enabled=trust_config_data.enabled,
+            yolo_mode=trust_config_data.yolo_mode,
+            approval_mode=trust_config_data.approval_mode,
+            allowlist=trust_config_data.allowlist,
+            denylist=trust_config_data.denylist
+        )
+        
+        # Create TrustManager and evaluate command
+        trust_manager = TrustManager(trust_config)
+        eval_result = trust_manager.evaluate(
+            command=command,
+            is_safe=is_safe,
+            current_directory=self._current_directory
+        )
+        
+        # If approval is required, show dialog
+        if eval_result.requires_approval:
+            approved = trust_manager.handle_approval_dialog(
+                command=command,
+                warning_message=eval_result.warning_message,
+                current_directory=self._current_directory
+            )
+            
+            if not approved:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="Command execution denied by user"
+                )
+        
+        # Command approved or doesn't require approval
+        return ToolResult(success=True, output=None, error=None)
+    
     def _detect_shell(self):
         """Detect which shell to use for command execution."""
         os_name = platform.system()
@@ -73,16 +126,22 @@ class BashTool:
             self._shell_type = 'bash'
             self._shell_executable = None  # Use shell=True default
     
-    def execute(self, command: str, timeout: int = 30) -> ToolResult:
+    def execute(self, command: str, timeout: int = 30, is_safe: Optional[bool] = None) -> ToolResult:
         """Execute a bash command and return the result.
         
         Args:
             command: The bash command to execute
             timeout: Maximum execution time in seconds (default: 30)
+            is_safe: Optional AI safety flag indicating if command is safe
         
         Returns:
             ToolResult with success status, output, and any errors
         """
+        # Evaluate command safety with TrustManager
+        trust_result = self._evaluate_command_trust(command, is_safe)
+        if not trust_result.success:
+            return trust_result
+        
         # Handle cd commands specially to update working directory
         if command.strip().startswith('cd') and (
             command.strip() == 'cd' or command.strip().startswith('cd ')
@@ -226,12 +285,13 @@ class BashTool:
         """
         return self._output_cache
     
-    def execute_stream(self, command: str, timeout: int = 30) -> Generator[str, None, ToolResult]:
+    def execute_stream(self, command: str, timeout: int = 30, is_safe: Optional[bool] = None) -> Generator[str, None, ToolResult]:
         """Execute a bash command and stream output in real-time.
         
         Args:
             command: The bash command to execute
             timeout: Maximum execution time in seconds (default: 30)
+            is_safe: Optional AI safety flag indicating if command is safe
         
         Yields:
             Output chunks as they arrive from the command
@@ -239,6 +299,13 @@ class BashTool:
         Returns:
             ToolResult with final success status and any errors
         """
+        # Evaluate command safety with TrustManager
+        trust_result = self._evaluate_command_trust(command, is_safe)
+        if not trust_result.success:
+            # Yield the error message and return the result
+            yield trust_result.error or "Command execution denied"
+            return trust_result
+        
         # Handle cd commands specially to update working directory
         if command.strip().startswith('cd') and (
             command.strip() == 'cd' or command.strip().startswith('cd ')

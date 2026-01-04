@@ -25,6 +25,14 @@ SHELLO_TOOLS: List[ShelloTool] = [
                 "- System operations and utilities\n"
                 "- AWS CLI, Docker, Git, and other CLI tools\n"
                 "- Piping and filtering with jq, grep, awk\n\n"
+                "SAFETY:\n"
+                "- Commands are evaluated by the trust system before execution\n"
+                "- Safe commands (allowlist) execute automatically\n"
+                "- Dangerous commands (denylist) require user approval\n"
+                "- You MUST provide is_safe parameter for every command\n"
+                "- Set is_safe=true for commands you've verified as safe (read-only operations)\n"
+                "- Set is_safe=false for potentially dangerous commands (rm, dd, format, etc.)\n"
+                "- The trust system combines your is_safe flag with allowlist/denylist patterns\n\n"
                 "RULES:\n"
                 "- Use shell-appropriate commands for the detected OS/shell\n"
                 "- For large outputs, use filtering flags (--max-items, | head, Select-Object -First)\n"
@@ -37,9 +45,18 @@ SHELLO_TOOLS: List[ShelloTool] = [
                     "command": {
                         "type": "string",
                         "description": "The shell command to execute"
+                    },
+                    "is_safe": {
+                        "type": "boolean",
+                        "description": (
+                            "Safety flag indicating if the command is safe to execute. "
+                            "Set to true for verified safe commands (read-only operations like ls, git status, cat). "
+                            "Set to false for potentially dangerous commands (destructive operations like rm, dd, format). "
+                            "The trust system will use this flag along with allowlist/denylist patterns to determine if user approval is needed."
+                        )
                     }
                 },
-                "required": ["command"]
+                "required": ["command", "is_safe"]
             }
         }
     ),
