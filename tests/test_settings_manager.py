@@ -307,3 +307,288 @@ class TestSettingsManagerUnitTests:
             settings = manager.load_user_settings()
             assert settings.api_key is None
             assert settings.base_url == "https://api.openai.com/v1"
+
+
+class TestCommandTrustConfigLoading:
+    """Unit tests for command_trust configuration loading."""
+    
+    def test_load_with_command_trust_present(self):
+        """Test loading settings with command_trust configuration present."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings file with command_trust
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "api_key": "test-key",
+                    "command_trust": {
+                        "enabled": True,
+                        "yolo_mode": False,
+                        "approval_mode": "ai_driven",
+                        "allowlist": ["ls", "pwd", "git status"],
+                        "denylist": ["rm -rf *"]
+                    }
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            
+            assert settings.command_trust is not None
+            assert settings.command_trust.enabled is True
+            assert settings.command_trust.yolo_mode is False
+            assert settings.command_trust.approval_mode == "ai_driven"
+            assert settings.command_trust.allowlist == ["ls", "pwd", "git status"]
+            # Denylist should include defaults + user patterns
+            assert "rm -rf *" in settings.command_trust.denylist
+            assert "rm -rf /" in settings.command_trust.denylist  # Default pattern
+    
+    def test_load_without_command_trust_returns_none(self):
+        """Test loading settings without command_trust returns None for command_trust."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings file without command_trust
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "api_key": "test-key",
+                    "base_url": "https://api.openai.com/v1"
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            
+            assert settings.command_trust is None
+    
+    def test_denylist_additive_merging(self):
+        """Test that user denylist patterns are added to defaults (additive merging)."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings with custom denylist
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "command_trust": {
+                        "denylist": ["sudo rm -rf *", "git push --force"]
+                    }
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            
+            # Should have both default and user patterns
+            assert "sudo rm -rf *" in settings.command_trust.denylist
+            assert "git push --force" in settings.command_trust.denylist
+            assert "rm -rf /" in settings.command_trust.denylist  # Default
+            assert "dd if=/dev/zero*" in settings.command_trust.denylist  # Default
+    
+    def test_allowlist_override(self):
+        """Test that user allowlist completely replaces defaults."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings with custom allowlist
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "command_trust": {
+                        "allowlist": ["custom command", "another command"]
+                    }
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            
+            # Should only have user patterns, not defaults
+            assert settings.command_trust.allowlist == ["custom command", "another command"]
+            assert "ls" not in settings.command_trust.allowlist  # Default should not be present
+    
+    def test_get_command_trust_config_with_config(self):
+        """Test get_command_trust_config returns configured values."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings with command_trust
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "command_trust": {
+                        "enabled": False,
+                        "yolo_mode": True,
+                        "approval_mode": "user_driven"
+                    }
+                }, f)
+            
+            # Clear cache
+            manager._user_settings = None
+            
+            # Get config
+            config = manager.get_command_trust_config()
+            
+            assert config.enabled is False
+            assert config.yolo_mode is True
+            assert config.approval_mode == "user_driven"
+    
+    def test_get_command_trust_config_without_config_returns_defaults(self):
+        """Test get_command_trust_config returns defaults when not configured."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings without command_trust
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({"api_key": "test-key"}, f)
+            
+            # Clear cache
+            manager._user_settings = None
+            
+            # Get config
+            config = manager.get_command_trust_config()
+            
+            # Should return defaults
+            assert config.enabled is True
+            assert config.yolo_mode is False
+            assert config.approval_mode == "user_driven"
+            assert "ls" in config.allowlist
+            assert "rm -rf /" in config.denylist
+    
+    def test_save_user_settings_with_command_trust(self):
+        """Test saving user settings with command_trust configuration."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            from shello_cli.utils.settings_manager import UserSettings, CommandTrustConfig
+            
+            # Create settings with command_trust
+            command_trust = CommandTrustConfig(
+                enabled=True,
+                yolo_mode=False,
+                approval_mode="ai_driven",
+                allowlist=["ls", "pwd"],
+                denylist=["rm -rf /", "custom dangerous"]
+            )
+            
+            test_settings = UserSettings(
+                api_key="test-key",
+                command_trust=command_trust
+            )
+            
+            # Save settings
+            manager.save_user_settings(test_settings)
+            
+            # Load and verify
+            manager._user_settings = None
+            loaded = manager.load_user_settings()
+            
+            assert loaded.command_trust is not None
+            assert loaded.command_trust.enabled is True
+            assert loaded.command_trust.yolo_mode is False
+            assert loaded.command_trust.approval_mode == "ai_driven"
+            assert loaded.command_trust.allowlist == ["ls", "pwd"]
+            assert "custom dangerous" in loaded.command_trust.denylist
+    
+    def test_denylist_no_duplicates(self):
+        """Test that duplicate patterns in user denylist are not added twice."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings with denylist that includes a default pattern
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "command_trust": {
+                        "denylist": ["rm -rf /", "custom pattern"]  # "rm -rf /" is a default
+                    }
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            
+            # Count occurrences of "rm -rf /"
+            count = settings.command_trust.denylist.count("rm -rf /")
+            assert count == 1, f"Expected 1 occurrence of 'rm -rf /', got {count}"
+            assert "custom pattern" in settings.command_trust.denylist
+
+    def test_enable_yolo_mode_for_session(self):
+        """Test enabling YOLO mode for the current session without persisting."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings without YOLO mode
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "api_key": "test-key",
+                    "command_trust": {
+                        "yolo_mode": False
+                    }
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            assert settings.command_trust.yolo_mode is False
+            
+            # Enable YOLO mode for session
+            manager.enable_yolo_mode_for_session()
+            
+            # Verify YOLO mode is enabled in memory
+            config = manager.get_command_trust_config()
+            assert config.yolo_mode is True
+            
+            # Verify it's NOT persisted to file
+            manager._user_settings = None
+            reloaded = manager.load_user_settings()
+            assert reloaded.command_trust.yolo_mode is False
+    
+    def test_enable_yolo_mode_for_session_without_command_trust(self):
+        """Test enabling YOLO mode when command_trust is not configured."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            manager = SettingsManager()
+            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
+            
+            # Create settings without command_trust
+            manager._user_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            import json
+            with open(manager._user_settings_path, 'w') as f:
+                json.dump({
+                    "api_key": "test-key"
+                }, f)
+            
+            # Clear cache and load
+            manager._user_settings = None
+            settings = manager.load_user_settings()
+            assert settings.command_trust is None
+            
+            # Enable YOLO mode for session
+            manager.enable_yolo_mode_for_session()
+            
+            # Verify YOLO mode is enabled in memory with defaults
+            config = manager.get_command_trust_config()
+            assert config.yolo_mode is True
+            assert config.enabled is True
+            assert config.approval_mode == "user_driven"

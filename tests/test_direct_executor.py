@@ -140,11 +140,11 @@ class TestDirectExecutorUnitTests:
         """Test executing a command with arguments."""
         executor = DirectExecutor()
         
-        result = executor.execute('echo', 'hello world')
+        # Use 'ls' which is in the default allowlist
+        result = executor.execute('ls', '.')
         
         assert result.success
-        # On Windows, echo may split arguments differently, so just check for 'hello'
-        assert 'hello' in result.output.lower()
+        assert result.output
         assert result.error is None
         assert not result.directory_changed
     

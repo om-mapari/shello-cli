@@ -18,7 +18,8 @@ from shello_cli.tools.bash_tool import BashTool
     command=st.sampled_from(['nonexistentcmd', 'fakecmd', 'notarealcommand']),
     args=st.one_of(st.none(), st.text(min_size=0, max_size=20, alphabet=st.characters(blacklist_characters='\x00')))
 )
-def test_property_no_ai_retry_on_command_failure(command, args):
+@patch('shello_cli.utils.settings_manager.SettingsManager')
+def test_property_no_ai_retry_on_command_failure(mock_settings_manager, command, args):
     """
     Feature: direct-command-execution, Property 9: No AI Retry on Command Failure
     
@@ -27,6 +28,13 @@ def test_property_no_ai_retry_on_command_failure(command, args):
     
     **Validates: Requirements 4.2**
     """
+    # Mock settings to disable trust system for this test
+    from shello_cli.utils.settings_manager import CommandTrustConfig
+    mock_instance = Mock()
+    mock_settings_manager.get_instance.return_value = mock_instance
+    mock_trust_config = CommandTrustConfig(enabled=False)
+    mock_instance.get_command_trust_config.return_value = mock_trust_config
+    
     # Setup
     detector = CommandDetector()
     
@@ -47,19 +55,22 @@ def test_property_no_ai_retry_on_command_failure(command, args):
         
         # Step 2: Execute the command (it will fail since it doesn't exist)
         executor = DirectExecutor()
+        # Trust system is disabled via mock, so command will execute
         execution_result = executor.execute(detection_result.command, detection_result.args)
         
         # Verify execution failed
         assert execution_result.success is False
         # Windows PowerShell uses different error messages than bash
-        # Check for either "command not found", "not recognized", or parser errors
+        # Check for either "command not found", "not recognized", parser errors, or access denied
         # Remove newlines and extra whitespace for comparison
         error_normalized = ' '.join(execution_result.error.lower().split())
         assert any(phrase in error_normalized for phrase in [
             "command not found",
             "not recognized",
             "parsererror",
-            "unexpectedtoken"
+            "unexpectedtoken",
+            "access is denied",  # Windows error for invalid commands with special chars
+            "error executing command"  # Generic error wrapper
         ]), f"Error should indicate command failure, got: {execution_result.error}"
         
         # Step 3: Verify the system does NOT retry with AI
@@ -81,12 +92,20 @@ def test_property_no_ai_retry_on_command_failure(command, args):
         detector.DIRECT_COMMANDS = original_commands
 
 
-def test_example_command_not_found_no_ai_retry():
+@patch('shello_cli.utils.settings_manager.SettingsManager')
+def test_example_command_not_found_no_ai_retry(mock_settings_manager):
     """
     Example test: Verify that when 'fakecmd' fails, it doesn't retry with AI.
     
     This is a concrete example demonstrating the property.
     """
+    # Mock settings to disable trust system for this test
+    from shello_cli.utils.settings_manager import CommandTrustConfig
+    mock_instance = Mock()
+    mock_settings_manager.get_instance.return_value = mock_instance
+    mock_trust_config = CommandTrustConfig(enabled=False)
+    mock_instance.get_command_trust_config.return_value = mock_trust_config
+    
     # Setup
     detector = CommandDetector()
     detector.DIRECT_COMMANDS.add('fakecmd')
@@ -101,6 +120,7 @@ def test_example_command_not_found_no_ai_retry():
     assert detection.input_type == InputType.DIRECT_COMMAND
     
     # Execute and fail
+    # Trust system is disabled via mock, so command will execute
     result = executor.execute(detection.command, detection.args)
     assert result.success is False
     # Windows PowerShell uses different error messages than bash
