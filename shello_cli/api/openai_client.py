@@ -5,8 +5,10 @@ This module provides a client for interacting with OpenAI-compatible APIs,
 supporting chat completions with tool calling and streaming responses.
 """
 
+import json
 from typing import List, Optional, Dict, Any, Generator
 from openai import OpenAI
+import httpx
 from shello_cli.types import ShelloTool
 
 
@@ -21,13 +23,14 @@ class ShelloClient:
         _model: The current model being used for completions
     """
     
-    def __init__(self, api_key: str, model: str = "gpt-4o", base_url: Optional[str] = None):
+    def __init__(self, api_key: str, model: str = "gpt-4o", base_url: Optional[str] = None, debug: bool = True):
         """Initialize the Shello client with API credentials.
         
         Args:
             api_key: OpenAI API key for authentication
             model: Model name to use for completions (default: "gpt-4o")
             base_url: Optional custom base URL for OpenAI-compatible endpoints
+            debug: Enable detailed HTTP request/response logging (default: False)
         
         Raises:
             ValueError: If api_key is None or empty
@@ -35,13 +38,185 @@ class ShelloClient:
         if not api_key:
             raise ValueError("API key cannot be None or empty")
         
-        # Initialize OpenAI client with optional base_url
-        if base_url:
-            self._client = OpenAI(api_key=api_key, base_url=base_url)
-        else:
-            self._client = OpenAI(api_key=api_key)
-        
         self._model = model
+        self._debug = debug
+        
+        # Create HTTP client with logging hooks if debug is enabled
+        if debug:
+            http_client = httpx.Client(
+                event_hooks={
+                    'request': [self._log_request],
+                    'response': [self._log_response]
+                }
+            )
+            
+            if base_url:
+                self._client = OpenAI(api_key=api_key, base_url=base_url, http_client=http_client)
+            else:
+                self._client = OpenAI(api_key=api_key, http_client=http_client)
+        else:
+            # Initialize OpenAI client without logging
+            if base_url:
+                self._client = OpenAI(api_key=api_key, base_url=base_url)
+            else:
+                self._client = OpenAI(api_key=api_key)
+    
+    def _log_request(self, request: httpx.Request) -> None:
+        """Log HTTP request details for debugging.
+        
+        Args:
+            request: The HTTP request object
+        """
+        print("\n" + "="*80)
+        print("🔵 OPENAI API REQUEST")
+        print("="*80)
+        
+        try:
+            body = json.loads(request.content.decode('utf-8'))
+            
+            # Extract key information
+            model = body.get('model', 'unknown')
+            messages = body.get('messages', [])
+            tools = body.get('tools', [])
+            stream = body.get('stream', False)
+            
+            print(f"Model: {model}")
+            print(f"Stream: {stream}")
+            print(f"\n📨 Messages ({len(messages)}):")
+            
+            # Show full message content
+            for i, msg in enumerate(messages, 1):
+                role = msg.get('role', 'unknown')
+                content = msg.get('content', '')
+                tool_calls = msg.get('tool_calls', [])
+                tool_call_id = msg.get('tool_call_id', None)
+                
+                print(f"\n  [{i}] Role: {role.upper()}")
+                print(f"  {'─' * 76}")
+                
+                # Show tool calls if present (assistant making tool requests)
+                if tool_calls:
+                    print(f"  🔧 Tool Calls: {len(tool_calls)}")
+                    for tc in tool_calls:
+                        func = tc.get('function', {})
+                        func_name = func.get('name', 'unknown')
+                        func_args = func.get('arguments', '{}')
+                        tc_id = tc.get('id', 'unknown')
+                        
+                        print(f"\n    • Function: {func_name}")
+                        print(f"      Call ID: {tc_id}")
+                        print(f"      Arguments:")
+                        
+                        # Pretty print the arguments
+                        try:
+                            args_obj = json.loads(func_args)
+                            args_str = json.dumps(args_obj, indent=8)
+                            # Indent each line
+                            for line in args_str.split('\n'):
+                                print(f"      {line}")
+                        except:
+                            print(f"        {func_args}")
+                
+                # Show tool call ID if this is a tool result message
+                if tool_call_id:
+                    print(f"  🔧 Tool Result for Call ID: {tool_call_id}")
+                
+                # Show content
+                if isinstance(content, str) and content:
+                    # For system messages, show only first line
+                    if role.lower() == 'system':
+                        first_line = content.split('\n')[0]
+                        print(f"  {first_line}")
+                        print(f"  ... (system prompt truncated)")
+                    else:
+                        # Show full content for user/assistant/tool messages
+                        lines = content.split('\n')
+                        for line in lines[:50]:  # Limit to first 50 lines per message
+                            print(f"  {line}")
+                        if len(lines) > 50:
+                            print(f"  ... ({len(lines) - 50} more lines)")
+                elif content is None and not tool_calls:
+                    print(f"  <no content>")
+                elif not isinstance(content, str):
+                    print(f"  <complex content: {type(content).__name__}>")
+            
+            # Show tools summary
+            if tools:
+                print(f"\n🛠️  Tools ({len(tools)}):")
+                for tool in tools:
+                    func = tool.get('function', {})
+                    name = func.get('name', 'unknown')
+                    desc = func.get('description', 'No description')
+                    print(f"  • {name}")
+                    # Show first line of description
+                    desc_line = desc.split('\n')[0][:70]
+                    print(f"    {desc_line}")
+            
+        except Exception as e:
+            print(f"Body: <unable to parse: {e}>")
+        
+        print("="*80 + "\n")
+    
+    def _log_response(self, response: httpx.Response) -> None:
+        """Log HTTP response details for debugging.
+        
+        Args:
+            response: The HTTP response object
+        """
+        print("\n" + "="*80)
+        print("🟢 OPENAI API RESPONSE")
+        print("="*80)
+        print(f"Status: {response.status_code} ({response.reason_phrase})")
+        
+        # Only log body for non-streaming responses
+        # Streaming responses will be consumed by the iterator
+        if response.headers.get("content-type", "").startswith("text/event-stream"):
+            print(f"Type: Streaming response")
+            print(f"Note: Chunks will be processed by the stream iterator")
+        else:
+            try:
+                body = json.loads(response.text)
+                
+                # Extract key information from response
+                choices = body.get('choices', [])
+                usage = body.get('usage', {})
+                model = body.get('model', 'unknown')
+                
+                print(f"Model: {model}")
+                
+                if usage:
+                    print(f"Usage:")
+                    print(f"  Prompt tokens: {usage.get('prompt_tokens', 0)}")
+                    print(f"  Completion tokens: {usage.get('completion_tokens', 0)}")
+                    print(f"  Total tokens: {usage.get('total_tokens', 0)}")
+                
+                if choices:
+                    print(f"\nChoices: {len(choices)}")
+                    for i, choice in enumerate(choices, 1):
+                        message = choice.get('message', {})
+                        content = message.get('content', '')
+                        tool_calls = message.get('tool_calls', [])
+                        finish_reason = choice.get('finish_reason', 'unknown')
+                        
+                        print(f"  [{i}] Finish reason: {finish_reason}")
+                        
+                        if content:
+                            preview = content[:100].replace('\n', ' ')
+                            if len(content) > 100:
+                                preview += "..."
+                            print(f"      Content: {preview}")
+                        
+                        if tool_calls:
+                            print(f"      Tool calls: {len(tool_calls)}")
+                            for tc in tool_calls:
+                                func = tc.get('function', {})
+                                print(f"        - {func.get('name', 'unknown')}")
+                
+            except Exception as e:
+                print(f"Body: <unable to parse: {e}>")
+                print(response.text[:200])
+        
+        print("="*80 + "\n")
     
     def set_model(self, model: str) -> None:
         """Change the current model used for completions.
