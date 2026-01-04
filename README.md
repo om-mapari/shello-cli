@@ -17,8 +17,8 @@ Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-
 - **💾 Persistent Output Cache** - Retrieve any previous command output throughout the conversation (100MB cache, no expiration)
 - **📊 JSON Intelligence** - Auto-analyzes large JSON with jq paths instead of flooding your terminal
 - **🎯 Context-Aware Truncation** - Different strategies for different commands (logs show end, lists show start, builds show both)
-- **⚡ Progress Bar Compression** - Collapses repetitive progress output to final state
 - **🔍 Semantic Line Detection** - Critical errors always visible regardless of position in output
+- **⚙️ Progress Bar Compression** - Collapses repetitive progress output to final state
 - **🛠️ Production-Ready** - Comprehensive test suite with property-based testing for correctness guarantees
 
 ## Technical Highlights
@@ -32,7 +32,7 @@ Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-
 - **Streaming architecture** - User sees real-time output, AI gets processed summary
 - **Zero data loss** - Full output always cached, retrieve any section on demand
 - **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
-- **PowerShell optimization** - Strips column padding to reduce character count by 2-3x
+- **Shell optimization** - Strips column padding to reduce character count by 2-3x
 
 See [design.md](docs/design.md) for architecture details.
 
@@ -78,48 +78,55 @@ shello
 ### Real-World Examples
 
 ```
+💡 Start by describing what you'd like to do...
+
+── Starting new conversation ──
+
 # Direct commands execute instantly (no AI call)
-🐚 user [~/projects]
+🌊 user [~/projects]
 ──└─⟩ ls -la
 # Executes immediately, output cached as cmd_001
 
-🐚 user [~/projects]
+🌊 user [~/projects]
 ──└─⟩ cd myapp
-# Directory changes instantly
 
-🐚 user [~/projects/myapp]
+🌊 user [~/projects/myapp]
 ──└─⟩ pwd
-# Shows current directory
+/home/user/projects/myapp
 
 # Natural language queries route to AI
-"Check disk usage and show me the largest directories"
-→ AI analyzes request, executes commands, truncates intelligently
+🌊 user [~/projects/myapp]
+──└─⟩ find all python files with TODO comments
 
-"List all Docker containers and their status"
-→ Smart truncation keeps headers and critical info visible
+🐚 Shello
+┌─[💻 user@hostname]─[~/projects/myapp]
+└─$ grep -r "TODO" --include="*.py" .
 
-"Find all TODO comments in my Python files"
-→ Semantic analysis ensures you see all matches, not just first 100 lines
+./main.py:# TODO: Add error handling
+./utils.py:# TODO: Optimize this function
+./tests/test_main.py:# TODO: Add more test cases
 
-"Analyze the structure of my AWS Lambda functions"
-→ Large JSON? Auto-analyzed with jq paths, raw cached for retrieval
+Found 3 TODO comments in your Python files.
 
-"Show me what's using port 3000"
-→ Errors always visible even in verbose output
+# AI understands context and can chain commands
+🌊 user [~/projects/myapp]
+──└─⟩ now check if there are any FIXME comments too
 
-"Show me the last 100 lines from cmd_001"
-→ AI retrieves from cache without re-execution
-```
+🐚 Shello
+┌─[💻 user@hostname]─[~/projects/myapp]
+└─$ grep -r "FIXME" --include="*.py" .
 
-### Smart Output Management in Action
+./api/client.py:# FIXME: Handle timeout errors
 
-When you run a command that produces large output:
+Found 1 FIXME comment.
 
-```bash
-🐚 user [~/project]
+# Large output gets smart truncation
+🌊 user [~/projects/myapp]
 ──└─⟩ npm install
-# ... installation output streams in real-time ...
-# ... AI sees truncated version with summary ...
+# Direct execution, output streams in real-time
+
+added 1247 packages, and audited 1248 packages in 45s
+... (installation output) ...
 
 ───────────────────────────────────────────────────────────
 📊 OUTPUT SUMMARY
@@ -127,24 +134,38 @@ When you run a command that produces large output:
 Total: 45,000 chars (850 lines) | Shown: 8,000 chars (150 lines)
 Strategy: FIRST_LAST (20% first + 80% last)
 Optimizations: Progress bars compressed (saved 200 lines)
-Semantic: 3 critical, 5 high, 142 low importance lines shown
 
 💾 Cache ID: cmd_002
 💡 Use get_cached_output(cache_id="cmd_002", lines="-100") to see last 100 lines
 ───────────────────────────────────────────────────────────
 
-🐚 user [~/project]
-──└─⟩ get me the last 50 lines from that install
-# AI automatically uses: get_cached_output(cache_id="cmd_002", lines="-50")
-# Shows you exactly what you need
+# Retrieve cached output anytime
+🌊 user [~/projects/myapp]
+──└─⟩ show me the last 50 lines from that install
 
-# Cache persists throughout conversation - retrieve anytime
-🐚 user [~/project]
-──└─⟩ show me the full output from cmd_001
-# Retrieves complete output from earlier command
+🐚 Shello
+Using get_cached_output to retrieve lines from cmd_002...
+
+[Last 50 lines of npm install output]
+
+# AI can analyze and help with errors
+🌊 user [~/projects/myapp]
+──└─⟩ run the tests
+
+🐚 Shello
+┌─[💻 user@hostname]─[~/projects/myapp]
+└─$ npm test
+
+FAIL tests/api.test.js
+  ✗ should handle API errors (15ms)
+    Expected status 200, received 500
+
+Tests: 1 failed, 12 passed, 13 total
+
+I see one test is failing. The API error handling test is receiving a 500 
+status code instead of the expected 200. Would you like me to check the 
+API client code to see what might be causing this?
 ```
-
-Shello understands context, executes commands in real-time, and works with bash, PowerShell, cmd, or Git Bash.
 
 ## Key Features
 

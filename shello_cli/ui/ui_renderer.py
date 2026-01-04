@@ -291,31 +291,34 @@ def display_about(version):
     # Create markdown content as a string
     about_markdown = f"""
 
-**🚀 Shello CLI**
-
-*Making terminals less... terminal*
+**🐚 Shello CLI**
 
 **What is Shello CLI?**
 
-An intelligent AI assistant that helps you troubleshoot and resolve technical problems through natural conversation and smart command execution.
+An AI-powered terminal assistant that not only suggests commands but executes them intelligently with awareness and safety.
 
-**Key Features**
+**Core Capabilities**
 
-- 💬 Intelligent issue diagnosis in plain English
-- ☁️ AWS & Cloud debugging assistance
-- ⚡ Smart command execution with approval
-- 🧠 Context-aware analysis and insights
-- 🔒 Secure local execution
-- 📜 Conversation history management
+- ⚡ **Instant Command Mode** - Executes common system commands directly, bypassing AI latency
+- 🧠 **Intelligent Output Processing** - Applies semantic-aware truncation instead of blind clipping
+- 💾 **Command Output Memory** - Stores and retrieves historical outputs via a persistent 100MB cache
+- 📊 **JSON-Aware Intelligence** - Auto-analyzes large JSON responses and suggests optimal `jq` query paths
+- 🎯 **Context-Specific Compression** - Uses different output collapsing strategies based on command behavior
+- 🚨 **Semantic Line Prioritization** - Ensures critical errors and failure causes are never hidden
+- 🔁 **Repetition Folding** - Compresses redundant progress logs and repetitive streaming output
+- 🧪 **Reliability First** - Backed by 1,400+ automated tests including property-based validation
+- 🛠️ **Battle-Tested for Production** - Designed for real systems, real failures, real fixes
 
 **Developer**
 
-- **Made with ❤️ by Om Mapari**
+- Made with ❤️ by **Om Mapari**
+- Contributions welcome at GitHub: **https://github.com/om-mapari/shello-cli**
 
 ---
 
-Version: {version}
-"""
+**Version**: {version}
+    """
+
 
     
     # Create a panel with the markdown content
@@ -324,7 +327,7 @@ Version: {version}
         markdown_content,
         border_style="cyan",
         box=ROUNDED,
-        title=f"[bold bright_white]🐚 About Shello CLI ({version})[/bold bright_white]",
+        title=f"[bold bright_white]🐚 About Shello CLI v{version}[/bold bright_white]",
         title_align="center",
         padding=(1, 2)
     )
