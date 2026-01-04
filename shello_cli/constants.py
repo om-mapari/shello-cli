@@ -236,3 +236,66 @@ EXAMPLES:
 - get_cached_output(cache_id="cmd_003", lines="+50,-50")  # First 50 + last 50
 
 TIP: For install/build commands, use lines="-100" to see the end where success/failure appears."""
+
+# =============================================================================
+# COMMAND TRUST AND SAFETY CONSTANTS
+# =============================================================================
+
+# Default allowlist patterns (safe commands that execute without approval)
+# These patterns are used when no user configuration is provided.
+# Users can override this list completely in their settings.
+# Supports three pattern types:
+#   1. Exact match: "git status"
+#   2. Wildcard: "git *" (matches git status, git log, etc.)
+#   3. Regex: "^git (status|log)$" (patterns starting with ^)
+DEFAULT_ALLOWLIST = [
+    # Navigation and inspection
+    "ls", "ls *", "pwd", "cd", "cd *",
+    # Git read-only operations
+    "git status", "git log", "git log *", "git diff", "git diff *",
+    "git show", "git show *", "git branch", "git branch *",
+    # File viewing
+    "cat *", "less *", "more *", "head *", "tail *",
+    # Search
+    "grep *", "find *", "rg *", "ag *",
+    # Process inspection
+    "ps", "ps *", "top", "htop",
+    # Network inspection
+    "ping *", "curl -I *", "wget --spider *",
+    # Package inspection
+    "npm list", "pip list", "pip show *",
+    # Output commands (safe for testing and general use)
+    "echo", "echo *",
+    # Python commands with -c flag (commonly used in tests)
+    "python -c *", "python3 -c *",
+]
+
+# Default denylist patterns (dangerous commands that always show warnings)
+# These patterns are ALWAYS active and cannot be removed by user configuration.
+# User denylist patterns are ADDED to these defaults (additive for safety).
+# When a command matches the denylist, a critical warning dialog is shown
+# regardless of YOLO mode, allowlist, or AI safety flags.
+DEFAULT_DENYLIST = [
+    # Destructive filesystem operations
+    "rm -rf /",
+    "rm -rf /*",
+    "rm -rf ~",
+    "rm -rf ~/*",
+    # Disk operations
+    "dd if=/dev/zero*",
+    "dd if=*of=/dev/sd*",
+    "mkfs*",
+    "format*",
+    "> /dev/sd*",
+    # System modifications
+    "chmod -R 777 /",
+    "chown -R * /",
+    # Dangerous redirects
+    "> /dev/sda",
+    "> /dev/null &",
+]
+
+# Default approval mode
+# "user_driven" - Always prompt for non-allowlist commands (safer default)
+# "ai_driven" - Trust AI safety flags; only prompt when AI flags as unsafe
+DEFAULT_APPROVAL_MODE = "user_driven"  # "ai_driven" or "user_driven"
