@@ -3,7 +3,7 @@
 import re
 from typing import Optional
 
-from shello_cli.constants import COMMAND_PATTERNS, CONTENT_PATTERNS
+from shello_cli.patterns import COMMAND_PATTERNS, CONTENT_PATTERNS
 from shello_cli.tools.output.types import OutputType
 
 

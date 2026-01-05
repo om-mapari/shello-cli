@@ -61,7 +61,7 @@ import logging
 import re
 from dataclasses import dataclass, field
 from typing import List, Optional
-from shello_cli.constants import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST, DEFAULT_APPROVAL_MODE
+from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST, DEFAULT_APPROVAL_MODE
 from shello_cli.trust.pattern_matcher import PatternMatcher
 from shello_cli.trust.approval_dialog import ApprovalDialog
 
