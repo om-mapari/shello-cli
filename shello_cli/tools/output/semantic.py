@@ -3,7 +3,7 @@
 import re
 from typing import List, Tuple
 from .types import LineImportance
-from ...constants import IMPORTANCE_PATTERNS
+from ...patterns import IMPORTANCE_PATTERNS
 
 
 class LineClassifier:

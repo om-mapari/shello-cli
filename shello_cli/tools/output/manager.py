@@ -7,9 +7,11 @@ from .cache import OutputCache
 from .type_detector import TypeDetector
 from .compressor import ProgressBarCompressor
 from .truncator import Truncator
-from ...constants import (
+from ...defaults import (
     DEFAULT_CHAR_LIMITS,
     DEFAULT_STRATEGIES,
+)
+from ...patterns import (
     JSON_ANALYZER_SUMMARY_TEMPLATE,
     TRUNCATION_SUMMARY_TEMPLATE,
 )

@@ -3,7 +3,7 @@
 import re
 from typing import Tuple
 
-from shello_cli.constants import PROGRESS_BAR_PATTERNS
+from shello_cli.patterns import PROGRESS_BAR_PATTERNS
 from shello_cli.tools.output.types import CompressionStats
 
 

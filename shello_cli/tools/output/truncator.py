@@ -3,7 +3,7 @@
 from typing import Tuple, List, Optional
 from .types import TruncationStrategy, TruncationResult, OutputType, LineImportance
 from .semantic import LineClassifier
-from ...constants import DEFAULT_FIRST_RATIO, DEFAULT_LAST_RATIO
+from ...defaults import DEFAULT_FIRST_RATIO, DEFAULT_LAST_RATIO
 
 
 class Truncator:
