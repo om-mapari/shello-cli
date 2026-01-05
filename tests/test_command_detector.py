@@ -17,7 +17,23 @@ class TestCommandDetectorProperties:
         command=st.sampled_from(list(CommandDetector.DIRECT_COMMANDS)),
         args=st.one_of(
             st.none(),
-            st.text(min_size=1, max_size=50).filter(lambda x: x.strip())
+            # Generate shell-like arguments (paths, flags, filenames)
+            # Avoid natural language patterns that would trigger AI routing (Requirement 1.3)
+            st.text(
+                alphabet=st.characters(
+                    whitelist_categories=('Ll', 'Lu', 'Nd'),  # lowercase, uppercase, numbers
+                    whitelist_characters='.-_/*?'  # common shell characters
+                ),
+                min_size=1,
+                max_size=50
+            ).filter(lambda x: x.strip() and not any(
+                phrase in x.lower() for phrase in [
+                    'are you', 'do you', 'can you', 'will you', 'would you', 'could you',
+                    'should i', 'how do', 'what is', 'what are', 'why is', 'when is',
+                    'where is', 'who is', 'tell me', 'show me', 'explain', 'describe',
+                    'please', 'i want', 'i need', 'help me', 'model', 'version'
+                ]
+            ))
         )
     )
     @settings(max_examples=100, deadline=None)
@@ -26,8 +42,9 @@ class TestCommandDetectorProperties:
         Feature: direct-command-execution, Property 1: Direct Command Detection
         
         For any input string that starts with a command from the DIRECT_COMMANDS set 
-        (optionally followed by arguments), the CommandDetector SHALL classify it as 
-        InputType.DIRECT_COMMAND.
+        (optionally followed by shell-like arguments), the CommandDetector SHALL classify it as 
+        InputType.DIRECT_COMMAND, UNLESS the arguments contain natural language context
+        (Requirement 1.3).
         
         Validates: Requirements 1.1, 1.2
         """

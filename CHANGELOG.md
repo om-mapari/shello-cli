@@ -5,7 +5,7 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - Unreleased
 
 ### Added
 
@@ -18,6 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Environment variable support (AWS_REGION, AWS_PROFILE, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
 
 - **Provider Configuration System**: Modern provider configuration using ProviderConfig dataclass
+
+### Fixed
+
+#### Direct Command Execution
+- **Natural Language Detection**: Fixed issue where natural language questions starting with command words (e.g., "which model are you using") were incorrectly executed as shell commands
+  - Added intelligent heuristics to distinguish between shell commands and natural language
+  - Commands like "which python" still execute directly as shell commands
+  - Questions like "which model are you using" now correctly route to AI
+  - Handles question patterns: "are you", "do you", "can you", "what is", etc.
+  - Special handling for ambiguous commands like "which" and "find"
+  - Question marks at the end with natural language context route to AI
+  - Validates Requirement 1.3: Natural language context routes to AI processing
   - Separate configurations for OpenAI-compatible APIs and AWS Bedrock
   - Support for multiple configured providers simultaneously
   - Provider-specific settings (API keys, base URLs, AWS credentials, regions)
@@ -48,8 +60,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bedrock: `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
   - Environment variables take precedence over configuration files
 
+#### Command Trust and Safety System
+- **Trust Manager**: Evaluates commands before execution through 5-step flow (Denylist → YOLO → Allowlist → AI Safety → Approval)
+- **Pattern Matcher**: Supports exact match, wildcards (`git *`), and regex (`^git (status|log)$`)
+- **Approval Dialog**: Interactive UI for command approval with keyboard controls (A/D)
+- **Default Allowlist**: Safe commands execute automatically (ls, pwd, git status, cat, grep, etc.)
+- **Default Denylist**: Dangerous commands require approval (rm -rf /, dd, mkfs, format, etc.)
+- **YOLO Mode**: Bypass approval checks via config or `--yolo` flag (still respects denylist)
+- **AI Safety Integration**: Required `is_safe` parameter in bash tool for AI command evaluation
+- **Configuration**: Flexible trust settings in `~/.shello_cli/user-settings.json`
+  - `approval_mode`: "user_driven" (default) or "ai_driven"
+  - `allowlist`: User patterns replace defaults
+  - `denylist`: User patterns added to defaults (additive for safety)
+
 ### Changed
 
+#### Multi-Provider Support Changes
 - **Settings Manager**: Extended with provider configuration support
   - New `ProviderConfig` dataclass for provider-specific settings
   - `openai_config` and `bedrock_config` fields in UserSettings
@@ -70,8 +96,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **UI Renderer**: Added `/switch` command to help display
 
+#### Command Trust and Safety Changes
+- **Bash Tool**: Added required `is_safe` parameter, trust evaluation before execution
+- **Direct Executor**: Integrated with trust system for direct commands
+- **Settings Manager**: New CommandTrustConfig with validation and safe defaults
+- **Tool Definitions**: Updated bash tool description with SAFETY section
+
 ### Testing
 
+#### Multi-Provider Support Tests
 - **Client Factory Tests**: 542 lines of comprehensive tests
   - Test creating ShelloClient for OpenAI provider
   - Test creating ShelloBedrockClient for Bedrock provider
@@ -83,8 +116,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test provider config resolution with environment variables
   - Test available providers detection
 
+#### Command Trust and Safety Tests
+- 550+ tests covering pattern matching, trust evaluation, configuration, and integration
+- 8 property-based tests validating correctness properties
+
 ### Documentation
 
+#### Multi-Provider Support Documentation
 - **README Updates**: Comprehensive multi-provider documentation
   - New "AI Provider Support" section with provider overview
   - Runtime provider switching examples and workflow
@@ -103,45 +141,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Marked as optional dependency for AWS Bedrock support
   - Installation instructions for users who only need OpenAI-compatible APIs
 
+#### Command Trust and Safety Documentation
+- Comprehensive README section on Command Trust and Safety
+- Enhanced inline documentation with examples
+- Complete design document with architecture and evaluation flow
+
 ### Technical Details
 
+#### Multi-Provider Support Technical Details
 - **Modular Provider System**: Clean separation with client factory pattern
 - **Type Safety**: Union types for client interfaces, full type hints
 - **Backward Compatibility**: Existing OpenAI configurations continue to work
 - **Graceful Degradation**: Helpful error messages when boto3 is not installed
 - **Zero Breaking Changes**: Existing users can continue using OpenAI without changes
-
-## [0.4.0] - 2026-01-05
-
-### Added
-
-#### Command Trust and Safety System
-- **Trust Manager**: Evaluates commands before execution through 5-step flow (Denylist → YOLO → Allowlist → AI Safety → Approval)
-- **Pattern Matcher**: Supports exact match, wildcards (`git *`), and regex (`^git (status|log)$`)
-- **Approval Dialog**: Interactive UI for command approval with keyboard controls (A/D)
-- **Default Allowlist**: Safe commands execute automatically (ls, pwd, git status, cat, grep, etc.)
-- **Default Denylist**: Dangerous commands require approval (rm -rf /, dd, mkfs, format, etc.)
-- **YOLO Mode**: Bypass approval checks via config or `--yolo` flag (still respects denylist)
-- **AI Safety Integration**: Required `is_safe` parameter in bash tool for AI command evaluation
-- **Configuration**: Flexible trust settings in `~/.shello_cli/user-settings.json`
-  - `approval_mode`: "user_driven" (default) or "ai_driven"
-  - `allowlist`: User patterns replace defaults
-  - `denylist`: User patterns added to defaults (additive for safety)
-
-### Changed
-- **Bash Tool**: Added required `is_safe` parameter, trust evaluation before execution
-- **Direct Executor**: Integrated with trust system for direct commands
-- **Settings Manager**: New CommandTrustConfig with validation and safe defaults
-- **Tool Definitions**: Updated bash tool description with SAFETY section
-
-### Testing
-- 550+ tests covering pattern matching, trust evaluation, configuration, and integration
-- 8 property-based tests validating correctness properties
-
-### Documentation
-- Comprehensive README section on Command Trust and Safety
-- Enhanced inline documentation with examples
-- Complete design document with architecture and evaluation flow
 
 ### Security
 - Protection against dangerous commands with denylist
