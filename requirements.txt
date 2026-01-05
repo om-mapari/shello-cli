@@ -10,4 +10,8 @@ pyperclip~=1.11.0
 openai~=2.14.0
 hypothesis~=6.131.0
 pytest~=9.0.0
+
+# Optional: AWS Bedrock support
+# Only required if using AWS Bedrock as AI provider
+# Install with: pip install boto3
 boto3~=1.35.0

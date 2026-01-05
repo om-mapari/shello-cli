@@ -24,6 +24,7 @@ python main.py config  # Show current configuration
 
 ### In-Chat Commands
 - `/new` - Start a new conversation
+- `/switch` - Switch between AI providers (OpenAI, Bedrock, etc.)
 - `/help` - Show available commands
 - `/about` - Show about information
 - `/quit` or `/exit` - Exit the application
@@ -45,25 +46,85 @@ pip install -r requirements.txt
 python main.py setup
 ```
 
+The setup wizard will guide you through:
+- AI provider selection (OpenAI-compatible API or AWS Bedrock)
+- Provider-specific configuration (API keys or AWS credentials)
+- Default model selection
+
 **Option B: Manual Configuration**
+
+**For OpenAI-compatible APIs:**
 
 Create `~/.shello_cli/user-settings.json`:
 ```json
 {
-    "api_key": "your-api-key-here",
-    "base_url": "https://openrouter.ai/api/v1",
-    "default_model": "mistralai/devstral-2512:free",
-    "models": [
-        "mistralai/devstral-2512:free",
-        "gpt-4o",
-        "gpt-4o-mini"
-    ]
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "api_key": "your-api-key-here",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+    }
 }
 ```
 
-**Option C: Environment Variable**
+**For AWS Bedrock:**
+
+Create `~/.shello_cli/user-settings.json`:
+```json
+{
+    "provider": "bedrock",
+    "bedrock_config": {
+        "provider_type": "bedrock",
+        "aws_region": "us-east-1",
+        "aws_profile": "default",
+        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "models": [
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            "anthropic.claude-3-opus-20240229-v1:0",
+            "amazon.nova-pro-v1:0"
+        ]
+    }
+}
+```
+
+**For multiple providers:**
+
+```json
+{
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "api_key": "your-openai-key",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini"]
+    },
+    "bedrock_config": {
+        "provider_type": "bedrock",
+        "aws_region": "us-east-1",
+        "aws_profile": "default",
+        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
+    }
+}
+```
+
+**Option C: Environment Variables**
+
+**OpenAI-compatible:**
 ```bash
 export OPENAI_API_KEY="your-api-key"
+```
+
+**AWS Bedrock:**
+```bash
+export AWS_REGION="us-east-1"
+export AWS_PROFILE="default"
+# Or use explicit credentials:
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
 ### 3. Test Your Setup
@@ -78,22 +139,67 @@ python main.py config
 
 **Location:** `~/.shello_cli/user-settings.json`
 
-Contains API credentials and default preferences:
+Contains AI provider configuration, credentials, and default preferences.
+
+**OpenAI-compatible API configuration:**
 
 ```json
 {
-    "api_key": "your-api-key-here",
-    "base_url": "https://openrouter.ai/api/v1",
-    "default_model": "mistralai/devstral-2512:free",
-    "models": [
-        "mistralai/devstral-2512:free",
-        "gpt-4o",
-        "gpt-4o-mini"
-    ]
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "api_key": "your-api-key-here",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+    }
 }
 ```
 
-**Note:** API key can also be set via `OPENAI_API_KEY` environment variable.
+**AWS Bedrock configuration:**
+
+```json
+{
+    "provider": "bedrock",
+    "bedrock_config": {
+        "provider_type": "bedrock",
+        "aws_region": "us-east-1",
+        "aws_profile": "default",
+        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "models": [
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            "anthropic.claude-3-opus-20240229-v1:0",
+            "amazon.nova-pro-v1:0"
+        ]
+    }
+}
+```
+
+**Multiple providers configured:**
+
+```json
+{
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "api_key": "your-openai-key",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini"]
+    },
+    "bedrock_config": {
+        "provider_type": "bedrock",
+        "aws_region": "us-east-1",
+        "aws_profile": "default",
+        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
+    }
+}
+```
+
+**Note:** Credentials can also be set via environment variables:
+- OpenAI: `OPENAI_API_KEY`
+- Bedrock: `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
 
 ### 2. Project Settings (Local)
 
@@ -164,7 +270,7 @@ To customize these settings, modify `shello_cli/constants.py` directly.
 Settings are loaded in this order (later overrides earlier):
 1. Default values (in `shello_cli/constants.py`)
 2. User settings (`~/.shello_cli/user-settings.json`)
-3. Environment variables (`OPENAI_API_KEY`)
+3. Environment variables (`OPENAI_API_KEY`, `AWS_REGION`, `AWS_PROFILE`, etc.)
 4. Project settings (`.shello/settings.json`)
 
 ## Testing
@@ -191,34 +297,69 @@ pytest tests/ --cov=shello_cli --cov-report=html
 
 ## Supported Models
 
-The client supports any OpenAI-compatible API endpoint.
+The client supports any OpenAI-compatible API endpoint and AWS Bedrock foundation models.
 
-## API Providers
+## AI Providers
 
 ### OpenAI
 ```json
 {
-    "base_url": "https://api.openai.com/v1",
-    "api_key": "sk-...",
-    "default_model": "gpt-4o"
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "base_url": "https://api.openai.com/v1",
+        "api_key": "sk-...",
+        "default_model": "gpt-4o",
+        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+    }
 }
 ```
 
 ### OpenRouter (Recommended for Free Models)
 ```json
 {
-    "base_url": "https://openrouter.ai/api/v1",
-    "api_key": "sk-or-v1-...",
-    "default_model": "mistralai/devstral-2512:free"
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key": "sk-or-v1-...",
+        "default_model": "mistralai/devstral-2512:free",
+        "models": ["mistralai/devstral-2512:free", "anthropic/claude-3.5-sonnet"]
+    }
 }
 ```
+
+### AWS Bedrock
+```json
+{
+    "provider": "bedrock",
+    "bedrock_config": {
+        "provider_type": "bedrock",
+        "aws_region": "us-east-1",
+        "aws_profile": "default",
+        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "models": [
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            "anthropic.claude-3-opus-20240229-v1:0",
+            "amazon.nova-pro-v1:0"
+        ]
+    }
+}
+```
+
+See [doc/BEDROCK_SETUP_GUIDE.md](doc/BEDROCK_SETUP_GUIDE.md) for detailed AWS Bedrock setup instructions.
 
 ### Local Models (LM Studio, Ollama)
 ```json
 {
-    "base_url": "http://localhost:1234/v1",
-    "api_key": "not-needed",
-    "default_model": "local-model-name"
+    "provider": "openai",
+    "openai_config": {
+        "provider_type": "openai",
+        "base_url": "http://localhost:1234/v1",
+        "api_key": "not-needed",
+        "default_model": "local-model-name",
+        "models": ["local-model-name"]
+    }
 }
 ```
 
@@ -240,14 +381,28 @@ File permissions are handled automatically by the application.
 
 ### "No API key found" error
 1. Run `python main.py setup` to configure interactively
-2. Or check that `~/.shello_cli/user-settings.json` exists and contains `api_key`
-3. Or set the `OPENAI_API_KEY` environment variable
+2. Or check that `~/.shello_cli/user-settings.json` exists and contains provider configuration
+3. Or set environment variables:
+   - OpenAI: `OPENAI_API_KEY`
+   - Bedrock: `AWS_REGION`, `AWS_PROFILE`, or `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`
 
 ### "Failed to initialize agent" error
-- Verify your API key is valid
-- Check that the `base_url` is correct for your provider
+- Verify your credentials are valid
+- For OpenAI: Check that the `api_key` and `base_url` are correct
+- For Bedrock: Verify AWS credentials and region are configured
 - Ensure you have internet connectivity
 - Verify the model name is supported by your provider
+
+### "boto3 not installed" error (Bedrock only)
+If you're using AWS Bedrock and see this error:
+```bash
+pip install boto3
+```
+
+Or reinstall all dependencies:
+```bash
+pip install -r requirements.txt
+```
 
 ### Import errors
 - Make sure you've installed all dependencies: `pip install -r requirements.txt`
@@ -276,6 +431,8 @@ shello_cli/
 │   ├── template.py              # System prompt template
 │   └── tool_executor.py         # Tool execution
 ├── api/
+│   ├── bedrock_client.py        # AWS Bedrock API client
+│   ├── client_factory.py        # Client factory (creates appropriate client)
 │   └── openai_client.py         # OpenAI-compatible API client
 ├── chat/
 │   └── chat_session.py          # Chat session management
@@ -324,16 +481,34 @@ python main.py chat    # Start chat session
 
 ### Adding New Models
 
-Edit your user settings file to add new models:
+Edit your user settings file to add new models to your configured provider:
 
+**For OpenAI-compatible APIs:**
 ```json
 {
-    "models": [
-        "mistralai/devstral-2512:free",
-        "gpt-4o",
-        "your-new-model"
-    ],
-    "default_model": "your-new-model"
+    "provider": "openai",
+    "openai_config": {
+        "models": [
+            "gpt-4o",
+            "gpt-4o-mini",
+            "your-new-model"
+        ],
+        "default_model": "your-new-model"
+    }
+}
+```
+
+**For AWS Bedrock:**
+```json
+{
+    "provider": "bedrock",
+    "bedrock_config": {
+        "models": [
+            "anthropic.claude-3-5-sonnet-20241022-v2:0",
+            "your-new-bedrock-model-id"
+        ],
+        "default_model": "your-new-bedrock-model-id"
+    }
 }
 ```
 

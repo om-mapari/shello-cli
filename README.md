@@ -208,6 +208,7 @@ API client code to see what might be causing this?
 
 While chatting:
 - `/new` - Start fresh conversation
+- `/switch` - Switch between AI providers (OpenAI, Bedrock, etc.)
 - `/help` - Show available commands
 - `/quit` - Exit
 
@@ -215,6 +216,97 @@ CLI commands:
 - `shello setup` - Interactive configuration wizard
 - `shello config` - Show current settings
 - `shello --version` - Display version
+
+## AI Provider Support
+
+Shello supports multiple AI providers, giving you flexibility to choose the best option for your needs:
+
+### Supported Providers
+
+**OpenAI-compatible APIs:**
+- OpenAI (GPT-4o, GPT-4 Turbo, GPT-3.5)
+- OpenRouter (access to Claude, Gemini, and 200+ models)
+- Custom endpoints (LM Studio, Ollama, vLLM, etc.)
+
+**AWS Bedrock:**
+- Anthropic Claude (3.5 Sonnet, 3 Opus, 3 Sonnet)
+- Amazon Nova (Pro, Lite, Micro)
+- Other Bedrock foundation models
+
+### Provider Selection
+
+Choose your provider during setup or switch between providers at runtime:
+
+```bash
+# Initial setup - choose your provider
+shello setup
+
+# Switch providers during a chat session
+🌊 user [~/projects]
+──└─⟩ /switch
+
+🔄 Switch Provider:
+  1. [✓] OpenAI-compatible API
+  2. [ ] AWS Bedrock
+
+Select provider (or 'c' to cancel): 2
+
+✓ Switched to bedrock
+  Model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  Conversation history preserved
+```
+
+### Runtime Provider Switching
+
+Switch between configured providers without losing your conversation:
+
+- Use `/switch` command during any chat session
+- Conversation history is preserved across providers
+- Compare responses from different models
+- Seamlessly switch if one provider is unavailable
+
+**Example workflow:**
+```bash
+# Start with OpenAI
+shello
+
+🌊 user [~/projects]
+──└─⟩ analyze this codebase structure
+
+🐚 Shello (gpt-4o)
+[Analysis from GPT-4o...]
+
+# Switch to Claude via Bedrock
+🌊 user [~/projects]
+──└─⟩ /switch
+[Select AWS Bedrock]
+
+🌊 user [~/projects]
+──└─⟩ now give me a second opinion on the architecture
+
+🐚 Shello (claude-3-5-sonnet)
+[Analysis from Claude...]
+```
+
+### Environment Variables
+
+All provider credentials support environment variable overrides:
+
+**OpenAI-compatible APIs:**
+```bash
+export OPENAI_API_KEY="your-api-key"
+```
+
+**AWS Bedrock:**
+```bash
+export AWS_REGION="us-east-1"
+export AWS_PROFILE="default"
+# Or explicit credentials:
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+```
+
+Environment variables take precedence over configuration files, making it easy to switch credentials per session or use different credentials in CI/CD.
 
 ## Configuration
 
@@ -227,19 +319,66 @@ shello setup
 ```
 
 This will guide you through:
-- API provider selection (OpenAI, OpenRouter, or custom)
-- API key configuration
+- AI provider selection (OpenAI-compatible API or AWS Bedrock)
+- Provider-specific configuration (API keys or AWS credentials)
 - Default model selection
+
+**Using AWS Bedrock?** See the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for detailed instructions on configuring AWS credentials and accessing Claude, Nova, and other foundation models.
 
 ### Manual Configuration
 
 **Global settings:** `~/.shello_cli/user-settings.json`
+
+**OpenAI-compatible API configuration:**
 ```json
 {
-  "api_key": "your-api-key",
-  "base_url": "https://openrouter.ai/api/v1",
-  "default_model": "mistralai/devstral-2512:free",
-  "models": ["mistralai/devstral-2512:free", "gpt-4o", "gpt-4o-mini"]
+  "provider": "openai",
+  "openai_config": {
+    "provider_type": "openai",
+    "api_key": "your-api-key",
+    "base_url": "https://api.openai.com/v1",
+    "default_model": "gpt-4o",
+    "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+  }
+}
+```
+
+**AWS Bedrock configuration:**
+```json
+{
+  "provider": "bedrock",
+  "bedrock_config": {
+    "provider_type": "bedrock",
+    "aws_region": "us-east-1",
+    "aws_profile": "default",
+    "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    "models": [
+      "anthropic.claude-3-5-sonnet-20241022-v2:0",
+      "anthropic.claude-3-opus-20240229-v1:0",
+      "amazon.nova-pro-v1:0"
+    ]
+  }
+}
+```
+
+**Multiple providers configured:**
+```json
+{
+  "provider": "openai",
+  "openai_config": {
+    "provider_type": "openai",
+    "api_key": "your-openai-key",
+    "base_url": "https://api.openai.com/v1",
+    "default_model": "gpt-4o",
+    "models": ["gpt-4o", "gpt-4o-mini"]
+  },
+  "bedrock_config": {
+    "provider_type": "bedrock",
+    "aws_region": "us-east-1",
+    "aws_profile": "default",
+    "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
+  }
 }
 ```
 
@@ -250,9 +389,20 @@ This will guide you through:
 }
 ```
 
-**Environment variable:**
+**Environment variables:**
+
+OpenAI-compatible:
 ```bash
 export OPENAI_API_KEY="your-api-key"
+```
+
+AWS Bedrock:
+```bash
+export AWS_REGION="us-east-1"
+export AWS_PROFILE="default"
+# Or use explicit credentials:
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
 See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed configuration options.
@@ -452,6 +602,18 @@ pip install -r requirements.txt
 python main.py
 ```
 
+**Optional: AWS Bedrock Support**
+
+If you plan to use AWS Bedrock as your AI provider, boto3 is included in requirements.txt. If you only need OpenAI-compatible APIs, you can skip boto3:
+
+```bash
+# Install without boto3 (OpenAI-compatible APIs only)
+pip install python-dotenv pydantic rich requests urllib3 click prompt_toolkit keyring pyperclip openai hypothesis pytest
+
+# Or install boto3 separately when needed
+pip install boto3
+```
+
 ## Build Executable
 
 ```bash
@@ -473,6 +635,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 ## Links
 
 - 🔧 [Development Setup](DEVELOPMENT_SETUP.md)
+- ☁️ [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md)
 - 📝 [Changelog](CHANGELOG.md)
 - 🐛 [Report Issues](https://github.com/om-mapari/shello-cli/issues)
 - 🚀 [Latest Release](https://github.com/om-mapari/shello-cli/releases/latest)
