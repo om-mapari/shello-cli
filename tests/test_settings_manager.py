@@ -17,7 +17,10 @@ from shello_cli.utils.settings_manager import SettingsManager, UserSettings, Pro
 # Custom strategies for generating valid settings
 @st.composite
 def user_settings_strategy(draw):
-    """Generate valid UserSettings instances."""
+    """Generate valid UserSettings instances with provider configs."""
+    from shello_cli.utils.settings_manager import ProviderConfig
+    
+    # Generate OpenAI config
     api_key = draw(st.one_of(
         st.none(),
         st.text(min_size=10, max_size=100, alphabet=st.characters(
@@ -38,25 +41,30 @@ def user_settings_strategy(draw):
         "gpt-4o-mini",
         "gpt-4-turbo",
         "gpt-4",
-        "gpt-3.5-turbo",
-        "claude-3-opus"
+        "gpt-3.5-turbo"
     ]))
     
     models = draw(st.lists(
         st.sampled_from([
             "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", 
-            "gpt-4", "gpt-3.5-turbo", "claude-3-opus"
+            "gpt-4", "gpt-3.5-turbo"
         ]),
         min_size=1,
         max_size=10,
         unique=True
     ))
     
-    return UserSettings(
+    openai_config = ProviderConfig(
+        provider_type="openai",
         api_key=api_key,
         base_url=base_url,
         default_model=default_model,
         models=models
+    )
+    
+    return UserSettings(
+        provider="openai",
+        openai_config=openai_config
     )
 
 
@@ -94,17 +102,16 @@ class TestSettingsManagerProperties:
                 loaded_settings = manager.load_user_settings()
                 
                 # Verify all fields match
-                assert loaded_settings.api_key == user_settings.api_key, \
-                    f"API key mismatch: {loaded_settings.api_key} != {user_settings.api_key}"
+                assert loaded_settings.provider == user_settings.provider, \
+                    f"Provider mismatch: {loaded_settings.provider} != {user_settings.provider}"
                 
-                assert loaded_settings.base_url == user_settings.base_url, \
-                    f"Base URL mismatch: {loaded_settings.base_url} != {user_settings.base_url}"
-                
-                assert loaded_settings.default_model == user_settings.default_model, \
-                    f"Default model mismatch: {loaded_settings.default_model} != {user_settings.default_model}"
-                
-                assert loaded_settings.models == user_settings.models, \
-                    f"Models list mismatch: {loaded_settings.models} != {user_settings.models}"
+                # Check openai_config if present
+                if user_settings.openai_config:
+                    assert loaded_settings.openai_config is not None
+                    assert loaded_settings.openai_config.api_key == user_settings.openai_config.api_key
+                    assert loaded_settings.openai_config.base_url == user_settings.openai_config.base_url
+                    assert loaded_settings.openai_config.default_model == user_settings.openai_config.default_model
+                    assert loaded_settings.openai_config.models == user_settings.openai_config.models
                 
                 # Verify file has secure permissions (user read/write only)
                 file_stat = os.stat(manager._user_settings_path)
@@ -131,10 +138,9 @@ class TestSettingsManagerUnitTests:
             
             settings = manager.load_user_settings()
             
-            assert settings.api_key is None
-            assert settings.base_url == "https://api.openai.com/v1"
-            assert settings.default_model == "gpt-4o"
-            assert "gpt-4o" in settings.models
+            assert settings.provider == "openai"
+            assert settings.openai_config is None
+            assert settings.bedrock_config is None
     
     def test_load_nonexistent_project_settings_returns_defaults(self):
         """Test that loading nonexistent project settings returns defaults."""
@@ -149,16 +155,24 @@ class TestSettingsManagerUnitTests:
     
     def test_save_and_load_user_settings(self):
         """Test saving and loading user settings."""
+        from shello_cli.utils.settings_manager import ProviderConfig
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             
-            # Create test settings
-            test_settings = UserSettings(
+            # Create test settings with openai_config
+            openai_config = ProviderConfig(
+                provider_type="openai",
                 api_key="test-key-12345",
                 base_url="https://test.example.com/v1",
                 default_model="gpt-4",
                 models=["gpt-4", "gpt-3.5-turbo"]
+            )
+            
+            test_settings = UserSettings(
+                provider="openai",
+                openai_config=openai_config
             )
             
             # Save settings
@@ -168,10 +182,11 @@ class TestSettingsManagerUnitTests:
             manager._user_settings = None
             loaded = manager.load_user_settings()
             
-            assert loaded.api_key == "test-key-12345"
-            assert loaded.base_url == "https://test.example.com/v1"
-            assert loaded.default_model == "gpt-4"
-            assert loaded.models == ["gpt-4", "gpt-3.5-turbo"]
+            assert loaded.openai_config is not None
+            assert loaded.openai_config.api_key == "test-key-12345"
+            assert loaded.openai_config.base_url == "https://test.example.com/v1"
+            assert loaded.openai_config.default_model == "gpt-4"
+            assert loaded.openai_config.models == ["gpt-4", "gpt-3.5-turbo"]
     
     def test_save_and_load_project_settings(self):
         """Test saving and loading project settings."""
@@ -193,12 +208,21 @@ class TestSettingsManagerUnitTests:
     
     def test_get_api_key_from_environment(self):
         """Test that get_api_key prioritizes environment variable."""
+        from shello_cli.utils.settings_manager import ProviderConfig
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             
-            # Save settings with API key
-            test_settings = UserSettings(api_key="settings-key")
+            # Save settings with API key in openai_config
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                api_key="settings-key"
+            )
+            test_settings = UserSettings(
+                provider="openai",
+                openai_config=openai_config
+            )
             manager.save_user_settings(test_settings)
             
             # Set environment variable
@@ -217,6 +241,8 @@ class TestSettingsManagerUnitTests:
     
     def test_get_api_key_from_settings(self):
         """Test that get_api_key falls back to settings."""
+        from shello_cli.utils.settings_manager import ProviderConfig
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
@@ -225,8 +251,15 @@ class TestSettingsManagerUnitTests:
             if 'OPENAI_API_KEY' in os.environ:
                 del os.environ['OPENAI_API_KEY']
             
-            # Save settings with API key
-            test_settings = UserSettings(api_key="settings-key")
+            # Save settings with API key in openai_config
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                api_key="settings-key"
+            )
+            test_settings = UserSettings(
+                provider="openai",
+                openai_config=openai_config
+            )
             manager.save_user_settings(test_settings)
             
             # Clear cache
@@ -238,6 +271,8 @@ class TestSettingsManagerUnitTests:
     
     def test_get_current_model_priority(self):
         """Test that get_current_model follows priority: project > user > default."""
+        from shello_cli.utils.settings_manager import ProviderConfig
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
@@ -250,7 +285,14 @@ class TestSettingsManagerUnitTests:
             assert model == "gpt-4o"
             
             # Test 2: User settings only
-            user_settings = UserSettings(default_model="gpt-4-turbo")
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                default_model="gpt-4-turbo"
+            )
+            user_settings = UserSettings(
+                provider="openai",
+                openai_config=openai_config
+            )
             manager.save_user_settings(user_settings)
             manager._user_settings = None
             manager._project_settings = None
@@ -267,12 +309,21 @@ class TestSettingsManagerUnitTests:
     
     def test_get_base_url(self):
         """Test that get_base_url returns configured URL."""
+        from shello_cli.utils.settings_manager import ProviderConfig
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             
-            # Save settings with custom base URL
-            test_settings = UserSettings(base_url="https://custom.example.com/v1")
+            # Save settings with custom base URL in openai_config
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                base_url="https://custom.example.com/v1"
+            )
+            test_settings = UserSettings(
+                provider="openai",
+                openai_config=openai_config
+            )
             manager.save_user_settings(test_settings)
             
             # Clear cache
@@ -305,8 +356,8 @@ class TestSettingsManagerUnitTests:
             
             # Should return defaults without crashing
             settings = manager.load_user_settings()
-            assert settings.api_key is None
-            assert settings.base_url == "https://api.openai.com/v1"
+            assert settings.provider == "openai"
+            assert settings.openai_config is None
 
 
 class TestCommandTrustConfigLoading:
@@ -476,7 +527,7 @@ class TestCommandTrustConfigLoading:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             
-            from shello_cli.utils.settings_manager import UserSettings, CommandTrustConfig
+            from shello_cli.utils.settings_manager import UserSettings, CommandTrustConfig, ProviderConfig
             
             # Create settings with command_trust
             command_trust = CommandTrustConfig(
@@ -487,8 +538,14 @@ class TestCommandTrustConfigLoading:
                 denylist=["rm -rf /", "custom dangerous"]
             )
             
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                api_key="test-key"
+            )
+            
             test_settings = UserSettings(
-                api_key="test-key",
+                provider="openai",
+                openai_config=openai_config,
                 command_trust=command_trust
             )
             

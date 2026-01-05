@@ -49,30 +49,6 @@ class TestCreateClientOpenAI:
             assert isinstance(client, ShelloClient)
             assert client.get_current_model() == "gpt-4o"
     
-    def test_create_openai_client_with_legacy_api_key(self):
-        """Test creating ShelloClient using legacy api_key field."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            manager = SettingsManager()
-            manager._user_settings_path = Path(temp_dir) / "user-settings.json"
-            manager._user_settings = None
-            
-            # Create settings with legacy api_key (no openai_config)
-            settings = UserSettings(
-                provider="openai",
-                api_key="legacy-api-key-12345",
-                base_url="https://api.openai.com/v1",
-                default_model="gpt-4o"
-            )
-            manager.save_user_settings(settings)
-            manager._user_settings = None
-            
-            # Create client
-            client = create_client(manager)
-            
-            # Verify it's a ShelloClient
-            from shello_cli.api.openai_client import ShelloClient
-            assert isinstance(client, ShelloClient)
-    
     def test_create_openai_client_with_env_api_key(self):
         """Test creating ShelloClient with API key from environment variable."""
         with tempfile.TemporaryDirectory() as temp_dir:
