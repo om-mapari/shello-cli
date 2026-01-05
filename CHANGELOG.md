@@ -5,6 +5,112 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+#### Multi-Provider Support
+- **AWS Bedrock Integration**: Full support for AWS Bedrock as an AI provider
+  - Anthropic Claude models (3.5 Sonnet, 3 Opus, 3 Sonnet)
+  - Amazon Nova models (Pro, Lite, Micro)
+  - Other Bedrock foundation models
+  - Multiple AWS credential methods (profile, explicit credentials, default chain)
+  - Environment variable support (AWS_REGION, AWS_PROFILE, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+
+- **Provider Configuration System**: Modern provider configuration using ProviderConfig dataclass
+  - Separate configurations for OpenAI-compatible APIs and AWS Bedrock
+  - Support for multiple configured providers simultaneously
+  - Provider-specific settings (API keys, base URLs, AWS credentials, regions)
+  - Per-provider model lists and default models
+
+- **Client Factory Pattern**: Factory function for creating appropriate client based on provider
+  - `create_client()` function in `shello_cli/api/client_factory.py`
+  - Automatic client selection based on provider configuration
+  - Graceful error handling with helpful troubleshooting messages
+  - Support for boto3 import error detection
+
+- **Runtime Provider Switching**: Switch between providers during chat sessions
+  - New `/switch` command in chat interface
+  - Interactive provider selection menu
+  - Conversation history preservation across provider switches
+  - Automatic cache clearing and agent recreation
+  - Display confirmation with new provider and model
+
+- **Enhanced Setup Wizard**: Interactive provider selection and configuration
+  - Provider selection menu (OpenAI-compatible API vs AWS Bedrock)
+  - OpenAI-compatible setup flow with API provider presets (OpenAI, OpenRouter, Custom)
+  - AWS Bedrock setup flow with credential method selection
+  - Support for configuring multiple providers
+  - Model suggestions based on selected provider
+
+- **Environment Variable Support**: All credentials support environment variable overrides
+  - OpenAI: `OPENAI_API_KEY`
+  - Bedrock: `AWS_REGION`, `AWS_PROFILE`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+  - Environment variables take precedence over configuration files
+
+### Changed
+
+- **Settings Manager**: Extended with provider configuration support
+  - New `ProviderConfig` dataclass for provider-specific settings
+  - `openai_config` and `bedrock_config` fields in UserSettings
+  - Helper methods: `get_provider()`, `set_provider()`, `get_provider_config()`, `is_provider_configured()`, `get_available_providers()`
+  - Backward compatibility maintained for existing `get_api_key()` and `get_base_url()` methods
+
+- **ShelloAgent**: Refactored to use dependency injection
+  - Constructor now accepts `client` parameter instead of creating its own
+  - Removed `api_key`, `base_url`, `model` parameters from constructor
+  - Supports both ShelloClient and ShelloBedrockClient via Union type
+  - Cleaner separation of concerns
+
+- **CLI Integration**: Updated to use factory pattern and support provider switching
+  - `create_new_session()` uses client factory
+  - New `switch_provider()` function for runtime switching
+  - Enhanced error handling with provider-specific messages
+  - `/switch` command added to chat loop
+
+- **UI Renderer**: Added `/switch` command to help display
+
+### Testing
+
+- **Client Factory Tests**: 542 lines of comprehensive tests
+  - Test creating ShelloClient for OpenAI provider
+  - Test creating ShelloBedrockClient for Bedrock provider
+  - Test error handling for invalid providers and missing configuration
+  - Test boto3 import error handling
+
+- **Settings Manager Tests**: Extended with provider configuration tests
+  - Test loading settings with different providers
+  - Test provider config resolution with environment variables
+  - Test available providers detection
+
+### Documentation
+
+- **README Updates**: Comprehensive multi-provider documentation
+  - New "AI Provider Support" section with provider overview
+  - Runtime provider switching examples and workflow
+  - Environment variable documentation for all providers
+  - Configuration examples for OpenAI, Bedrock, and multiple providers
+  - Updated commands section with `/switch` command
+
+- **DEVELOPMENT_SETUP.md Updates**: Developer-focused provider documentation
+  - Provider-specific configuration examples
+  - Multiple provider setup instructions
+  - Environment variable configuration for all providers
+  - Updated troubleshooting section with provider-specific errors
+  - Updated project structure showing new files
+
+- **requirements.txt**: Added boto3 with optional dependency comment
+  - Marked as optional dependency for AWS Bedrock support
+  - Installation instructions for users who only need OpenAI-compatible APIs
+
+### Technical Details
+
+- **Modular Provider System**: Clean separation with client factory pattern
+- **Type Safety**: Union types for client interfaces, full type hints
+- **Backward Compatibility**: Existing OpenAI configurations continue to work
+- **Graceful Degradation**: Helpful error messages when boto3 is not installed
+- **Zero Breaking Changes**: Existing users can continue using OpenAI without changes
+
 ## [0.4.0] - 2026-01-05
 
 ### Added
