@@ -12,6 +12,15 @@ from shello_cli.agent.shello_agent import ShelloAgent, ChatEntry
 from shello_cli.types import ToolResult
 
 
+def _create_mock_client():
+    """Helper to create a mock client with required methods."""
+    mock_client = Mock()
+    mock_client.chat = Mock()
+    mock_client.get_current_model = Mock(return_value="gpt-4o")
+    mock_client.set_model = Mock()
+    return mock_client
+
+
 class TestShelloAgentProperties:
     """Property-based tests for ShelloAgent."""
     
@@ -32,45 +41,43 @@ class TestShelloAgentProperties:
         
         Validates: Requirements 4.1
         """
-        # Create agent with mocked client
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            # Setup mock to return simple responses without tool calls
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.return_value = {
-                "choices": [{
-                    "message": {
-                        "role": "assistant",
-                        "content": "Response",
-                        "tool_calls": None
-                    }
-                }]
-            }
-            
-            agent = ShelloAgent(api_key="test-key")
-            
-            # Process each message
-            for message in messages:
-                agent.process_user_message(message)
-            
-            # Get chat history
-            history = agent.get_chat_history()
-            
-            # Verify history contains entries for all messages
-            user_entries = [entry for entry in history if entry.type == "user"]
-            
-            # Should have one user entry per message
-            assert len(user_entries) == len(messages), \
-                f"Expected {len(messages)} user entries, got {len(user_entries)}"
-            
-            # Verify messages are in order
-            for i, (entry, original_message) in enumerate(zip(user_entries, messages)):
-                assert entry.content == original_message, \
-                    f"Message {i}: expected '{original_message}', got '{entry.content}'"
-            
-            # Verify entries are in chronological order
-            for i in range(len(history) - 1):
-                assert history[i].timestamp <= history[i + 1].timestamp, \
-                    f"Entry {i} timestamp is after entry {i+1}"
+        # Create mock client
+        mock_client = _create_mock_client()
+        mock_client.chat.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "Response",
+                    "tool_calls": None
+                }
+            }]
+        }
+        
+        agent = ShelloAgent(client=mock_client)
+        
+        # Process each message
+        for message in messages:
+            agent.process_user_message(message)
+        
+        # Get chat history
+        history = agent.get_chat_history()
+        
+        # Verify history contains entries for all messages
+        user_entries = [entry for entry in history if entry.type == "user"]
+        
+        # Should have one user entry per message
+        assert len(user_entries) == len(messages), \
+            f"Expected {len(messages)} user entries, got {len(user_entries)}"
+        
+        # Verify messages are in order
+        for i, (entry, original_message) in enumerate(zip(user_entries, messages)):
+            assert entry.content == original_message, \
+                f"Message {i}: expected '{original_message}', got '{entry.content}'"
+        
+        # Verify entries are in chronological order
+        for i in range(len(history) - 1):
+            assert history[i].timestamp <= history[i + 1].timestamp, \
+                f"Entry {i} timestamp is after entry {i+1}"
     
     @given(max_rounds=st.integers(min_value=1, max_value=10))
     @settings(max_examples=100, deadline=None)
@@ -83,45 +90,43 @@ class TestShelloAgentProperties:
         
         Validates: Requirements 4.5
         """
-        # Create agent with mocked client
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            # Setup mock to always return tool calls (infinite loop scenario)
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.return_value = {
-                "choices": [{
-                    "message": {
-                        "role": "assistant",
-                        "content": None,
-                        "tool_calls": [{
-                            "id": "call_123",
-                            "type": "function",
-                            "function": {
-                                "name": "bash",
-                                "arguments": '{"command": "echo test"}'
-                            }
-                        }]
-                    }
-                }]
-            }
-            
-            agent = ShelloAgent(
-                api_key="test-key",
-                max_tool_rounds=max_rounds
-            )
-            
-            # Process a message
-            entries = agent.process_user_message("test message")
-            
-            # Count tool execution rounds
-            tool_call_entries = [entry for entry in entries if entry.type == "tool_call"]
-            
-            # Should not exceed max_rounds
-            assert len(tool_call_entries) <= max_rounds, \
-                f"Expected at most {max_rounds} tool rounds, got {len(tool_call_entries)}"
-            
-            # Should hit the limit (since we're simulating infinite loop)
-            assert len(tool_call_entries) == max_rounds, \
-                f"Expected exactly {max_rounds} tool rounds, got {len(tool_call_entries)}"
+        # Create mock client
+        mock_client = _create_mock_client()
+        mock_client.chat.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "call_123",
+                        "type": "function",
+                        "function": {
+                            "name": "bash",
+                            "arguments": '{"command": "echo test"}'
+                        }
+                    }]
+                }
+            }]
+        }
+        
+        agent = ShelloAgent(
+            client=mock_client,
+            max_tool_rounds=max_rounds
+        )
+        
+        # Process a message
+        entries = agent.process_user_message("test message")
+        
+        # Count tool execution rounds
+        tool_call_entries = [entry for entry in entries if entry.type == "tool_call"]
+        
+        # Should not exceed max_rounds
+        assert len(tool_call_entries) <= max_rounds, \
+            f"Expected at most {max_rounds} tool rounds, got {len(tool_call_entries)}"
+        
+        # Should hit the limit (since we're simulating infinite loop)
+        assert len(tool_call_entries) == max_rounds, \
+            f"Expected exactly {max_rounds} tool rounds, got {len(tool_call_entries)}"
     
     @given(
         error_message=st.text(min_size=1, max_size=100)
@@ -136,13 +141,10 @@ class TestShelloAgentProperties:
         
         Validates: Requirements 4.6, 1.6
         """
-        # Create agent with mocked client and bash tool
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient, \
-             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
-            
-            # Setup mock client to return a tool call
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.side_effect = [
+        # Create mock client and bash tool
+        with patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
+            mock_client = _create_mock_client()
+            mock_client.chat.side_effect = [
                 # First call: return tool call
                 {
                     "choices": [{
@@ -180,7 +182,7 @@ class TestShelloAgentProperties:
                 error=error_message
             )
             
-            agent = ShelloAgent(api_key="test-key")
+            agent = ShelloAgent(client=mock_client)
             
             # Process a message
             entries = agent.process_user_message("test message")
@@ -214,80 +216,74 @@ class TestShelloAgentUnitTests:
     
     def test_agent_initialization(self):
         """Test that agent initializes correctly."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'):
-            agent = ShelloAgent(api_key="test-key")
-            
-            assert agent is not None
-            assert agent.get_chat_history() == []
+        mock_client = _create_mock_client()
+        agent = ShelloAgent(client=mock_client)
+        
+        assert agent is not None
+        assert agent.get_chat_history() == []
     
     def test_agent_with_custom_max_rounds(self):
         """Test agent initialization with custom max_tool_rounds."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'):
-            agent = ShelloAgent(api_key="test-key", max_tool_rounds=5)
-            
-            assert agent._message_processor._max_tool_rounds == 5
+        mock_client = _create_mock_client()
+        agent = ShelloAgent(client=mock_client, max_tool_rounds=5)
+        
+        assert agent._message_processor._max_tool_rounds == 5
     
     def test_get_current_directory(self):
         """Test get_current_directory returns bash tool's directory."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'), \
-             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
-            
+        with patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
             mock_bash_instance = MockBashTool.return_value
             mock_bash_instance.get_current_directory.return_value = "/test/dir"
             
-            agent = ShelloAgent(api_key="test-key")
+            mock_client = _create_mock_client()
+            agent = ShelloAgent(client=mock_client)
             
             assert agent.get_current_directory() == "/test/dir"
     
     def test_get_current_model(self):
         """Test get_current_model returns client's model."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.get_current_model.return_value = "gpt-4o"
-            
-            agent = ShelloAgent(api_key="test-key")
-            
-            assert agent.get_current_model() == "gpt-4o"
+        mock_client = _create_mock_client()
+        mock_client.get_current_model.return_value = "gpt-4o"
+        
+        agent = ShelloAgent(client=mock_client)
+        
+        assert agent.get_current_model() == "gpt-4o"
     
     def test_set_model(self):
         """Test set_model calls client's set_model."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            mock_client_instance = MockClient.return_value
-            
-            agent = ShelloAgent(api_key="test-key")
-            agent.set_model("gpt-4-turbo")
-            
-            mock_client_instance.set_model.assert_called_once_with("gpt-4-turbo")
+        mock_client = _create_mock_client()
+        
+        agent = ShelloAgent(client=mock_client)
+        agent.set_model("gpt-4-turbo")
+        
+        mock_client.set_model.assert_called_once_with("gpt-4-turbo")
     
     def test_process_message_with_no_tool_calls(self):
         """Test processing a message that doesn't require tools."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.return_value = {
-                "choices": [{
-                    "message": {
-                        "role": "assistant",
-                        "content": "Hello!",
-                        "tool_calls": None
-                    }
-                }]
-            }
-            
-            agent = ShelloAgent(api_key="test-key")
-            entries = agent.process_user_message("Hi")
-            
-            # Should have assistant entry (user entry is added to history but not returned in entries)
-            assert len(entries) >= 1
-            assert entries[0].type == "assistant"
-            assert entries[0].content == "Hello!"
+        mock_client = _create_mock_client()
+        mock_client.chat.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": "Hello!",
+                    "tool_calls": None
+                }
+            }]
+        }
+        
+        agent = ShelloAgent(client=mock_client)
+        entries = agent.process_user_message("Hi")
+        
+        # Should have assistant entry (user entry is added to history but not returned in entries)
+        assert len(entries) >= 1
+        assert entries[0].type == "assistant"
+        assert entries[0].content == "Hello!"
     
     def test_process_message_with_tool_call(self):
         """Test processing a message that requires a tool call."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient, \
-             patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
-            
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.side_effect = [
+        with patch('shello_cli.agent.tool_executor.BashTool') as MockBashTool:
+            mock_client = _create_mock_client()
+            mock_client.chat.side_effect = [
                 # First call: return tool call
                 {
                     "choices": [{
@@ -324,7 +320,7 @@ class TestShelloAgentUnitTests:
                 error=None
             )
             
-            agent = ShelloAgent(api_key="test-key")
+            agent = ShelloAgent(client=mock_client)
             entries = agent.process_user_message("Run echo test")
             
             # Should have tool_call, tool_result, and assistant entries (user entry not returned)
@@ -335,68 +331,67 @@ class TestShelloAgentUnitTests:
     
     def test_execute_tool_with_invalid_json(self):
         """Test tool execution with invalid JSON arguments."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'):
-            agent = ShelloAgent(api_key="test-key")
-            
-            tool_call = {
-                "id": "call_123",
-                "function": {
-                    "name": "bash",
-                    "arguments": "invalid json {"
-                }
+        mock_client = _create_mock_client()
+        agent = ShelloAgent(client=mock_client)
+        
+        tool_call = {
+            "id": "call_123",
+            "function": {
+                "name": "bash",
+                "arguments": "invalid json {"
             }
-            
-            result = agent._tool_executor.execute_tool(tool_call)
-            
-            assert result.success is False
-            assert "Failed to parse tool arguments" in result.error
+        }
+        
+        result = agent._tool_executor.execute_tool(tool_call)
+        
+        assert result.success is False
+        assert "Failed to parse tool arguments" in result.error
     
     def test_execute_tool_with_unknown_tool(self):
         """Test tool execution with unknown tool name."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'):
-            agent = ShelloAgent(api_key="test-key")
-            
-            tool_call = {
-                "id": "call_123",
-                "function": {
-                    "name": "unknown_tool",
-                    "arguments": '{"param": "value"}'
-                }
+        mock_client = _create_mock_client()
+        agent = ShelloAgent(client=mock_client)
+        
+        tool_call = {
+            "id": "call_123",
+            "function": {
+                "name": "unknown_tool",
+                "arguments": '{"param": "value"}'
             }
-            
-            result = agent._tool_executor.execute_tool(tool_call)
-            
-            assert result.success is False
-            assert "Unknown tool" in result.error
+        }
+        
+        result = agent._tool_executor.execute_tool(tool_call)
+        
+        assert result.success is False
+        assert "Unknown tool" in result.error
     
     def test_execute_tool_with_missing_command(self):
         """Test bash tool execution with missing command parameter."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient'):
-            agent = ShelloAgent(api_key="test-key")
-            
-            tool_call = {
-                "id": "call_123",
-                "function": {
-                    "name": "bash",
-                    "arguments": '{}'
-                }
+        mock_client = _create_mock_client()
+        agent = ShelloAgent(client=mock_client)
+        
+        tool_call = {
+            "id": "call_123",
+            "function": {
+                "name": "bash",
+                "arguments": '{}'
             }
-            
-            result = agent._tool_executor.execute_tool(tool_call)
-            
-            assert result.success is False
-            assert "No command provided" in result.error
+        }
+        
+        result = agent._tool_executor.execute_tool(tool_call)
+        
+        assert result.success is False
+        assert "No command provided" in result.error
     
     def test_api_error_handling(self):
         """Test that API errors are handled gracefully."""
-        with patch('shello_cli.agent.shello_agent.ShelloClient') as MockClient:
-            mock_client_instance = MockClient.return_value
-            mock_client_instance.chat.side_effect = Exception("API Error")
-            
-            agent = ShelloAgent(api_key="test-key")
-            entries = agent.process_user_message("test")
-            
-            # Should have error entry (user entry is added to history but not returned in entries)
-            assert len(entries) >= 1
-            assert entries[0].type == "assistant"
-            assert "Error communicating with AI" in entries[0].content
+        mock_client = _create_mock_client()
+        mock_client.chat.side_effect = Exception("API Error")
+        
+        agent = ShelloAgent(client=mock_client)
+        entries = agent.process_user_message("test")
+        
+        # Should have error entry (user entry is added to history but not returned in entries)
+        assert len(entries) >= 1
+        assert entries[0].type == "assistant"
+        assert "Error communicating with AI" in entries[0].content

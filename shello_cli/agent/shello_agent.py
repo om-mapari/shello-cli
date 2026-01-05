@@ -7,7 +7,7 @@ processes user messages, executes tools, and handles streaming responses.
 
 import json
 import platform
-from typing import List, Optional, Generator, Any, Dict
+from typing import List, Optional, Generator, Any, Dict, Union
 from datetime import datetime
 
 from shello_cli.api.openai_client import ShelloClient
@@ -22,15 +22,21 @@ from shello_cli.utils.system_info import (
     get_current_datetime
 )
 
+# Import for type hints only
+try:
+    from shello_cli.api.bedrock_client import ShelloBedrockClient
+except ImportError:
+    ShelloBedrockClient = None  # type: ignore
+
 
 class ShelloAgent:
     """AI agent that processes messages and executes tools.
     
-    The agent maintains conversation history, sends messages to the OpenAI API,
+    The agent maintains conversation history, sends messages to the AI provider,
     executes tools when requested by the AI, and manages the tool execution loop.
     
     Attributes:
-        _client: The OpenAI client for API communication
+        _client: The AI client (ShelloClient or ShelloBedrockClient) for API communication
         _tool_executor: The tool executor for running tools
         _message_processor: The message processor for handling conversation flow
         _chat_history: List of chat entries
@@ -39,25 +45,31 @@ class ShelloAgent:
     
     def __init__(
         self,
-        api_key: str,
-        base_url: Optional[str] = None,
-        model: Optional[str] = None,
+        client: Union[ShelloClient, 'ShelloBedrockClient'],
         max_tool_rounds: int = 100
     ):
-        """Initialize agent with API credentials.
+        """Initialize agent with a client instance.
+        
+        This constructor uses dependency injection to accept a pre-configured
+        client instance, allowing the agent to work with any AI provider
+        (OpenAI-compatible APIs or AWS Bedrock) without provider-specific code.
         
         Args:
-            api_key: OpenAI API key for authentication
-            base_url: Optional custom base URL for OpenAI-compatible endpoints
-            model: Optional model name (defaults to "gpt-4o")
-            max_tool_rounds: Maximum number of tool execution rounds (default: 100)
+            client: The AI client instance (ShelloClient or ShelloBedrockClient).
+                   The client should be created using the client_factory.create_client()
+                   function to ensure proper configuration.
+            max_tool_rounds: Maximum number of tool execution rounds (default: 100).
+                           This prevents infinite loops in tool execution.
+        
+        Example:
+            >>> from shello_cli.api.client_factory import create_client
+            >>> from shello_cli.utils.settings_manager import SettingsManager
+            >>> settings = SettingsManager.get_instance()
+            >>> client = create_client(settings)
+            >>> agent = ShelloAgent(client=client)
         """
-        # Initialize the OpenAI client
-        self._client = ShelloClient(
-            api_key=api_key,
-            model=model or "gpt-4o",
-            base_url=base_url
-        )
+        # Store the client instance
+        self._client = client
         
         # Initialize components
         self._tool_executor = ToolExecutor()
