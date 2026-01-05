@@ -63,7 +63,7 @@ class ShelloAgent:
         
         Example:
             >>> from shello_cli.api.client_factory import create_client
-            >>> from shello_cli.utils.settings_manager import SettingsManager
+            >>> from shello_cli.settings import SettingsManager
             >>> settings = SettingsManager.get_instance()
             >>> client = create_client(settings)
             >>> agent = ShelloAgent(client=client)

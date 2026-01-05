@@ -8,7 +8,7 @@ in the settings manager.
 from typing import Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from shello_cli.utils.settings_manager import SettingsManager
+    from shello_cli.settings import SettingsManager
     from shello_cli.api.openai_client import ShelloClient
     from shello_cli.api.bedrock_client import ShelloBedrockClient
 
@@ -36,7 +36,7 @@ def create_client(
                    required dependencies are not installed
     
     Examples:
-        >>> from shello_cli.utils.settings_manager import SettingsManager
+        >>> from shello_cli.settings import SettingsManager
         >>> settings = SettingsManager.get_instance()
         >>> client = create_client(settings)  # Uses current provider
         >>> client = create_client(settings, provider="bedrock")  # Force Bedrock
