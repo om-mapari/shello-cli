@@ -4,9 +4,10 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 from shello_cli.tools.bash_tool import BashTool
 from shello_cli.utils.settings_manager import CommandTrustConfig
-from shello_cli.constants import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
+from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
 
 
+@pytest.mark.no_mock_settings
 class TestBashToolTrustIntegration:
     """Test BashTool integration with TrustManager."""
     
@@ -135,7 +136,7 @@ class TestBashToolTrustIntegration:
         # Should execute without approval
         assert result.success is True
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_ai_safe_flag_false(self, mock_settings_manager_class):
         """Test that is_safe=False in ai_driven mode requires approval."""
         # Setup mock settings manager

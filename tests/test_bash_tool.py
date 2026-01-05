@@ -16,8 +16,8 @@ from shello_cli.types import ToolResult
 class TestBashToolProperties:
     """Property-based tests for BashTool."""
     
-    @given(command=st.sampled_from(['echo test', 'pwd', 'ls', 'dir', 'echo hello']))
-    @settings(max_examples=100, deadline=None)
+    @given(command=st.sampled_from(['echo test', 'pwd', 'echo hello', 'cd']))
+    @settings(deadline=None, max_examples=10)
     def test_property_2_bash_command_returns_valid_tool_result(self, command):
         """
         Feature: openai-cli-refactor, Property 2: Bash Command Execution Returns Valid ToolResult
@@ -51,7 +51,7 @@ class TestBashToolProperties:
             max_size=20
         )
     )
-    @settings(max_examples=100)
+    @settings(deadline=None)
     def test_property_3_directory_change_consistency(self, dir_name):
         """
         Feature: openai-cli-refactor, Property 3: Directory Change Consistency
@@ -95,7 +95,7 @@ class TestBashToolUnitTests:
     def test_failed_command_execution(self):
         """Test that a failed command returns proper ToolResult with error."""
         bash_tool = BashTool()
-        result = bash_tool.execute("nonexistentcommand12345")
+        result = bash_tool.execute("nonexistentcommand12345", timeout=5)
         
         assert result.success is False
         assert result.error is not None

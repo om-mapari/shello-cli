@@ -31,7 +31,7 @@ class TestShelloAgentProperties:
             max_size=10
         )
     )
-    @settings(max_examples=100, deadline=None)
+    @settings(deadline=None)
     def test_property_6_conversation_history_preservation(self, messages):
         """
         Feature: openai-cli-refactor, Property 6: Conversation History Preservation
@@ -80,7 +80,7 @@ class TestShelloAgentProperties:
                 f"Entry {i} timestamp is after entry {i+1}"
     
     @given(max_rounds=st.integers(min_value=1, max_value=10))
-    @settings(max_examples=100, deadline=None)
+    @settings(deadline=None)
     def test_property_7_max_tool_rounds_enforcement(self, max_rounds):
         """
         Feature: openai-cli-refactor, Property 7: Max Tool Rounds Enforcement
@@ -131,7 +131,7 @@ class TestShelloAgentProperties:
     @given(
         error_message=st.text(min_size=1, max_size=100)
     )
-    @settings(max_examples=100, deadline=None)
+    @settings(deadline=None)
     def test_property_8_failed_tool_execution_error_propagation(self, error_message):
         """
         Feature: openai-cli-refactor, Property 8: Failed Tool Execution Error Propagation
