@@ -202,6 +202,7 @@ def display_help():
     commands_table.add_row("/quit", "Exit the application")
     commands_table.add_row("/exit", "Exit the application")
     commands_table.add_row("/new", "Start a new conversation")
+    commands_table.add_row("/switch", "Switch between AI providers")
     commands_table.add_row("/about", "Show information about Shello CLI")
     commands_table.add_row("/help", "Show this help message")
     
@@ -277,6 +278,7 @@ def print_welcome_banner(user_info, version):
     console.print("  [bold bright_blue]/about[/bold bright_blue] [bright_black]─[/bright_black] [white]Show information about Shello CLI[/white]")
     console.print("  [bold bright_blue]/quit[/bold bright_blue] [bright_black]─[/bright_black] [white]Exit the application[/white]")
     console.print("  [bold bright_blue]/new[/bold bright_blue] [bright_black]─[/bright_black] [white]Start a new conversation[/white]")
+    console.print("  [bold bright_blue]/switch[/bold bright_blue] [bright_black]─[/bright_black] [white]Switch between AI providers[/white]")
     console.print("  [bold bright_blue]/help[/bold bright_blue] [bright_black]─[/bright_black] [white]Show keyboard shortcuts and help[/white]")
     console.print("  [bold bright_blue]↑/↓[/bold bright_blue] [bright_black]─[/bright_black] [white]Navigate command history[/white]")
     console.print()

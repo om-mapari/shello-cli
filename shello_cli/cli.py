@@ -14,6 +14,7 @@ from shello_cli.ui.ui_renderer import (
 )
 from shello_cli.ui.user_input import get_user_input_with_clear
 from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.api.client_factory import create_client
 from shello_cli.commands.command_detector import CommandDetector, InputType
 from shello_cli.commands.direct_executor import DirectExecutor
 from shello_cli.commands.context_manager import ContextManager
@@ -21,25 +22,149 @@ from shello_cli.tools.bash_tool import BashTool
 import shello_cli as version_module
 
 
-def create_new_session(settings_manager):
-    """Create a new ShelloAgent and chat session"""
-    api_key = settings_manager.get_api_key()
-    if not api_key:
-        console.print("✗ [red]No API key found.[/red]")
-        console.print("💡 [yellow]Run 'shello setup' to configure your API key.[/yellow]")
-        console.print("   Or set OPENAI_API_KEY environment variable.\n")
+def create_new_session(settings_manager, provider=None):
+    """Create a new ShelloAgent and chat session.
+    
+    This function uses the client factory to create the appropriate client
+    based on the configured provider (OpenAI or Bedrock), then creates an
+    agent with that client using dependency injection.
+    
+    Args:
+        settings_manager: The settings manager instance containing provider configuration
+        provider: Optional provider override (for switching providers)
+    
+    Returns:
+        Tuple of (agent, chat_session) ready for use
+    
+    Raises:
+        SystemExit: If client creation fails due to missing configuration or errors
+    """
+    # Use factory to create client based on provider configuration
+    try:
+        client = create_client(settings_manager, provider=provider)
+    except ValueError as e:
+        # Configuration error - display helpful message
+        console.print(f"✗ [red]{str(e)}[/red]")
+        sys.exit(1)
+    except Exception as e:
+        # Unexpected error - display error and suggest setup
+        console.print(f"✗ [red]Failed to create client: {str(e)}[/red]")
+        console.print("💡 [yellow]Run 'shello setup' to configure your provider.[/yellow]")
         sys.exit(1)
     
-    base_url = settings_manager.get_base_url()
-    model = settings_manager.get_current_model()
-    
-    agent = ShelloAgent(
-        api_key=api_key,
-        base_url=base_url,
-        model=model
-    )
+    # Create agent with client (dependency injection)
+    agent = ShelloAgent(client=client)
     chat_session = ChatSession(agent)
     return agent, chat_session
+
+
+def switch_provider(settings_manager, agent, chat_session, context_manager, direct_executor):
+    """Switch to a different provider during chat session.
+    
+    This function allows users to switch between configured providers (OpenAI and Bedrock)
+    during an active chat session. It preserves conversation history and reconnects
+    all components to the new agent.
+    
+    Args:
+        settings_manager: The settings manager instance
+        agent: Current agent instance
+        chat_session: Current chat session
+        context_manager: Context manager instance
+        direct_executor: Direct executor instance
+    
+    Returns:
+        Tuple of (new_agent, new_chat_session) if switch succeeds, or (None, None) if cancelled/failed
+    """
+    # Get available providers
+    available_providers = settings_manager.get_available_providers()
+    current_provider = settings_manager.get_provider()
+    
+    # Check if we have multiple providers configured
+    if len(available_providers) < 2:
+        console.print("\n⚠️  [yellow]Only one provider is configured.[/yellow]")
+        console.print("💡 [cyan]Run 'shello setup' to configure additional providers.[/cyan]\n")
+        return None, None
+    
+    # Display available providers with descriptive labels
+    console.print("\n🔄 [bold]Switch Provider:[/bold]")
+    provider_labels = {
+        "openai": "OpenAI-compatible API",
+        "bedrock": "AWS Bedrock"
+    }
+    
+    for i, prov in enumerate(available_providers, 1):
+        marker = "✓" if prov == current_provider else " "
+        label = provider_labels.get(prov, prov.capitalize())
+        console.print(f"  {i}. [{marker}] {label}")
+    
+    current_label = provider_labels.get(current_provider, current_provider)
+    console.print(f"\n  Current: {current_label}")
+    
+    # Get user choice
+    try:
+        choice = click.prompt(
+            "\nSelect provider (or 'c' to cancel)",
+            type=str,
+            default="c"
+        )
+        
+        if choice.lower() == 'c':
+            console.print("✗ [yellow]Provider switch cancelled.[/yellow]\n")
+            return None, None
+        
+        choice_idx = int(choice) - 1
+        if choice_idx < 0 or choice_idx >= len(available_providers):
+            console.print("✗ [red]Invalid choice.[/red]\n")
+            return None, None
+        
+        new_provider = available_providers[choice_idx]
+        
+        if new_provider == current_provider:
+            console.print(f"✓ [green]Already using {new_provider}.[/green]\n")
+            return None, None
+        
+    except (ValueError, click.Abort):
+        console.print("\n✗ [yellow]Provider switch cancelled.[/yellow]\n")
+        return None, None
+    
+    # Save conversation history before switching
+    old_history = agent.get_chat_history()
+    old_messages = agent._messages.copy()
+    
+    # Clear cache before switching
+    agent.clear_cache()
+    
+    # Update settings to new provider
+    settings_manager.set_provider(new_provider)
+    
+    # Create new session with new provider
+    try:
+        new_agent, new_chat_session = create_new_session(settings_manager)
+        
+        # Restore conversation history
+        new_agent._chat_history = old_history
+        new_agent._messages = old_messages
+        
+        # Reconnect direct executor to new agent's bash tool
+        direct_executor.set_bash_tool(new_agent.get_bash_tool())
+        
+        # Get new model info
+        new_model = new_agent.get_current_model()
+        
+        console.print(f"\n✓ [green]Switched to {new_provider}[/green]")
+        console.print(f"  Model: [cyan]{new_model}[/cyan]")
+        console.print(f"  Conversation history preserved\n")
+        
+        return new_agent, new_chat_session
+        
+    except Exception as e:
+        console.print(f"\n✗ [red]Failed to switch provider: {str(e)}[/red]")
+        console.print("⚠️  [yellow]Staying on current provider.[/yellow]\n")
+        
+        # Restore original provider in settings
+        settings_manager.set_provider(current_provider)
+        
+        return None, None
 
 
 
@@ -111,6 +236,18 @@ def chat(debug, new, yolo):
             if user_input.lower() in ["/quit", "/exit"]:
                 console.print("\n👋 Goodbye! Thanks for using Shello CLI", style="yellow")
                 break
+            
+            elif user_input.lower() == "/switch":
+                # Switch provider
+                result = switch_provider(
+                    settings_manager, agent, chat_session,
+                    context_manager, direct_executor
+                )
+                
+                if result[0] is not None:
+                    agent, chat_session = result
+                
+                continue
             
             elif user_input.lower() == "/new":
                 # Clear cache before creating new session
@@ -214,20 +351,113 @@ def config():
     user_settings = settings_manager.load_user_settings()
     project_settings = settings_manager.load_project_settings()
     
-    console.print("\n📋 Current Configuration:", style="bold blue")
-    console.print(f"  API Key: {'***' + settings_manager.get_api_key()[-4:] if settings_manager.get_api_key() else 'Not set'}")
-    console.print(f"  Base URL: {user_settings.base_url}")
-    console.print(f"  Current Model: {settings_manager.get_current_model()}")
-    console.print(f"  Available Models: {', '.join(user_settings.models)}")
+    # Get current provider
+    current_provider = settings_manager.get_provider()
+    
+    # Provider labels for display
+    provider_labels = {
+        "openai": "OpenAI-compatible API",
+        "bedrock": "AWS Bedrock"
+    }
+    
+    console.print("\n📋 [bold blue]Current Configuration:[/bold blue]")
+    console.print()
+    
+    # Display current provider with descriptive label
+    provider_label = provider_labels.get(current_provider, current_provider.capitalize())
+    console.print(f"  🤖 [bold]Provider:[/bold] {provider_label}")
+    console.print()
+    
+    # Display provider-specific configuration
+    if current_provider == "openai":
+        # OpenAI-compatible API configuration
+        try:
+            config = settings_manager.get_provider_config("openai")
+            
+            # Display API key (masked)
+            api_key = config.get("api_key")
+            if api_key:
+                masked_key = '***' + api_key[-4:] if len(api_key) >= 4 else '***'
+                console.print(f"  🔑 [bold]API Key:[/bold] {masked_key}")
+            else:
+                console.print(f"  🔑 [bold]API Key:[/bold] [red]Not set[/red]")
+            
+            # Display base URL
+            base_url = config.get("base_url", "https://api.openai.com/v1")
+            console.print(f"  📡 [bold]Base URL:[/bold] {base_url}")
+            
+        except ValueError as e:
+            console.print(f"  [red]Configuration error: {e}[/red]")
+    
+    elif current_provider == "bedrock":
+        # AWS Bedrock configuration
+        try:
+            config = settings_manager.get_provider_config("bedrock")
+            
+            # Display AWS region
+            region = config.get("region", "Not set")
+            console.print(f"  🌍 [bold]AWS Region:[/bold] {region}")
+            
+            # Display credential method
+            profile = config.get("profile")
+            access_key = config.get("access_key")
+            
+            if profile:
+                console.print(f"  🔐 [bold]Credentials:[/bold] AWS Profile ({profile})")
+            elif access_key:
+                # Mask access key
+                masked_key = access_key[:4] + '***' + access_key[-4:] if len(access_key) >= 8 else '***'
+                console.print(f"  🔐 [bold]Credentials:[/bold] Explicit credentials ({masked_key})")
+            else:
+                console.print(f"  🔐 [bold]Credentials:[/bold] Default credential chain")
+            
+        except ValueError as e:
+            console.print(f"  [red]Configuration error: {e}[/red]")
+    
+    console.print()
+    
+    # Display current model
+    current_model = settings_manager.get_current_model()
+    console.print(f"  🎯 [bold]Current Model:[/bold] {current_model}")
+    
+    # Display available models for current provider
+    try:
+        config = settings_manager.get_provider_config(current_provider)
+        models = config.get("models", [])
+        if models:
+            console.print(f"  📚 [bold]Available Models:[/bold]")
+            for model in models:
+                marker = "✓" if model == current_model else " "
+                console.print(f"     [{marker}] {model}")
+        else:
+            console.print(f"  📚 [bold]Available Models:[/bold] [dim]None configured[/dim]")
+    except ValueError:
+        console.print(f"  📚 [bold]Available Models:[/bold] [dim]None configured[/dim]")
+    
+    # Display project-level overrides if present
     if project_settings.model:
-        console.print(f"  Project Model Override: {project_settings.model}")
+        console.print()
+        console.print(f"  ⚙️  [bold]Project Override:[/bold]")
+        console.print(f"     Model: {project_settings.model}")
+    
+    # Display configured alternate providers
+    available_providers = settings_manager.get_available_providers()
+    if len(available_providers) > 1:
+        console.print()
+        console.print(f"  🔄 [bold]Alternate Providers:[/bold]")
+        for provider in available_providers:
+            if provider != current_provider:
+                label = provider_labels.get(provider, provider.capitalize())
+                console.print(f"     • {label}")
+        console.print(f"     [dim]Use '/switch' during chat to switch providers[/dim]")
+    
     console.print()
 
 
 @cli.command()
 def setup():
     """Interactive setup wizard for first-time configuration"""
-    from shello_cli.utils.settings_manager import UserSettings
+    from shello_cli.utils.settings_manager import UserSettings, ProviderConfig
     from pathlib import Path
     
     settings_manager = SettingsManager.get_instance()
@@ -236,6 +466,7 @@ def setup():
     console.print("\n🌊 [bold cyan]Welcome to Shello CLI Setup![/bold cyan]\n")
     
     # Check if settings already exist
+    existing_settings = None
     if user_settings_path.exists():
         console.print("⚠ [yellow]Settings file already exists.[/yellow]")
         overwrite = click.confirm("Do you want to reconfigure?", default=False)
@@ -243,23 +474,102 @@ def setup():
             console.print("✓ [green]Setup cancelled. Use 'shello config' to view current settings.[/green]\n")
             return
         console.print()
+        # Load existing settings to preserve other provider config
+        try:
+            existing_settings = settings_manager.load_user_settings()
+        except:
+            existing_settings = None
     
-    # API Provider selection
-    console.print("📡 [bold]Select API Provider:[/bold]")
+    # Provider selection
+    console.print("🤖 [bold]Select AI Provider:[/bold]")
+    console.print("  1. OpenAI-compatible API (OpenAI, OpenRouter, custom)")
+    console.print("  2. AWS Bedrock (Claude, Nova, etc.)")
+    
+    provider_choice = click.prompt("\nChoose provider", type=click.IntRange(1, 2), default=1)
+    
+    if provider_choice == 1:
+        # OpenAI-compatible setup flow
+        provider = "openai"
+        openai_config, bedrock_config = setup_openai_provider(existing_settings)
+    else:
+        # AWS Bedrock setup flow
+        provider = "bedrock"
+        openai_config, bedrock_config = setup_bedrock_provider(existing_settings)
+    
+    # Save configuration
+    console.print("\n💾 [bold]Saving configuration...[/bold]")
+    
+    new_settings = UserSettings(
+        provider=provider,
+        openai_config=openai_config,
+        bedrock_config=bedrock_config,
+        # Preserve output_management and command_trust if they exist
+        output_management=existing_settings.output_management if existing_settings else None,
+        command_trust=existing_settings.command_trust if existing_settings else None
+    )
+    
+    try:
+        settings_manager.save_user_settings(new_settings)
+        console.print("✓ [green]Configuration saved successfully![/green]")
+        console.print(f"  Location: [dim]{user_settings_path}[/dim]")
+        
+        # Offer to configure alternate provider
+        console.print()
+        configure_alternate = click.confirm(
+            "Would you like to configure an alternate provider for easy switching?",
+            default=False
+        )
+        
+        if configure_alternate:
+            console.print()
+            if provider == "openai":
+                # Configure Bedrock as alternate
+                console.print("☁️  [bold]Configuring AWS Bedrock as alternate provider...[/bold]\n")
+                _, bedrock_config = setup_bedrock_provider(None)
+                new_settings.bedrock_config = bedrock_config
+            else:
+                # Configure OpenAI as alternate
+                console.print("📡 [bold]Configuring OpenAI-compatible API as alternate provider...[/bold]\n")
+                openai_config, _ = setup_openai_provider(None)
+                new_settings.openai_config = openai_config
+            
+            # Save updated settings with both providers
+            settings_manager.save_user_settings(new_settings)
+            console.print("✓ [green]Alternate provider configured![/green]")
+            console.print("💡 [cyan]Use '/switch' during chat to switch between providers.[/cyan]")
+        
+        console.print("\n🚀 [bold green]Setup complete! You can now run 'shello' to start chatting.[/bold green]\n")
+    except Exception as e:
+        console.print(f"✗ [red]Failed to save settings: {str(e)}[/red]\n")
+        sys.exit(1)
+
+
+def setup_openai_provider(existing_settings):
+    """Setup OpenAI-compatible provider configuration.
+    
+    Args:
+        existing_settings: Existing UserSettings to preserve other provider config
+        
+    Returns:
+        Tuple of (openai_config, bedrock_config) where bedrock_config is preserved from existing
+    """
+    from shello_cli.utils.settings_manager import ProviderConfig
+    
+    console.print("\n📡 [bold]OpenAI-compatible API Setup:[/bold]")
     console.print("  1. OpenAI (https://api.openai.com/v1)")
     console.print("  2. OpenRouter (https://openrouter.ai/api/v1)")
     console.print("  3. Custom URL")
     
-    provider_choice = click.prompt("\nChoose provider", type=click.IntRange(1, 3), default=1)
+    api_choice = click.prompt("\nChoose API", type=click.IntRange(1, 3), default=1)
     
-    if provider_choice == 1:
+    if api_choice == 1:
         base_url = "https://api.openai.com/v1"
         default_model = "gpt-4o"
         models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
-    elif provider_choice == 2:
+    elif api_choice == 2:
         base_url = "https://openrouter.ai/api/v1"
-        default_model = "mistralai/devstral-2512:free"
-        models = ["mistralai/devstral-2512:free", "gpt-4o", "gpt-4o-mini"]
+        default_model = "anthropic/claude-3.5-sonnet"
+        models = ["anthropic/claude-3.5-sonnet", "anthropic/claude-3-opus", "gpt-4o"]
     else:
         base_url = click.prompt("Enter custom API base URL", type=str)
         default_model = click.prompt("Enter default model name", type=str)
@@ -268,14 +578,12 @@ def setup():
     console.print(f"\n✓ Base URL: [cyan]{base_url}[/cyan]")
     
     # API Key
-    console.print("\n🔑 [bold]API Key Configuration:[/bold]")
+    console.print("\n🔑 [bold]API Key:[/bold]")
     api_key = click.prompt("Enter your API key", type=str, hide_input=True)
     
     if not api_key or len(api_key) < 10:
         console.print("✗ [red]Invalid API key. Setup cancelled.[/red]\n")
-        return
-    
-    console.print("✓ API key received")
+        sys.exit(1)
     
     # Model selection
     console.print(f"\n🤖 [bold]Default Model:[/bold]")
@@ -285,26 +593,92 @@ def setup():
     if not use_default:
         default_model = click.prompt("Enter model name", type=str, default=default_model)
     
-    console.print(f"✓ Default model: [cyan]{default_model}[/cyan]")
-    
-    # Save settings
-    console.print("\n💾 [bold]Saving configuration...[/bold]")
-    
-    new_settings = UserSettings(
+    # Create OpenAI config
+    openai_config = ProviderConfig(
+        provider_type="openai",
         api_key=api_key,
         base_url=base_url,
         default_model=default_model,
         models=models
     )
     
-    try:
-        settings_manager.save_user_settings(new_settings)
-        console.print("✓ [green]Configuration saved successfully![/green]")
-        console.print(f"  Location: [dim]{user_settings_path}[/dim]")
-        console.print("\n🚀 [bold green]Setup complete! You can now run 'shello' to start chatting.[/bold green]\n")
-    except Exception as e:
-        console.print(f"✗ [red]Failed to save settings: {str(e)}[/red]\n")
-        sys.exit(1)
+    # Preserve existing Bedrock config if present
+    bedrock_config = existing_settings.bedrock_config if existing_settings else None
+    
+    return openai_config, bedrock_config
+
+
+def setup_bedrock_provider(existing_settings):
+    """Setup AWS Bedrock provider configuration.
+    
+    Args:
+        existing_settings: Existing UserSettings to preserve other provider config
+        
+    Returns:
+        Tuple of (openai_config, bedrock_config) where openai_config is preserved from existing
+    """
+    from shello_cli.utils.settings_manager import ProviderConfig
+    
+    console.print("\n☁️  [bold]AWS Bedrock Setup:[/bold]")
+    
+    # Region
+    console.print("\n🌍 [bold]AWS Region:[/bold]")
+    aws_region = click.prompt("Enter AWS region", type=str, default="us-east-1")
+    
+    # Credential method
+    console.print("\n🔐 [bold]AWS Credentials:[/bold]")
+    console.print("  1. AWS Profile (recommended)")
+    console.print("  2. Explicit credentials (access key + secret key)")
+    console.print("  3. Default credential chain (environment/IAM)")
+    
+    cred_choice = click.prompt("\nChoose credential method", type=click.IntRange(1, 3), default=1)
+    
+    aws_profile = None
+    aws_access_key = None
+    aws_secret_key = None
+    
+    if cred_choice == 1:
+        aws_profile = click.prompt("Enter AWS profile name", type=str, default="default")
+        console.print(f"✓ Using AWS profile: [cyan]{aws_profile}[/cyan]")
+    elif cred_choice == 2:
+        aws_access_key = click.prompt("Enter AWS access key", type=str)
+        aws_secret_key = click.prompt("Enter AWS secret key", type=str, hide_input=True)
+        console.print("✓ Using explicit credentials")
+    else:
+        console.print("✓ Using default credential chain")
+    
+    # Model selection
+    console.print("\n🤖 [bold]Default Model:[/bold]")
+    console.print("  Suggested: anthropic.claude-3-5-sonnet-20241022-v2:0")
+    default_model = "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    models = [
+        "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "anthropic.claude-3-sonnet-20240229-v1:0",
+        "anthropic.claude-3-opus-20240229-v1:0",
+        "amazon.nova-pro-v1:0",
+        "amazon.nova-lite-v1:0"
+    ]
+    
+    use_default = click.confirm("Use suggested model?", default=True)
+    
+    if not use_default:
+        default_model = click.prompt("Enter Bedrock model ID", type=str, default=default_model)
+    
+    # Create Bedrock config
+    bedrock_config = ProviderConfig(
+        provider_type="bedrock",
+        aws_region=aws_region,
+        aws_profile=aws_profile,
+        aws_access_key=aws_access_key,
+        aws_secret_key=aws_secret_key,
+        default_model=default_model,
+        models=models
+    )
+    
+    # Preserve existing OpenAI config if present
+    openai_config = existing_settings.openai_config if existing_settings else None
+    
+    return openai_config, bedrock_config
 
 
 if __name__ == '__main__':
