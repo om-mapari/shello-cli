@@ -28,7 +28,7 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
         "# =============================================================================",
         "# Edit this file to customize your settings.",
         "# Only specify values you want to override - defaults are used for the rest.",
-        "# See: https://github.com/your-repo/shello-cli for documentation",
+        "# See: https://github.com/om-mapari/shello-cli for documentation",
         "",
     ])
     

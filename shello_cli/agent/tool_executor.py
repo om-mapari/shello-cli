@@ -53,13 +53,14 @@ class ToolExecutor:
         # Dispatch to appropriate tool
         if function_name == "bash":
             command = arguments.get("command", "")
+            is_safe = arguments.get("is_safe")
             if not command:
                 return ToolResult(
                     success=False,
                     output=None,
                     error="No command provided"
                 )
-            return self._bash_tool.execute(command)
+            return self._bash_tool.execute(command, is_safe=is_safe)
         elif function_name == "analyze_json":
             command = arguments.get("command", "")
             if not command:
@@ -118,6 +119,7 @@ class ToolExecutor:
         # Dispatch to appropriate tool
         if function_name == "bash":
             command = arguments.get("command", "")
+            is_safe = arguments.get("is_safe")
             if not command:
                 # Must be a generator - yield nothing and return error
                 if False:
@@ -128,7 +130,7 @@ class ToolExecutor:
                     error="No command provided"
                 )
             # Use streaming bash execution - yield from the generator
-            stream = self._bash_tool.execute_stream(command)
+            stream = self._bash_tool.execute_stream(command, is_safe=is_safe)
             result = None
             try:
                 while True:
