@@ -117,6 +117,7 @@ class TestCreateClientOpenAI:
             assert "shello setup" in str(exc_info.value)
 
 
+@pytest.mark.no_mock_settings
 class TestCreateClientBedrock:
     """Unit tests for creating Bedrock clients."""
     
@@ -190,8 +191,12 @@ class TestCreateClientBedrock:
             from shello_cli.api.bedrock_client import ShelloBedrockClient
             assert isinstance(client, ShelloBedrockClient)
     
-    def test_create_bedrock_client_missing_config_raises_error(self):
-        """Test error when Bedrock config is missing."""
+    @patch('shello_cli.api.bedrock_client.boto3')
+    def test_create_bedrock_client_missing_config_uses_defaults(self, mock_boto3):
+        """Test that Bedrock client can be created with default values when config is None."""
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+        
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
@@ -205,12 +210,13 @@ class TestCreateClientBedrock:
             manager.save_user_settings(settings)
             manager._user_settings = None
             
-            # Should raise ValueError
-            with pytest.raises(ValueError) as exc_info:
-                create_client(manager)
+            # Should create client with default values (no error)
+            client = create_client(manager)
             
-            assert "Bedrock provider not configured" in str(exc_info.value)
-            assert "shello setup" in str(exc_info.value)
+            # Verify it's a ShelloBedrockClient with default model
+            from shello_cli.api.bedrock_client import ShelloBedrockClient
+            assert isinstance(client, ShelloBedrockClient)
+            assert client.get_current_model() == "anthropic.claude-3-5-sonnet-20241022-v2:0"
 
 
 class TestCreateClientBoto3Import:
@@ -252,29 +258,50 @@ class TestCreateClientBoto3Import:
                     assert "pip install boto3" in str(exc_info.value)
 
 
+@pytest.mark.no_mock_settings
 class TestCreateClientInvalidProvider:
     """Unit tests for invalid provider handling."""
     
-    def test_create_client_invalid_provider_raises_error(self):
-        """Test error when provider is invalid."""
+    def test_create_client_invalid_provider_defaults_to_openai(self):
+        """Test that invalid provider defaults to openai with a warning."""
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             manager._user_settings = None
             
-            # Create settings with invalid provider
-            settings = UserSettings(provider="invalid_provider")
+            # Create settings with invalid provider and valid OpenAI config
+            openai_config = ProviderConfig(
+                provider_type="openai",
+                api_key="test-api-key-12345",
+                default_model="gpt-4o"
+            )
+            
+            settings = UserSettings(
+                provider="invalid_provider",
+                openai_config=openai_config
+            )
             manager.save_user_settings(settings)
             manager._user_settings = None
             
-            # Should raise ValueError
-            with pytest.raises(ValueError) as exc_info:
-                create_client(manager)
+            # Should default to openai and create client successfully
+            import io
+            import sys
+            captured_output = io.StringIO()
+            sys.stdout = captured_output
             
-            assert "Unknown provider" in str(exc_info.value)
-            assert "invalid_provider" in str(exc_info.value)
-            assert "openai, bedrock" in str(exc_info.value)
-            assert "shello setup" in str(exc_info.value)
+            try:
+                client = create_client(manager)
+                
+                # Verify warning was printed
+                output = captured_output.getvalue()
+                assert "Warning: Invalid provider 'invalid_provider'" in output
+                assert "Using default 'openai'" in output
+                
+                # Verify it's a ShelloClient (defaulted to openai)
+                from shello_cli.api.openai_client import ShelloClient
+                assert isinstance(client, ShelloClient)
+            finally:
+                sys.stdout = sys.__stdout__
     
     def test_create_client_with_provider_override(self):
         """Test creating client with explicit provider override."""

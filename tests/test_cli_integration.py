@@ -16,7 +16,25 @@ from shello_cli.tools.bash_tool import BashTool
 @settings(max_examples=100, deadline=None)
 @given(
     command=st.sampled_from(['nonexistentcmd', 'fakecmd', 'notarealcommand']),
-    args=st.one_of(st.none(), st.text(min_size=0, max_size=20, alphabet=st.characters(blacklist_characters='\x00')))
+    # Use args that won't trigger natural language detection
+    # Avoid phrases like "would you", "are you", "can you", etc.
+    # Also avoid shell special characters that could make the command succeed
+    args=st.one_of(
+        st.none(), 
+        st.text(
+            min_size=0, 
+            max_size=20, 
+            alphabet=st.characters(
+                blacklist_characters='\x00;|&<>()[]{}$`\'"\\',
+                blacklist_categories=('Cc', 'Cs')
+            )
+        ).filter(lambda x: x and not any(phrase in x.lower() for phrase in [
+            'are you', 'do you', 'can you', 'will you', 'would you', 'could you',
+            'should i', 'how do', 'what is', 'what are', 'why is', 'when is',
+            'where is', 'who is', 'tell me', 'show me', 'explain', 'describe',
+            'please', 'i want', 'i need', 'help me'
+        ]))
+    )
 )
 @patch('shello_cli.utils.settings_manager.SettingsManager')
 def test_property_no_ai_retry_on_command_failure(mock_settings_manager, command, args):

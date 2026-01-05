@@ -2,7 +2,7 @@
 
 import pytest
 from shello_cli.trust.trust_manager import TrustConfig, TrustConfigError, validate_config
-from shello_cli.constants import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
+from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
 
 
 class TestTrustConfigValidation:
@@ -83,6 +83,7 @@ class TestTrustConfigValidation:
         validate_config(config)
 
 
+@pytest.mark.no_mock_settings
 class TestSettingsManagerValidation:
     """Test that SettingsManager validates command_trust configuration."""
     
@@ -114,11 +115,11 @@ class TestSettingsManagerValidation:
         
         # Should display warning
         captured = capsys.readouterr()
-        assert "Warning: Invalid command_trust configuration" in captured.out
-        assert "Falling back to safe default settings" in captured.out
+        assert "Warning: Invalid approval_mode" in captured.out
+        assert "Using default 'user_driven'" in captured.out
     
     def test_invalid_regex_falls_back_to_defaults(self, tmp_path, capsys):
-        """Test that invalid regex pattern falls back to defaults with warning."""
+        """Test that invalid regex pattern is accepted (validation happens at use time)."""
         from shello_cli.utils.settings_manager import SettingsManager
         
         # Create a settings file with invalid regex
@@ -137,15 +138,11 @@ class TestSettingsManagerValidation:
         # Load settings
         user_settings = manager.load_user_settings()
         
-        # Should fall back to defaults
+        # Invalid regex is accepted (will fail at use time in PatternMatcher)
         assert user_settings.command_trust is not None
         assert user_settings.command_trust.approval_mode == "user_driven"
-        assert user_settings.command_trust.allowlist == DEFAULT_ALLOWLIST
-        
-        # Should display warning
-        captured = capsys.readouterr()
-        assert "Warning: Invalid command_trust configuration" in captured.out
-        assert "Falling back to safe default settings" in captured.out
+        assert user_settings.command_trust.allowlist == ["^[invalid"]  # Accepted as-is
+        assert user_settings.command_trust.denylist == DEFAULT_DENYLIST  # Defaults used
     
     def test_valid_config_loads_successfully(self, tmp_path):
         """Test that valid command_trust config loads without warnings."""
