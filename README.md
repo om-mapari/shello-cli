@@ -323,64 +323,105 @@ This will guide you through:
 - Provider-specific configuration (API keys or AWS credentials)
 - Default model selection
 
+The setup wizard generates a well-documented `~/.shello_cli/user-settings.yml` file with all available options as comments, making it easy to customize later.
+
 **Using AWS Bedrock?** See the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for detailed instructions on configuring AWS credentials and accessing Claude, Nova, and other foundation models.
+
+### Configuration Management
+
+**View current settings:**
+```bash
+shello config
+```
+
+**Edit settings in your default editor:**
+```bash
+shello config --edit
+```
+
+**Get/set specific values:**
+```bash
+shello config get provider
+shello config set provider bedrock
+shello config set openai_config.default_model gpt-4o-mini
+```
+
+**Reset to defaults:**
+```bash
+shello config reset
+```
 
 ### Manual Configuration
 
-**Global settings:** `~/.shello_cli/user-settings.json`
+**Global settings:** `~/.shello_cli/user-settings.yml`
+
+The settings file uses YAML format with helpful comments and documentation. After running `shello setup`, you'll have a file like this:
 
 **OpenAI-compatible API configuration:**
-```json
-{
-  "provider": "openai",
-  "openai_config": {
-    "provider_type": "openai",
-    "api_key": "your-api-key",
-    "base_url": "https://api.openai.com/v1",
-    "default_model": "gpt-4o",
-    "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-  }
-}
+```yaml
+# =============================================================================
+# SHELLO CLI USER SETTINGS
+# =============================================================================
+# Edit this file to customize your settings.
+# Only specify values you want to override - defaults are used for the rest.
+
+# =============================================================================
+# PROVIDER CONFIGURATION
+# =============================================================================
+provider: openai
+
+openai_config:
+  provider_type: openai
+  api_key: sk-proj-abc123...  # Or use OPENAI_API_KEY env var
+  base_url: https://api.openai.com/v1
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+    - gpt-4-turbo
+
+# =============================================================================
+# OUTPUT MANAGEMENT (optional - uses defaults if not specified)
+# =============================================================================
+# Uncomment and modify to customize:
+# output_management:
+#   enabled: true
+#   limits:
+#     list: 5000
+#     search: 10000
+#     default: 8000
+
+# =============================================================================
+# COMMAND TRUST (optional - uses defaults if not specified)
+# =============================================================================
+# Uncomment and modify to customize:
+# command_trust:
+#   enabled: true
+#   yolo_mode: false
+#   allowlist:
+#     - ls
+#     - pwd
 ```
 
 **AWS Bedrock configuration:**
-```json
-{
-  "provider": "bedrock",
-  "bedrock_config": {
-    "provider_type": "bedrock",
-    "aws_region": "us-east-1",
-    "aws_profile": "default",
-    "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "models": [
-      "anthropic.claude-3-5-sonnet-20241022-v2:0",
-      "anthropic.claude-3-opus-20240229-v1:0",
-      "amazon.nova-pro-v1:0"
-    ]
-  }
-}
+```yaml
+provider: bedrock
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
+    - anthropic.claude-3-opus-20240229-v1:0
 ```
 
-**Multiple providers configured:**
-```json
-{
-  "provider": "openai",
-  "openai_config": {
-    "provider_type": "openai",
-    "api_key": "your-openai-key",
-    "base_url": "https://api.openai.com/v1",
-    "default_model": "gpt-4o",
-    "models": ["gpt-4o", "gpt-4o-mini"]
-  },
-  "bedrock_config": {
-    "provider_type": "bedrock",
-    "aws_region": "us-east-1",
-    "aws_profile": "default",
-    "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-    "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
-  }
-}
-```
+**Key features:**
+- Only configured values are saved (everything else uses defaults)
+- All optional settings are shown as comments with examples
+- Inline documentation explains each setting
+- Environment variables can override any credential
 
 **Project settings:** `.shello/settings.json` (overrides global)
 ```json

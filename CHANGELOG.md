@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Settings Management System
+- **Modular Settings Architecture**: Separated internal patterns from user-changeable settings
+  - `patterns.py` - Internal regex patterns and templates (NOT user-changeable)
+  - `defaults.py` - Default values for user-changeable settings
+  - `settings/` module - Organized settings management with public API
+  - Clean separation between code constants and user configuration
+
+- **Settings Module Structure**: New `shello_cli/settings/` package
+  - `__init__.py` - Public API exports (SettingsManager, get_settings, get_api_key, etc.)
+  - `models.py` - Dataclasses for settings (ProviderConfig, OutputManagementConfig, CommandTrustConfig, UserSettings)
+  - `serializers.py` - YAML generation with helpful comments and documentation
+  - `manager.py` - SettingsManager class with load/save/merge logic
+
+- **YAML Configuration Format**: User-friendly YAML with inline documentation
+  - Replaced JSON with YAML for better readability
+  - Inline comments explaining each setting
+  - Section headers for organization
+  - Examples for all optional settings
+  - Only configured values saved (rest use defaults)
+
+- **Enhanced Setup Wizard**: Generates well-documented settings file
+  - Creates `~/.shello_cli/user-settings.yml` with all options as comments
+  - Only saves values user explicitly configured
+  - Shows examples for optional settings (output_management, command_trust)
+  - Includes helpful documentation in generated file
+
+- **Configuration Management Commands**: New CLI commands for settings
+  - `shello config` - Display current configuration
+  - `shello config --edit` - Open settings in default editor ($EDITOR)
+  - `shello config get <key>` - Get specific setting value (supports dot notation)
+  - `shello config set <key> <value>` - Set specific setting value (supports dot notation)
+  - `shello config reset` - Reset settings to defaults with confirmation
+
+- **Default Merging Strategy**: Smart merging of user settings with defaults
+  - User only specifies values they want to override
+  - Missing values automatically filled from `defaults.py`
+  - Denylist is always additive (user patterns added to defaults for safety)
+  - Environment variables override file settings
+
+- **Settings Validation**: Graceful handling of invalid values
+  - Validates provider values (openai, bedrock)
+  - Validates approval_mode (user_driven, ai_driven)
+  - Falls back to defaults on invalid values
+  - Logs warnings for invalid configuration
+
+- **File Security**: Automatic secure file permissions
+  - Sets 0o600 (user-only read/write) on settings files
+  - Protects API keys and credentials
+  - Creates parent directories if needed
+
 #### Multi-Provider Support
 - **AWS Bedrock Integration**: Full support for AWS Bedrock as an AI provider
   - Anthropic Claude models (3.5 Sonnet, 3 Opus, 3 Sonnet)
@@ -75,6 +125,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Settings Management Changes
+- **Settings File Format**: Migrated from JSON to YAML
+  - `~/.shello_cli/user-settings.json` → `~/.shello_cli/user-settings.yml`
+  - Backward compatibility maintained (old JSON files still work)
+  - Automatic migration on first run with new version
+
+- **Constants Organization**: Split `constants.py` into focused modules
+  - `patterns.py` - Internal patterns (COMMAND_PATTERNS, CONTENT_PATTERNS, etc.)
+  - `defaults.py` - User-changeable defaults (DEFAULT_CHAR_LIMITS, DEFAULT_STRATEGIES, etc.)
+  - Updated all imports across codebase
+
+- **Settings Manager Location**: Moved to dedicated module
+  - `utils/settings_manager.py` → `settings/manager.py`
+  - Backward compatibility via re-exports from `utils/settings_manager.py`
+  - No breaking changes for existing code
+
 #### Multi-Provider Support Changes
 - **Settings Manager**: Extended with provider configuration support
   - New `ProviderConfig` dataclass for provider-specific settings
@@ -104,6 +170,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Testing
 
+#### Settings Management Tests
+- **Comprehensive Test Coverage**: 400+ tests for settings system
+  - Settings loading and merging with defaults
+  - YAML serialization with comments
+  - Configuration validation and fallback
+  - File permissions and security
+  - Environment variable overrides
+  - Dot notation for get/set commands
+
+- **Property-Based Tests**: Formal correctness validation
+  - Property 1: Settings Round-Trip (serialize → deserialize produces equivalent settings)
+  - Property 2: Default Merging (partial settings filled with defaults)
+  - Property 3: Denylist Immutability (user denylist always includes defaults)
+  - Property 4: Environment Variable Fallback (env vars used when config missing)
+  - Property 5: Singleton Identity (all get_instance() calls return same object)
+
 #### Multi-Provider Support Tests
 - **Client Factory Tests**: 542 lines of comprehensive tests
   - Test creating ShelloClient for OpenAI provider
@@ -121,6 +203,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 8 property-based tests validating correctness properties
 
 ### Documentation
+
+#### Settings Management Documentation
+- **README Updates**: Configuration section rewritten
+  - New "Configuration Management" section with CLI commands
+  - YAML configuration examples with inline comments
+  - Explanation of default merging strategy
+  - Updated all JSON examples to YAML
+
+- **DEVELOPMENT_SETUP.md Updates**: Comprehensive developer documentation
+  - New CLI commands section (config --edit, get, set, reset)
+  - YAML configuration format with examples
+  - Updated configuration hierarchy with defaults.py
+  - Project structure showing new settings/ module
+  - Updated troubleshooting for YAML validation
+
+- **Design Documentation**: Complete design document
+  - Architecture overview with file responsibilities
+  - Data flow diagrams (loading and saving)
+  - Example generated user-settings.yml
+  - Correctness properties with validation strategy
+  - Error handling and testing strategy
 
 #### Multi-Provider Support Documentation
 - **README Updates**: Comprehensive multi-provider documentation
@@ -147,6 +250,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Complete design document with architecture and evaluation flow
 
 ### Technical Details
+
+#### Settings Management Technical Details
+- **Modular Architecture**: Clean separation of concerns
+  - Settings models (dataclasses)
+  - Serialization logic (YAML with comments)
+  - Management logic (load/save/merge)
+  - Public API (convenience functions)
+
+- **Type Safety**: Full type hints throughout
+  - Dataclasses for all settings structures
+  - Optional fields with proper defaults
+  - Type-safe merging and validation
+
+- **Backward Compatibility**: Zero breaking changes
+  - Old JSON files still work
+  - Existing imports continue to work via re-exports
+  - Automatic migration path
+
+- **Security First**: Secure by default
+  - Automatic file permissions (0o600)
+  - No credentials in error messages
+  - Environment variable support for sensitive data
 
 #### Multi-Provider Support Technical Details
 - **Modular Provider System**: Clean separation with client factory pattern

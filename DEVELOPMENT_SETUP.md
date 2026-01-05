@@ -12,6 +12,10 @@ If you just want to use Shello CLI, see [README.md](README.md) for installation 
 - `shello` or `shello chat` - Start interactive chat session
 - `shello setup` - Interactive configuration wizard
 - `shello config` - Display current configuration
+- `shello config --edit` - Open settings in default editor
+- `shello config get <key>` - Get specific setting value
+- `shello config set <key> <value>` - Set specific setting value
+- `shello config reset` - Reset settings to defaults
 - `shello --version` - Show version information
 - `shello --help` - Show help message
 
@@ -55,60 +59,62 @@ The setup wizard will guide you through:
 
 **For OpenAI-compatible APIs:**
 
-Create `~/.shello_cli/user-settings.json`:
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "api_key": "your-api-key-here",
-        "base_url": "https://api.openai.com/v1",
-        "default_model": "gpt-4o",
-        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-    }
-}
+Create `~/.shello_cli/user-settings.yml`:
+```yaml
+# =============================================================================
+# SHELLO CLI USER SETTINGS
+# =============================================================================
+provider: openai
+
+openai_config:
+  provider_type: openai
+  api_key: your-api-key-here
+  base_url: https://api.openai.com/v1
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+    - gpt-4-turbo
 ```
 
 **For AWS Bedrock:**
 
-Create `~/.shello_cli/user-settings.json`:
-```json
-{
-    "provider": "bedrock",
-    "bedrock_config": {
-        "provider_type": "bedrock",
-        "aws_region": "us-east-1",
-        "aws_profile": "default",
-        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "models": [
-            "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            "anthropic.claude-3-opus-20240229-v1:0",
-            "amazon.nova-pro-v1:0"
-        ]
-    }
-}
+Create `~/.shello_cli/user-settings.yml`:
+```yaml
+provider: bedrock
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
+    - anthropic.claude-3-opus-20240229-v1:0
+    - amazon.nova-pro-v1:0
 ```
 
 **For multiple providers:**
 
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "api_key": "your-openai-key",
-        "base_url": "https://api.openai.com/v1",
-        "default_model": "gpt-4o",
-        "models": ["gpt-4o", "gpt-4o-mini"]
-    },
-    "bedrock_config": {
-        "provider_type": "bedrock",
-        "aws_region": "us-east-1",
-        "aws_profile": "default",
-        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  provider_type: openai
+  api_key: your-openai-key
+  base_url: https://api.openai.com/v1
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
 ```
 
 **Option C: Environment Variables**
@@ -137,65 +143,115 @@ python main.py config
 
 ### 1. User Settings (Global)
 
-**Location:** `~/.shello_cli/user-settings.json`
+**Location:** `~/.shello_cli/user-settings.yml`
 
-Contains AI provider configuration, credentials, and default preferences.
+Contains AI provider configuration, credentials, and default preferences. The file uses YAML format with helpful comments and documentation.
 
 **OpenAI-compatible API configuration:**
 
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "api_key": "your-api-key-here",
-        "base_url": "https://api.openai.com/v1",
-        "default_model": "gpt-4o",
-        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-    }
-}
+```yaml
+# =============================================================================
+# SHELLO CLI USER SETTINGS
+# =============================================================================
+# Edit this file to customize your settings.
+# Only specify values you want to override - defaults are used for the rest.
+
+# =============================================================================
+# PROVIDER CONFIGURATION
+# =============================================================================
+provider: openai
+
+openai_config:
+  provider_type: openai
+  api_key: your-api-key-here  # Or use OPENAI_API_KEY env var
+  base_url: https://api.openai.com/v1
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+    - gpt-4-turbo
+
+# =============================================================================
+# OUTPUT MANAGEMENT (optional - uses defaults if not specified)
+# =============================================================================
+# Controls how command output is truncated and displayed.
+# Uncomment and modify to customize:
+#
+# output_management:
+#   enabled: true
+#   show_summary: true
+#   limits:
+#     list: 5000
+#     search: 10000
+#     log: 15000
+#     json: 20000
+#     default: 8000
+#   strategies:
+#     list: first_only
+#     search: first_only
+#     log: last_only
+#     default: first_last
+
+# =============================================================================
+# COMMAND TRUST (optional - uses defaults if not specified)
+# =============================================================================
+# Controls which commands require approval before execution.
+# Uncomment and modify to customize:
+#
+# command_trust:
+#   enabled: true
+#   yolo_mode: false
+#   approval_mode: user_driven
+#   allowlist:
+#     - ls
+#     - pwd
+#     - git status
 ```
 
 **AWS Bedrock configuration:**
 
-```json
-{
-    "provider": "bedrock",
-    "bedrock_config": {
-        "provider_type": "bedrock",
-        "aws_region": "us-east-1",
-        "aws_profile": "default",
-        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "models": [
-            "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            "anthropic.claude-3-opus-20240229-v1:0",
-            "amazon.nova-pro-v1:0"
-        ]
-    }
-}
+```yaml
+provider: bedrock
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
+    - anthropic.claude-3-opus-20240229-v1:0
+    - amazon.nova-pro-v1:0
 ```
 
 **Multiple providers configured:**
 
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "api_key": "your-openai-key",
-        "base_url": "https://api.openai.com/v1",
-        "default_model": "gpt-4o",
-        "models": ["gpt-4o", "gpt-4o-mini"]
-    },
-    "bedrock_config": {
-        "provider_type": "bedrock",
-        "aws_region": "us-east-1",
-        "aws_profile": "default",
-        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "models": ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  provider_type: openai
+  api_key: your-openai-key
+  base_url: https://api.openai.com/v1
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
 ```
+
+**Key features:**
+- YAML format with inline documentation
+- Only configured values are saved (everything else uses defaults)
+- All optional settings shown as comments with examples
+- Environment variables can override any credential
 
 **Note:** Credentials can also be set via environment variables:
 - OpenAI: `OPENAI_API_KEY`
@@ -231,7 +287,7 @@ When working in this project:
 
 ### 4. Output Management Configuration
 
-Output management settings are defined in `shello_cli/constants.py`:
+Output management settings can be customized in your user settings file. Default values are defined in `shello_cli/defaults.py`:
 
 ```python
 # Character limits per output type
@@ -263,15 +319,34 @@ DEFAULT_STRATEGIES = {
 DEFAULT_CACHE_MAX_SIZE_MB = 100  # 100MB, no TTL
 ```
 
-To customize these settings, modify `shello_cli/constants.py` directly.
+To customize these settings, add an `output_management` section to your `~/.shello_cli/user-settings.yml`:
+
+```yaml
+output_management:
+  enabled: true
+  show_summary: true
+  limits:
+    list: 5000
+    search: 10000
+    default: 8000
+  strategies:
+    list: first_only
+    log: last_only
+    default: first_last
+```
 
 ## Configuration Hierarchy
 
 Settings are loaded in this order (later overrides earlier):
-1. Default values (in `shello_cli/constants.py`)
-2. User settings (`~/.shello_cli/user-settings.json`)
+1. Default values (in `shello_cli/defaults.py`)
+2. User settings (`~/.shello_cli/user-settings.yml`)
 3. Environment variables (`OPENAI_API_KEY`, `AWS_REGION`, `AWS_PROFILE`, etc.)
 4. Project settings (`.shello/settings.json`)
+
+**Note:** The settings system uses a merge strategy where:
+- Only values you explicitly set in `user-settings.yml` override defaults
+- Unspecified values automatically use defaults from `defaults.py`
+- The denylist is always additive (your patterns are added to defaults for safety)
 
 ## Testing
 
@@ -381,7 +456,7 @@ File permissions are handled automatically by the application.
 
 ### "No API key found" error
 1. Run `python main.py setup` to configure interactively
-2. Or check that `~/.shello_cli/user-settings.json` exists and contains provider configuration
+2. Or check that `~/.shello_cli/user-settings.yml` exists and contains provider configuration
 3. Or set environment variables:
    - OpenAI: `OPENAI_API_KEY`
    - Bedrock: `AWS_REGION`, `AWS_PROFILE`, or `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY`
@@ -410,10 +485,10 @@ pip install -r requirements.txt
 
 ### Configuration not loading
 - Check file locations:
-  - User: `~/.shello_cli/user-settings.json`
+  - User: `~/.shello_cli/user-settings.yml`
   - Project: `.shello/settings.json`
-- Verify JSON syntax is valid (use a JSON validator)
-- Check file permissions (should be readable)
+- Verify YAML syntax is valid (use a YAML validator)
+- Check file permissions (should be readable, automatically set to 0600 for security)
 
 ### View current configuration
 ```bash
@@ -439,7 +514,13 @@ shello_cli/
 ├── commands/
 │   ├── command_detector.py      # Direct command detection
 │   ├── context_manager.py       # Command history tracking
-│   └── direct_executor.py       # Direct command execution
+│   ├── direct_executor.py       # Direct command execution
+│   └── settings_commands.py     # Settings management commands
+├── settings/
+│   ├── __init__.py              # Public API
+│   ├── manager.py               # SettingsManager class
+│   ├── models.py                # Settings dataclasses
+│   └── serializers.py           # YAML generation with comments
 ├── tools/
 │   ├── bash_tool.py             # Bash command execution
 │   ├── get_cached_output_tool.py # Cache retrieval tool
@@ -455,9 +536,10 @@ shello_cli/
 │   └── user_input.py            # User input handling
 ├── utils/
 │   ├── output_utils.py          # Output utility functions
-│   └── settings_manager.py      # Configuration management
+│   └── settings_manager.py      # Configuration management (re-exports from settings/)
 ├── cli.py                       # CLI entry point
-├── constants.py                 # Application constants
+├── defaults.py                  # Default values for user-changeable settings
+├── patterns.py                  # Internal patterns and templates (NOT user-changeable)
 └── types.py                     # Type definitions
 
 tests/
