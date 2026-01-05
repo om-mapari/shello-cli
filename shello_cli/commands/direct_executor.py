@@ -75,7 +75,7 @@ class DirectExecutor:
         Returns:
             ExecutionResult with error if command was denied, None if command should execute
         """
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         from shello_cli.trust.trust_manager import TrustManager, TrustConfig
         
         # Get trust configuration from settings

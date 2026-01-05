@@ -7,7 +7,7 @@ providing a registry of tools that the AI agent can invoke.
 
 from typing import List
 from shello_cli.types import ShelloTool
-from shello_cli.constants import GET_CACHED_OUTPUT_DESCRIPTION
+from shello_cli.patterns import GET_CACHED_OUTPUT_DESCRIPTION
 
 
 # Registry of all available tools in OpenAI function calling format

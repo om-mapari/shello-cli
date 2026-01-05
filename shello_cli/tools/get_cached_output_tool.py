@@ -3,7 +3,7 @@
 from typing import Optional
 from shello_cli.types import ToolResult
 from shello_cli.tools.output.cache import OutputCache
-from shello_cli.constants import DEFAULT_CHAR_LIMITS
+from shello_cli.defaults import DEFAULT_CHAR_LIMITS
 
 
 class GetCachedOutputTool:

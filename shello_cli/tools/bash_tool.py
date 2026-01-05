@@ -50,7 +50,7 @@ class BashTool:
             ToolResult with success=True if command should execute,
             or success=False with error message if command was denied
         """
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         from shello_cli.trust.trust_manager import TrustManager, TrustConfig
         
         # Get trust configuration from settings
