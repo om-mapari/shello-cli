@@ -60,6 +60,38 @@ class CommandTrustConfig:
 
 
 @dataclass
+class ProviderConfig:
+    """Configuration for a single provider.
+    
+    Attributes:
+        provider_type: The type of provider ("openai" or "bedrock")
+        api_key: API key for OpenAI-compatible APIs
+        base_url: Base URL for OpenAI-compatible APIs
+        aws_region: AWS region for Bedrock
+        aws_profile: AWS profile name for Bedrock
+        aws_access_key: AWS access key ID for Bedrock (explicit credentials)
+        aws_secret_key: AWS secret access key for Bedrock (explicit credentials)
+        default_model: Default model to use with this provider
+        models: List of available models for this provider
+    """
+    provider_type: str  # "openai" or "bedrock"
+    
+    # OpenAI fields
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    
+    # Bedrock fields
+    aws_region: Optional[str] = None
+    aws_profile: Optional[str] = None
+    aws_access_key: Optional[str] = None
+    aws_secret_key: Optional[str] = None
+    
+    # Common fields
+    default_model: Optional[str] = None
+    models: List[str] = field(default_factory=list)
+
+
+@dataclass
 class OutputManagementConfig:
     """Output management configuration with character-based limits.
     
@@ -94,6 +126,14 @@ class OutputManagementConfig:
 @dataclass
 class UserSettings:
     """User-level settings stored in ~/.shello_cli/user-settings.json"""
+    # Current active provider ("openai" or "bedrock")
+    provider: str = "openai"
+    
+    # Provider-specific configurations
+    openai_config: Optional[ProviderConfig] = None
+    bedrock_config: Optional[ProviderConfig] = None
+    
+    # Legacy fields (kept for backward compatibility, will be migrated to openai_config)
     api_key: Optional[str] = None
     base_url: str = "https://api.openai.com/v1"
     default_model: str = "gpt-4o"
@@ -145,6 +185,32 @@ class SettingsManager:
         try:
             with open(self._user_settings_path, 'r') as f:
                 data = json.load(f)
+            
+            # Parse openai_config if present
+            openai_config = None
+            if 'openai_config' in data:
+                oc_data = data['openai_config']
+                openai_config = ProviderConfig(
+                    provider_type=oc_data.get('provider_type', 'openai'),
+                    api_key=oc_data.get('api_key'),
+                    base_url=oc_data.get('base_url'),
+                    default_model=oc_data.get('default_model'),
+                    models=oc_data.get('models', [])
+                )
+            
+            # Parse bedrock_config if present
+            bedrock_config = None
+            if 'bedrock_config' in data:
+                bc_data = data['bedrock_config']
+                bedrock_config = ProviderConfig(
+                    provider_type=bc_data.get('provider_type', 'bedrock'),
+                    aws_region=bc_data.get('aws_region'),
+                    aws_profile=bc_data.get('aws_profile'),
+                    aws_access_key=bc_data.get('aws_access_key'),
+                    aws_secret_key=bc_data.get('aws_secret_key'),
+                    default_model=bc_data.get('default_model'),
+                    models=bc_data.get('models', [])
+                )
             
             # Parse output_management if present
             output_management = None
@@ -248,6 +314,9 @@ class SettingsManager:
             
             # Merge loaded data with defaults
             self._user_settings = UserSettings(
+                provider=data.get('provider', default_settings.provider),
+                openai_config=openai_config,
+                bedrock_config=bedrock_config,
                 api_key=data.get('api_key', default_settings.api_key),
                 base_url=data.get('base_url', default_settings.base_url),
                 default_model=data.get('default_model', default_settings.default_model),
@@ -268,11 +337,20 @@ class SettingsManager:
         
         # Convert to dict
         settings_dict = {
+            'provider': settings.provider,
             'api_key': settings.api_key,
             'base_url': settings.base_url,
             'default_model': settings.default_model,
             'models': settings.models
         }
+        
+        # Only include openai_config if it's not None
+        if settings.openai_config is not None:
+            settings_dict['openai_config'] = asdict(settings.openai_config)
+        
+        # Only include bedrock_config if it's not None
+        if settings.bedrock_config is not None:
+            settings_dict['bedrock_config'] = asdict(settings.bedrock_config)
         
         # Only include output_management if it's not None
         if settings.output_management is not None:
@@ -339,10 +417,24 @@ class SettingsManager:
             return project_settings.model
         
         user_settings = self.load_user_settings()
+        
+        # Check provider-specific config first
+        provider = user_settings.provider
+        if provider == "openai" and user_settings.openai_config:
+            if user_settings.openai_config.default_model:
+                return user_settings.openai_config.default_model
+        elif provider == "bedrock" and user_settings.bedrock_config:
+            if user_settings.bedrock_config.default_model:
+                return user_settings.bedrock_config.default_model
+        
+        # Fall back to legacy default_model
         return user_settings.default_model
     
     def get_api_key(self) -> Optional[str]:
-        """Get API key from settings or environment"""
+        """Get API key from settings or environment (for OpenAI provider).
+        
+        Priority: environment variable > openai_config > legacy api_key field
+        """
         # Check environment variable first
         env_key = os.environ.get('OPENAI_API_KEY')
         if env_key:
@@ -350,12 +442,138 @@ class SettingsManager:
         
         # Fall back to user settings
         user_settings = self.load_user_settings()
+        
+        # Check openai_config first (new structure)
+        if user_settings.openai_config and user_settings.openai_config.api_key:
+            return user_settings.openai_config.api_key
+        
+        # Fall back to legacy api_key field (backward compatibility)
         return user_settings.api_key
     
     def get_base_url(self) -> str:
-        """Get API base URL"""
+        """Get API base URL (for OpenAI provider).
+        
+        Priority: openai_config > legacy base_url field
+        """
         user_settings = self.load_user_settings()
+        
+        # Check openai_config first (new structure)
+        if user_settings.openai_config and user_settings.openai_config.base_url:
+            return user_settings.openai_config.base_url
+        
+        # Fall back to legacy base_url field (backward compatibility)
         return user_settings.base_url
+    
+    def get_provider(self) -> str:
+        """Get the configured provider (openai or bedrock)"""
+        user_settings = self.load_user_settings()
+        return user_settings.provider
+    
+    def set_provider(self, provider: str) -> None:
+        """Set the active provider and save settings.
+        
+        Args:
+            provider: The provider to set ("openai" or "bedrock")
+            
+        Raises:
+            ValueError: If provider is not valid
+        """
+        if provider not in ["openai", "bedrock"]:
+            raise ValueError(f"Invalid provider: {provider}. Supported providers: openai, bedrock")
+        
+        user_settings = self.load_user_settings()
+        user_settings.provider = provider
+        self.save_user_settings(user_settings)
+    
+    def get_provider_config(self, provider: Optional[str] = None) -> Dict[str, Any]:
+        """Get configuration for a specific provider (or current if None).
+        
+        Args:
+            provider: The provider to get config for (defaults to current provider)
+            
+        Returns:
+            Dictionary with provider-specific configuration
+            
+        Raises:
+            ValueError: If provider is not configured
+        """
+        user_settings = self.load_user_settings()
+        target_provider = provider or user_settings.provider
+        
+        if target_provider == "openai":
+            # Check openai_config first, then fall back to legacy fields
+            if user_settings.openai_config:
+                return {
+                    "api_key": user_settings.openai_config.api_key or os.environ.get('OPENAI_API_KEY'),
+                    "base_url": user_settings.openai_config.base_url or "https://api.openai.com/v1",
+                    "model": user_settings.openai_config.default_model or "gpt-4o",
+                    "models": user_settings.openai_config.models or ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+                }
+            else:
+                # Fall back to legacy fields for backward compatibility
+                return {
+                    "api_key": user_settings.api_key or os.environ.get('OPENAI_API_KEY'),
+                    "base_url": user_settings.base_url,
+                    "model": user_settings.default_model,
+                    "models": user_settings.models
+                }
+        
+        elif target_provider == "bedrock":
+            if not user_settings.bedrock_config:
+                raise ValueError("Bedrock provider not configured. Run 'shello setup'.")
+            
+            return {
+                "region": user_settings.bedrock_config.aws_region or os.environ.get('AWS_REGION') or os.environ.get('AWS_DEFAULT_REGION'),
+                "profile": user_settings.bedrock_config.aws_profile or os.environ.get('AWS_PROFILE'),
+                "access_key": user_settings.bedrock_config.aws_access_key or os.environ.get('AWS_ACCESS_KEY_ID'),
+                "secret_key": user_settings.bedrock_config.aws_secret_key or os.environ.get('AWS_SECRET_ACCESS_KEY'),
+                "model": user_settings.bedrock_config.default_model or "anthropic.claude-3-5-sonnet-20241022-v2:0",
+                "models": user_settings.bedrock_config.models or ["anthropic.claude-3-5-sonnet-20241022-v2:0"]
+            }
+        
+        else:
+            raise ValueError(f"Unknown provider: {target_provider}. Supported providers: openai, bedrock")
+    
+    def is_provider_configured(self, provider: str) -> bool:
+        """Check if a provider is configured.
+        
+        Args:
+            provider: The provider to check ("openai" or "bedrock")
+            
+        Returns:
+            True if the provider has configuration, False otherwise
+        """
+        user_settings = self.load_user_settings()
+        
+        if provider == "openai":
+            # OpenAI is considered configured if openai_config exists OR legacy api_key exists
+            if user_settings.openai_config is not None:
+                return True
+            # Also check legacy fields and environment variable
+            if user_settings.api_key or os.environ.get('OPENAI_API_KEY'):
+                return True
+            return False
+        
+        elif provider == "bedrock":
+            return user_settings.bedrock_config is not None
+        
+        return False
+    
+    def get_available_providers(self) -> List[str]:
+        """Get list of configured providers.
+        
+        Returns:
+            List of provider names that are configured
+        """
+        providers = []
+        
+        if self.is_provider_configured("openai"):
+            providers.append("openai")
+        
+        if self.is_provider_configured("bedrock"):
+            providers.append("bedrock")
+        
+        return providers
     
     def get_output_management_config(self) -> OutputManagementConfig:
         """Get output management config with defaults if not configured"""
