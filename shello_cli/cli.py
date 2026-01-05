@@ -13,7 +13,7 @@ from shello_cli.ui.ui_renderer import (
     render_direct_command_output
 )
 from shello_cli.ui.user_input import get_user_input_with_clear
-from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.settings import SettingsManager
 from shello_cli.api.client_factory import create_client
 from shello_cli.commands.command_detector import CommandDetector, InputType
 from shello_cli.commands.direct_executor import DirectExecutor
@@ -345,8 +345,45 @@ def chat(debug, new, yolo):
 
 
 @cli.command()
-def config():
+@click.option("--edit", is_flag=True, help="Open settings file in editor")
+@click.option("--get", type=str, help="Get a specific setting value")
+@click.option("--set", "set_key", type=str, help="Set a specific setting (use with value)")
+@click.option("--value", type=str, help="Value to set (use with --set)")
+@click.option("--reset", is_flag=True, help="Reset settings to defaults")
+def config(edit, get, set_key, value, reset):
     """Show current configuration"""
+    from shello_cli.commands.settings_commands import (
+        config_edit,
+        config_get,
+        config_set,
+        config_reset
+    )
+    
+    # Handle --edit flag
+    if edit:
+        config_edit()
+        return
+    
+    # Handle --get flag
+    if get:
+        config_get(get)
+        return
+    
+    # Handle --set flag
+    if set_key:
+        if value is None:
+            console.print("✗ [red]Error: --set requires --value[/red]")
+            console.print("Usage: shello config --set <key> --value <value>")
+            sys.exit(1)
+        config_set(set_key, value)
+        return
+    
+    # Handle --reset flag
+    if reset:
+        config_reset()
+        return
+    
+    # Default: show current configuration
     settings_manager = SettingsManager.get_instance()
     user_settings = settings_manager.load_user_settings()
     project_settings = settings_manager.load_project_settings()
@@ -457,11 +494,12 @@ def config():
 @cli.command()
 def setup():
     """Interactive setup wizard for first-time configuration"""
-    from shello_cli.utils.settings_manager import UserSettings, ProviderConfig
+    from shello_cli.settings import UserSettings
+    from shello_cli.commands.settings_commands import setup_openai_provider, setup_bedrock_provider
     from pathlib import Path
     
     settings_manager = SettingsManager.get_instance()
-    user_settings_path = Path.home() / ".shello_cli" / "user-settings.json"
+    user_settings_path = Path.home() / ".shello_cli" / "user-settings.yml"
     
     console.print("\n🌊 [bold cyan]Welcome to Shello CLI Setup![/bold cyan]\n")
     
@@ -542,143 +580,6 @@ def setup():
     except Exception as e:
         console.print(f"✗ [red]Failed to save settings: {str(e)}[/red]\n")
         sys.exit(1)
-
-
-def setup_openai_provider(existing_settings):
-    """Setup OpenAI-compatible provider configuration.
-    
-    Args:
-        existing_settings: Existing UserSettings to preserve other provider config
-        
-    Returns:
-        Tuple of (openai_config, bedrock_config) where bedrock_config is preserved from existing
-    """
-    from shello_cli.utils.settings_manager import ProviderConfig
-    
-    console.print("\n📡 [bold]OpenAI-compatible API Setup:[/bold]")
-    console.print("  1. OpenAI (https://api.openai.com/v1)")
-    console.print("  2. OpenRouter (https://openrouter.ai/api/v1)")
-    console.print("  3. Custom URL")
-    
-    api_choice = click.prompt("\nChoose API", type=click.IntRange(1, 3), default=1)
-    
-    if api_choice == 1:
-        base_url = "https://api.openai.com/v1"
-        default_model = "gpt-4o"
-        models = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4", "gpt-3.5-turbo"]
-    elif api_choice == 2:
-        base_url = "https://openrouter.ai/api/v1"
-        default_model = "anthropic/claude-3.5-sonnet"
-        models = ["anthropic/claude-3.5-sonnet", "anthropic/claude-3-opus", "gpt-4o"]
-    else:
-        base_url = click.prompt("Enter custom API base URL", type=str)
-        default_model = click.prompt("Enter default model name", type=str)
-        models = [default_model]
-    
-    console.print(f"\n✓ Base URL: [cyan]{base_url}[/cyan]")
-    
-    # API Key
-    console.print("\n🔑 [bold]API Key:[/bold]")
-    api_key = click.prompt("Enter your API key", type=str, hide_input=True)
-    
-    if not api_key or len(api_key) < 10:
-        console.print("✗ [red]Invalid API key. Setup cancelled.[/red]\n")
-        sys.exit(1)
-    
-    # Model selection
-    console.print(f"\n🤖 [bold]Default Model:[/bold]")
-    console.print(f"  Suggested: {default_model}")
-    use_default = click.confirm("Use suggested model?", default=True)
-    
-    if not use_default:
-        default_model = click.prompt("Enter model name", type=str, default=default_model)
-    
-    # Create OpenAI config
-    openai_config = ProviderConfig(
-        provider_type="openai",
-        api_key=api_key,
-        base_url=base_url,
-        default_model=default_model,
-        models=models
-    )
-    
-    # Preserve existing Bedrock config if present
-    bedrock_config = existing_settings.bedrock_config if existing_settings else None
-    
-    return openai_config, bedrock_config
-
-
-def setup_bedrock_provider(existing_settings):
-    """Setup AWS Bedrock provider configuration.
-    
-    Args:
-        existing_settings: Existing UserSettings to preserve other provider config
-        
-    Returns:
-        Tuple of (openai_config, bedrock_config) where openai_config is preserved from existing
-    """
-    from shello_cli.utils.settings_manager import ProviderConfig
-    
-    console.print("\n☁️  [bold]AWS Bedrock Setup:[/bold]")
-    
-    # Region
-    console.print("\n🌍 [bold]AWS Region:[/bold]")
-    aws_region = click.prompt("Enter AWS region", type=str, default="us-east-1")
-    
-    # Credential method
-    console.print("\n🔐 [bold]AWS Credentials:[/bold]")
-    console.print("  1. AWS Profile (recommended)")
-    console.print("  2. Explicit credentials (access key + secret key)")
-    console.print("  3. Default credential chain (environment/IAM)")
-    
-    cred_choice = click.prompt("\nChoose credential method", type=click.IntRange(1, 3), default=1)
-    
-    aws_profile = None
-    aws_access_key = None
-    aws_secret_key = None
-    
-    if cred_choice == 1:
-        aws_profile = click.prompt("Enter AWS profile name", type=str, default="default")
-        console.print(f"✓ Using AWS profile: [cyan]{aws_profile}[/cyan]")
-    elif cred_choice == 2:
-        aws_access_key = click.prompt("Enter AWS access key", type=str)
-        aws_secret_key = click.prompt("Enter AWS secret key", type=str, hide_input=True)
-        console.print("✓ Using explicit credentials")
-    else:
-        console.print("✓ Using default credential chain")
-    
-    # Model selection
-    console.print("\n🤖 [bold]Default Model:[/bold]")
-    console.print("  Suggested: anthropic.claude-3-5-sonnet-20241022-v2:0")
-    default_model = "anthropic.claude-3-5-sonnet-20241022-v2:0"
-    models = [
-        "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "anthropic.claude-3-sonnet-20240229-v1:0",
-        "anthropic.claude-3-opus-20240229-v1:0",
-        "amazon.nova-pro-v1:0",
-        "amazon.nova-lite-v1:0"
-    ]
-    
-    use_default = click.confirm("Use suggested model?", default=True)
-    
-    if not use_default:
-        default_model = click.prompt("Enter Bedrock model ID", type=str, default=default_model)
-    
-    # Create Bedrock config
-    bedrock_config = ProviderConfig(
-        provider_type="bedrock",
-        aws_region=aws_region,
-        aws_profile=aws_profile,
-        aws_access_key=aws_access_key,
-        aws_secret_key=aws_secret_key,
-        default_model=default_model,
-        models=models
-    )
-    
-    # Preserve existing OpenAI config if present
-    openai_config = existing_settings.openai_config if existing_settings else None
-    
-    return openai_config, bedrock_config
 
 
 if __name__ == '__main__':

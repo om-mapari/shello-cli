@@ -6,7 +6,7 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.completion import Completer, Completion, PathCompleter, merge_completers
 import os
 from pathlib import Path
-from shello_cli.constants import APP_DIR
+from shello_cli.patterns import APP_DIR
 
 
 def abbreviate_path(path: str) -> str:
