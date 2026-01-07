@@ -899,6 +899,7 @@ class ShelloBedrockClient:
             # Track tool calls being accumulated
             tool_call_accumulator: Dict[int, Dict[str, Any]] = {}
             current_tool_index = -1
+            received_message_stop = False  # Track if we received a proper messageStop event
             
             # Process the stream events
             for event in response.get('stream', []):
@@ -987,6 +988,7 @@ class ShelloBedrockClient:
                 # Handle messageStop - signals end of message
                 elif 'messageStop' in event:
                     stop_reason = event['messageStop'].get('stopReason', 'end_turn')
+                    received_message_stop = True  # Mark that we received a proper stop signal
                     
                     # Map Bedrock stop reasons to OpenAI finish reasons
                     finish_reason_map = {
@@ -1006,6 +1008,16 @@ class ShelloBedrockClient:
                             'delta': {}
                         }]
                     }
+            
+            # If we didn't receive a messageStop event, yield a default finish chunk
+            # This handles cases where the stream ends without a proper stop signal
+            if not received_message_stop:
+                yield {
+                    'choices': [{
+                        'finish_reason': 'stop',
+                        'delta': {}
+                    }]
+                }
         
         except ClientError as e:
             # Extract error details

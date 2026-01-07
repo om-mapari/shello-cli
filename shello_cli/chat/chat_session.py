@@ -74,6 +74,7 @@ class ChatSession:
         accumulated_content = ""
         current_tool_call = None
         current_command = None  # Track current executing command
+        live_display_active = True  # Track if live display is still active
         
         try:
             stream = self.agent.process_user_message_stream(message)
@@ -84,69 +85,79 @@ class ChatSession:
                 return
             
             # Use Live display for streaming markdown updates
-            live = Live(EnhancedMarkdown(""), console=console, refresh_per_second=10)
-            live.start()
-            
-            for chunk in stream:
-                if chunk.type == "content":
-                    # Accumulate content and update live markdown display
-                    if chunk.content:
-                        accumulated_content += chunk.content
-                        # Update the live display with current markdown
-                        live.update(EnhancedMarkdown(accumulated_content))
-                
-                elif chunk.type == "tool_calls":
-                    # Tool calls received - stop live display and render final markdown
-                    if chunk.tool_calls:
-                        if accumulated_content:
-                            # If there was content before tool calls, finalize it
-                            live.stop()
-                            console.print()
-                        accumulated_content = ""  # Reset for next section
-                
-                elif chunk.type == "tool_call":
-                    # Individual tool call starting
-                    if chunk.tool_call:
-                        current_tool_call = chunk.tool_call
-                        # Extract command for interrupt tracking
-                        func_data = chunk.tool_call.get("function", {})
-                        if func_data.get("name") == "bash":
-                            try:
-                                args = json.loads(func_data.get("arguments", "{}"))
-                                current_command = args.get("command", "")
-                            except:
-                                current_command = "unknown command"
-                        else:
-                            current_command = f"{func_data.get('name', 'tool')} execution"
-                        
-                        self._handle_tool_call(chunk.tool_call)
-                        console.print()  # Add newline after tool header
-                
-                elif chunk.type == "tool_output":
-                    # Stream tool output as it arrives
-                    if chunk.content:
-                        console.print(chunk.content, end="", markup=False)
-                
-                elif chunk.type == "tool_result":
-                    # Tool execution complete
-                    current_command = None  # Clear command tracking
-                    if chunk.tool_result:
-                        # Display final result status if there was an error
-                        if not chunk.tool_result.success and chunk.tool_result.error:
-                            console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
-                        console.print()  # Add spacing after tool output
+            with Live(EnhancedMarkdown(""), console=console, refresh_per_second=10) as live:
+                for chunk in stream:
+                    if chunk.type == "content":
+                        # Accumulate content and update live markdown display
+                        if chunk.content:
+                            accumulated_content += chunk.content
+                            # Only update live display if it's still active
+                            if live_display_active:
+                                live.update(EnhancedMarkdown(accumulated_content))
                     
-                    # Restart live display for any content that follows
-                    if not live.is_started:
-                        live.start()
+                    elif chunk.type == "tool_calls":
+                        # Tool calls received - finalize any accumulated content before showing tools
+                        if chunk.tool_calls:
+                            if live_display_active:
+                                # Live display is active - stop it (this preserves what's shown)
+                                live.stop()
+                                live_display_active = False
+                                # Content was shown via live display, just add spacing
+                                if accumulated_content:
+                                    console.print()
+                            else:
+                                # Live display was already stopped - content needs to be printed now
+                                if accumulated_content:
+                                    console.print(EnhancedMarkdown(accumulated_content))
+                                    console.print()
+                            accumulated_content = ""  # Reset for next section
+                    
+                    elif chunk.type == "tool_call":
+                        # Individual tool call starting
+                        if chunk.tool_call:
+                            current_tool_call = chunk.tool_call
+                            # Extract command for interrupt tracking
+                            func_data = chunk.tool_call.get("function", {})
+                            if func_data.get("name") == "bash":
+                                try:
+                                    args = json.loads(func_data.get("arguments", "{}"))
+                                    current_command = args.get("command", "")
+                                except:
+                                    current_command = "unknown command"
+                            else:
+                                current_command = f"{func_data.get('name', 'tool')} execution"
+                            
+                            self._handle_tool_call(chunk.tool_call)
+                            console.print()  # Add newline after tool header
+                    
+                    elif chunk.type == "tool_output":
+                        # Stream tool output as it arrives
+                        if chunk.content:
+                            console.print(chunk.content, end="", markup=False)
+                    
+                    elif chunk.type == "tool_result":
+                        # Tool execution complete
+                        current_command = None  # Clear command tracking
+                        if chunk.tool_result:
+                            # Display final result status if there was an error
+                            if not chunk.tool_result.success and chunk.tool_result.error:
+                                console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
+                            console.print()  # Add spacing after tool output
+                    
+                    elif chunk.type == "done":
+                        # Streaming complete
+                        break
                 
-                elif chunk.type == "done":
-                    # Streaming complete
-                    break
-            
-            # Stop live display if still running
-            if live.is_started:
-                live.stop()
+                # After the loop ends, handle any remaining accumulated content
+                if accumulated_content:
+                    if live_display_active:
+                        # Live display is still active - stop it and let it show the final content
+                        live.stop()
+                        live_display_active = False
+                    else:
+                        # Live was stopped earlier (after tool_calls), but we have new content
+                        # This content hasn't been displayed yet, so print it now
+                        console.print(EnhancedMarkdown(accumulated_content))
             
             # Final newline after response
             console.print()
