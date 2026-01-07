@@ -4,35 +4,41 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-> **Not just another AI CLI tool.** Built with intelligent output management, semantic analysis, and production-ready features.
+> **Not yet another AI CLI.** Built for failures, not for code.
 
-An AI-powered terminal assistant that doesn't just suggest commands—it executes them intelligently. Chat naturally, get real-time results with smart truncation, and access cached output when you need more context.
+Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kubernetes ☸️, Docker 🐳, and log failures.
+
+**The Problem:** Other AI CLIs fail when logs explode. They either refuse to run commands, flood your terminal with 50K lines, or burn thousands of tokens trying to process everything.
+
+**Shello's Solution:** Execute real shell commands, cache full output (100MB), and show you what matters—errors, warnings, and critical context—using semantic truncation that keeps failures visible.
+
+**Logs too big? Errors hidden? Shello handles it pretty well.**
 
 ## Why Shello is Different
 
-Unlike basic AI CLI tools that just wrap ChatGPT, Shello is engineered for real-world terminal usage:
+Unlike code-generation AI CLIs, Shello is engineered for production debugging:
 
-- **⚡ Direct Command Execution** - Common commands (ls, cd, pwd, grep) execute instantly without AI overhead
-- **🧠 Smart Output Management** - Character-based truncation with semantic analysis keeps errors visible even in massive outputs
-- **💾 Persistent Output Cache** - Retrieve any previous command output throughout the conversation (100MB cache, no expiration)
-- **📊 JSON Intelligence** - Auto-analyzes large JSON with jq paths instead of flooding your terminal
-- **🎯 Context-Aware Truncation** - Different strategies for different commands (logs show end, lists show start, builds show both)
-- **🔍 Semantic Line Detection** - Critical errors always visible regardless of position in output
-- **⚙️ Progress Bar Compression** - Collapses repetitive progress output to final state
-- **🛠️ Production-Ready** - Comprehensive test suite with property-based testing for correctness guarantees
+- **⚡ Executes Real Commands** - Runs shell commands instantly, no refusal, no suggestions—actual execution
+- **🧠 Smart Output Management** - Semantic truncation keeps errors visible even in 50K-line logs without token waste
+- **💾 Persistent Output Cache** - 100MB cache stores full command output—retrieve any section anytime during debugging
+- **📊 JSON Intelligence** - Auto-analyzes massive JSON with jq paths instead of flooding your terminal
+- **🎯 Failure-First Truncation** - Logs show end (where errors are), builds show both ends, lists show start
+- **🔍 Semantic Error Detection** - Critical errors always visible regardless of position in output
+- **⚙️ Progress Bar Compression** - npm install with 500 progress lines? Compressed to final state
+- **☁️ Production-Ready** - Built for Cloud, Kubernetes, Docker debugging with comprehensive test coverage
 
 ## Technical Highlights
 
-**For developers who care about the details:**
+**For developers debugging production systems:**
 
-- **Hybrid execution model** - Direct shell execution for simple commands, AI routing for complex queries
+- **Hybrid execution model** - Direct shell execution for instant commands, AI routing for analysis and complex queries
 - **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
-- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor working in concert
+- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor—errors never hidden
 - **Persistent LRU cache** - Sequential cache IDs (cmd_001, cmd_002...), 100MB limit, conversation-scoped
-- **Streaming architecture** - User sees real-time output, AI gets processed summary
-- **Zero data loss** - Full output always cached, retrieve any section on demand
+- **Streaming architecture** - Real-time output for you, processed summary for AI—no token waste
+- **Zero data loss** - Full output always cached, retrieve any section on demand for deeper debugging
 - **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
-- **Shell optimization** - Strips column padding to reduce character count by 2-3x
+- **Token optimization** - Strips column padding, compresses progress bars—2-3x reduction in token usage
 
 See [design.md](docs/design.md) for architecture details.
 
@@ -75,7 +81,7 @@ shello
 
 ## What Can It Do?
 
-### Real-World Examples
+### Real-World Debugging Examples
 
 ```
 💡 Start by describing what you'd like to do...
@@ -148,7 +154,7 @@ Using get_cached_output to retrieve lines from cmd_002...
 
 [Last 50 lines of npm install output]
 
-# AI can analyze and help with errors
+# AI analyzes failures and helps debug
 🌊 user [~/projects/myapp]
 ──└─⟩ run the tests
 
@@ -163,44 +169,62 @@ FAIL tests/api.test.js
 Tests: 1 failed, 12 passed, 13 total
 
 I see one test is failing. The API error handling test is receiving a 500 
-status code instead of the expected 200. Would you like me to check the 
-API client code to see what might be causing this?
+status code instead of the expected 200. This looks like the error handler 
+isn't catching the exception properly. Want me to check the API client code?
+
+# Production debugging example
+🌊 user [~/k8s-cluster]
+──└─⟩ why is my pod crashing?
+
+🐚 Shello
+┌─[💻 user@hostname]─[~/k8s-cluster]
+└─$ kubectl get pods
+
+NAME                    READY   STATUS             RESTARTS   AGE
+api-deployment-abc123   0/1     CrashLoopBackOff   5          3m
+
+Let me check the logs...
+
+┌─[💻 user@hostname]─[~/k8s-cluster]
+└─$ kubectl logs api-deployment-abc123
+
+[... 2000 lines of startup logs ...]
+Error: ECONNREFUSED connect to database:5432
+    at TCPConnectWrap.afterConnect [as oncomplete]
+
+Found it. Your pod can't connect to the database. The connection is being 
+refused on port 5432. Check if your database service is running and if the 
+connection string in your deployment config is correct.
 ```
 
 ## Key Features
 
-### Direct Command Execution
-- **Zero-latency commands** - Common shell commands (ls, cd, pwd, cat, grep, etc.) execute instantly
-- **Automatic routing** - Detects direct commands vs natural language queries
-- **Directory persistence** - cd changes persist across commands
-- **Context awareness** - AI sees history of direct commands when needed
-- **Shared caching** - Direct and AI-executed commands use same cache
-
-### Intelligent Output Management
-- **Character-based limits** - 5K-20K chars depending on command type (not arbitrary line counts)
-- **Smart truncation strategies** - Logs show end, lists show start, builds show both ends
-- **Semantic analysis** - Errors, warnings, and critical info always visible
-- **Progress bar compression** - npm install with 500 progress lines? Compressed to final state
-- **Persistent caching** - Retrieve any command output throughout conversation (100MB cache, no expiration)
-
-### Advanced Features
-- **JSON intelligence** - Large JSON auto-analyzed with jq paths, raw data cached
+### Production Debugging
+- **Executes real commands** - No refusal, no suggestions—runs kubectl, docker, aws, gcloud commands instantly
+- **Failure-first output** - Semantic truncation ensures errors are always visible, even in massive logs
+- **100MB output cache** - Full command output stored—retrieve any section during debugging session
+- **JSON analysis** - Large JSON responses auto-analyzed with jq paths instead of terminal flooding
 - **Multi-platform** - Windows, Linux, macOS with automatic shell detection (bash/PowerShell/cmd)
-- **Flexible AI** - OpenAI, OpenRouter, or local models (LM Studio, Ollama)
+
+### Smart Output Management
+- **Character-based limits** - 5K-20K chars depending on command type (not arbitrary line counts)
+- **Context-aware truncation** - Logs show end (where errors are), builds show both ends, lists show start
+- **Semantic error detection** - Errors, warnings, stack traces always visible regardless of position
+- **Progress bar compression** - npm install with 500 progress lines? Compressed to final state
+- **Token optimization** - 2-3x reduction in token usage compared to naive log processing
+
+### Debugging Workflow
+- **Real-time streaming** - See output as it happens, AI gets processed summary
+- **Zero data loss** - Full output always cached, retrieve any section on demand
+- **Context preservation** - Working directory persists across commands
+- **Flexible AI providers** - OpenAI, AWS Bedrock, OpenRouter, or local models (LM Studio, Ollama)
 - **Project configs** - Team-specific settings via `.shello/settings.json`
 - **Custom instructions** - Add project context in `.shello/SHELLO.md`
 
-### Developer Experience
-- **Real-time streaming** - See output as it happens, AI gets smart summary
-- **Context preservation** - Working directory persists across commands
-- **Directory-aware prompt** - Shows current directory with abbreviated paths
-- **Property-based testing** - 1,400+ tests with formal correctness properties
-- **Type-safe** - Full type hints and dataclass models
-
-### Command Trust and Safety
+### Safety Features
 - **Smart allowlist/denylist** - Configure which commands execute automatically vs require approval
 - **AI safety integration** - AI can flag dangerous commands for review
-- **YOLO mode** - Bypass approval checks for trusted scripts and CI/CD
+- **YOLO mode** - Bypass approval checks for automation and CI/CD debugging
 - **Critical warnings** - Denylist commands show prominent warnings before execution
 - **Flexible approval modes** - Choose between AI-driven or user-driven approval workflows
 
@@ -219,7 +243,7 @@ CLI commands:
 
 ## AI Provider Support
 
-Shello supports multiple AI providers, giving you flexibility to choose the best option for your needs:
+Shello supports multiple AI providers for debugging flexibility:
 
 ### Supported Providers
 
