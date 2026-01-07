@@ -10,7 +10,7 @@ Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kube
 
 **The Problem:** Other AI CLIs fail when logs explode. They either refuse to run commands, flood your terminal with 50K lines, or burn thousands of tokens trying to process everything.
 
-**Shello's Solution:** Execute real shell commands, cache full output (100MB), and show you what matters—errors, warnings, and critical context—using semantic truncation that keeps failures visible.
+**Shello's Solution:** Execute real shell commands, cache full output (100MB), and show you what matters: errors, warnings, and critical context using semantic truncation that keeps failures visible.
 
 **Logs too big? Errors hidden? Shello handles it pretty well.**
 
@@ -43,7 +43,7 @@ shello --version
 shello setup
 ```
 
-The interactive wizard will guide you through API key and model configuration.
+The interactive wizard walks you through API key and model setup.
 
 **Start chatting:**
 
@@ -171,47 +171,47 @@ connection string in your deployment config is correct.
 
 ## Why Shello is Different
 
-Unlike code-generation AI CLIs, Shello is engineered for production debugging:
+Most AI CLIs are built for code generation. Shello is built for debugging production systems.
 
-- **⚡ Executes Real Commands** - Runs shell commands instantly, no refusal, no suggestions—actual execution
-- **🧠 Smart Output Management** - Semantic truncation keeps errors visible even in 50K-line logs without token waste
-- **💾 Persistent Output Cache** - 100MB cache stores full command output—retrieve any section anytime during debugging
-- **📊 JSON Intelligence** - Auto-analyzes massive JSON with jq paths instead of flooding your terminal
-- **🎯 Failure-First Truncation** - Logs show end (where errors are), builds show both ends, lists show start
-- **🔍 Semantic Error Detection** - Critical errors always visible regardless of position in output
-- **⚙️ Progress Bar Compression** - npm install with 500 progress lines? Compressed to final state
-- **☁️ Production-Ready** - Built for Cloud, Kubernetes, Docker debugging with comprehensive test coverage
+- **⚡ Executes Real Commands** - Actually runs shell commands. No refusal, no suggestions, just execution
+- **🧠 Smart Output Management** - Keeps errors visible even in 50K-line logs without wasting tokens
+- **💾 Persistent Output Cache** - Stores 100MB of full command output. Retrieve any section anytime
+- **📊 JSON Intelligence** - Analyzes massive JSON with jq paths instead of dumping everything to your terminal
+- **🎯 Failure-First Truncation** - Shows the end of logs (where errors live), both ends of builds, start of lists
+- **🔍 Semantic Error Detection** - Errors and warnings stay visible no matter where they appear
+- **⚙️ Progress Bar Compression** - 500 lines of npm install progress? Gets compressed to the final state
+- **☁️ Production-Ready** - Built for Cloud, Kubernetes, and Docker debugging
 
 ## Key Features
 
 ### Production Debugging
-- **Executes real commands** - No refusal, no suggestions—runs kubectl, docker, aws, gcloud commands instantly
-- **Failure-first output** - Semantic truncation ensures errors are always visible, even in massive logs
-- **100MB output cache** - Full command output stored—retrieve any section during debugging session
-- **JSON analysis** - Large JSON responses auto-analyzed with jq paths instead of terminal flooding
-- **Multi-platform** - Windows, Linux, macOS with automatic shell detection (bash/PowerShell/cmd)
+- **Executes real commands** - Runs kubectl, docker, aws, gcloud commands. No refusal, no suggestions
+- **Failure-first output** - Errors stay visible even in massive logs
+- **100MB output cache** - Full command output stored. Grab any section during your debugging session
+- **JSON analysis** - Large JSON gets analyzed with jq paths instead of flooding your terminal
+- **Multi-platform** - Works on Windows, Linux, macOS (bash/PowerShell/cmd auto-detected)
 
 ### Smart Output Management
-- **Character-based limits** - 5K-20K chars depending on command type (not arbitrary line counts)
-- **Context-aware truncation** - Logs show end (where errors are), builds show both ends, lists show start
-- **Semantic error detection** - Errors, warnings, stack traces always visible regardless of position
-- **Progress bar compression** - npm install with 500 progress lines? Compressed to final state
-- **Token optimization** - 2-3x reduction in token usage compared to naive log processing
+- **Character-based limits** - 5K-20K chars depending on command type (no arbitrary line counts)
+- **Context-aware truncation** - Logs show the end (where errors are), builds show both ends, lists show the start
+- **Semantic error detection** - Errors, warnings, and stack traces stay visible wherever they appear
+- **Progress bar compression** - 500 lines of npm install progress? Gets compressed to the final state
+- **Token optimization** - Uses 2-3x fewer tokens than naive log processing
 
 ### Debugging Workflow
-- **Real-time streaming** - See output as it happens, AI gets processed summary
-- **Zero data loss** - Full output always cached, retrieve any section on demand
-- **Context preservation** - Working directory persists across commands
-- **Flexible AI providers** - OpenAI, AWS Bedrock, OpenRouter, or local models (LM Studio, Ollama)
-- **Project configs** - Team-specific settings via `.shello/settings.json`
-- **Custom instructions** - Add project context in `.shello/SHELLO.md`
+- **Real-time streaming** - You see output as it happens, AI gets a processed summary
+- **Zero data loss** - Full output is always cached. Retrieve any section whenever you need it
+- **Context preservation** - Your working directory persists across commands
+- **Flexible AI providers** - Works with OpenAI, AWS Bedrock, OpenRouter, or local models (LM Studio, Ollama)
+- **Project configs** - Team settings via `.shello/settings.json`
+- **Custom instructions** - Project context in `.shello/SHELLO.md`
 
 ### Safety Features
-- **Smart allowlist/denylist** - Configure which commands execute automatically vs require approval
-- **AI safety integration** - AI can flag dangerous commands for review
-- **YOLO mode** - Bypass approval checks for automation and CI/CD debugging
-- **Critical warnings** - Denylist commands show prominent warnings before execution
-- **Flexible approval modes** - Choose between AI-driven or user-driven approval workflows
+- **Smart allowlist/denylist** - Control which commands run automatically vs need approval
+- **AI safety integration** - AI flags dangerous commands for review
+- **YOLO mode** - Skip approval checks for automation and CI/CD debugging
+- **Critical warnings** - Denylist commands show big warnings before execution
+- **Flexible approval modes** - Pick between AI-driven or user-driven approval
 
 ## Configuration
 
@@ -223,14 +223,14 @@ Run the interactive setup wizard:
 shello setup
 ```
 
-This will guide you through:
-- AI provider selection (OpenAI-compatible API or AWS Bedrock)
-- Provider-specific configuration (API keys or AWS credentials)
-- Default model selection
+It walks you through:
+- Picking your AI provider (OpenAI-compatible API or AWS Bedrock)
+- Setting up credentials (API keys or AWS credentials)
+- Choosing your default model
 
-The setup wizard generates a well-documented `~/.shello_cli/user-settings.yml` file with all available options as comments, making it easy to customize later.
+The wizard creates a `~/.shello_cli/user-settings.yml` file with all options documented as comments, so you can tweak things later.
 
-**Using AWS Bedrock?** See the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for detailed instructions on configuring AWS credentials and accessing Claude, Nova, and other foundation models.
+**Using AWS Bedrock?** Check out the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for help with AWS credentials and accessing Claude, Nova, and other models.
 
 ### Configuration Management
 
@@ -291,7 +291,7 @@ Shello supports multiple AI providers for debugging flexibility:
 
 ### Provider Selection
 
-Choose your provider during setup or switch between providers at runtime:
+Pick your provider during setup or switch between them at runtime:
 
 ```bash
 # Initial setup - choose your provider
@@ -314,14 +314,14 @@ Select provider (or 'c' to cancel): 2
 
 ### Runtime Provider Switching
 
-Switch between configured providers without losing your conversation:
+You can switch between providers without losing your conversation:
 
-- Use `/switch` command during any chat session
-- Conversation history is preserved across providers
+- Use `/switch` during any chat
+- Your conversation history stays intact
 - Compare responses from different models
-- Seamlessly switch if one provider is unavailable
+- Switch if one provider goes down
 
-**Example workflow:**
+**Example:**
 ```bash
 # Start with OpenAI
 shello
@@ -362,13 +362,13 @@ export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
-Environment variables take precedence over configuration files, making it easy to switch credentials per session or use different credentials in CI/CD.
+Environment variables override config files, so you can easily switch credentials per session or use different ones in CI/CD.
 
 ### Manual Configuration
 
 **Global settings:** `~/.shello_cli/user-settings.yml`
 
-The settings file uses YAML format with helpful comments and documentation. After running `shello setup`, you'll have a file like this:
+The settings file is YAML with helpful comments. After running `shello setup`, you'll have something like this:
 
 **OpenAI-compatible API configuration:**
 ```yaml
@@ -437,10 +437,8 @@ bedrock_config:
 - Environment variables can override any credential
 
 **Project settings:** `.shello/settings.json` (overrides global)
-```json
-{
-  "model": "gpt-4o-mini"
-}
+```yaml
+model: gpt-4o-mini
 ```
 
 **Environment variables:**
@@ -461,132 +459,128 @@ export AWS_SECRET_ACCESS_KEY="your-secret-key"
 
 ### Command Trust and Safety
 
-Shello includes a comprehensive trust and safety system to protect you from accidentally executing dangerous commands while maintaining a smooth workflow for safe operations.
+Shello has a trust system to stop you from accidentally running dangerous commands while keeping safe operations smooth.
 
 ### How It Works
 
-The trust system evaluates every command before execution using this flow:
+Every command gets checked before execution:
 
-1. **Denylist Check** - Critical warnings for dangerous commands (highest priority)
-2. **YOLO Mode** - Bypass checks for automation (if enabled)
-3. **Allowlist Check** - Auto-execute safe commands without approval
-4. **AI Safety Flag** - AI can indicate if a command is safe (in ai_driven mode)
-5. **Approval Dialog** - Interactive prompt for commands requiring review
+1. **Denylist Check** - Warns about dangerous commands (highest priority)
+2. **YOLO Mode** - Skip checks for automation (if enabled)
+3. **Allowlist Check** - Run safe commands without asking
+4. **AI Safety Flag** - AI can mark commands as safe (in ai_driven mode)
+5. **Approval Dialog** - Ask before running anything else
 
 ### Configuration
 
-Add a `command_trust` section to your `~/.shello_cli/user-settings.json`:
+Add a `command_trust` section to your `~/.shello_cli/user-settings.yml`:
 
-```json
-{
-  "api_key": "your-api-key",
-  "default_model": "gpt-4o",
-  "command_trust": {
-    "enabled": true,
-    "yolo_mode": false,
-    "approval_mode": "user_driven",
-    "allowlist": [
-      "ls",
-      "ls *",
-      "pwd",
-      "cd *",
-      "git status",
-      "git log*",
-      "git diff*",
-      "npm test"
-    ],
-    "denylist": [
-      "sudo rm -rf *",
-      "git push --force",
-      "docker system prune -a"
-    ]
-  }
-}
+```yaml
+provider: openai
+
+openai_config:
+  api_key: your-api-key
+  default_model: gpt-4o
+
+command_trust:
+  enabled: true
+  yolo_mode: false
+  approval_mode: user_driven
+  allowlist:
+    - ls
+    - ls *
+    - pwd
+    - cd *
+    - git status
+    - git log*
+    - git diff*
+    - npm test
+  denylist:
+    - sudo rm -rf *
+    - git push --force
+    - docker system prune -a
 ```
 
 ### Configuration Options
 
 **`enabled`** (boolean, default: `true`)
-- Enable or disable the trust system entirely
-- When disabled, all commands execute without checks
+- Turn the trust system on or off
+- When off, all commands run without checks
 
 **`yolo_mode`** (boolean, default: `false`)
-- Bypass approval checks for automation and CI/CD
-- Still shows critical warnings for denylist commands
-- Can also be enabled per-session with `--yolo` flag
+- Skip approval checks for automation and CI/CD
+- Still warns about denylist commands
+- Can also use `--yolo` flag per session
 
 **`approval_mode`** (string, default: `"user_driven"`)
-- `"user_driven"` - Always prompt for non-allowlist commands
-- `"ai_driven"` - Trust AI safety flags; only prompt when AI flags as unsafe
+- `"user_driven"` - Always ask before running non-allowlist commands
+- `"ai_driven"` - Trust AI safety flags, only ask when AI says it's unsafe
 
 **`allowlist`** (array of strings)
-- Commands that execute without approval
-- User-defined allowlist replaces defaults
+- Commands that run without asking
+- Your allowlist replaces the defaults
 - Supports exact match, wildcards (`git *`), and regex (`^git (status|log)$`)
 
 **`denylist`** (array of strings)
-- Commands that show critical warnings before execution
-- User patterns are added to default denylist (additive for safety)
-- Default denylist includes: `rm -rf /`, `dd if=/dev/zero*`, `mkfs*`, etc.
+- Commands that show warnings before running
+- Your patterns get added to the default denylist (for safety)
+- Defaults include: `rm -rf /`, `dd if=/dev/zero*`, `mkfs*`, etc.
 - Supports exact match, wildcards, and regex
 
 ### Pattern Matching Examples
 
 **Exact match:**
-```json
-"allowlist": ["git status", "npm test"]
+```yaml
+allowlist:
+  - git status
+  - npm test
 ```
 
 **Wildcard patterns:**
-```json
-"allowlist": [
-  "git *",           // Matches: git status, git log, git diff, etc.
-  "npm run *",       // Matches: npm run test, npm run build, etc.
-  "ls *"             // Matches: ls -la, ls -lh, etc.
-]
+```yaml
+allowlist:
+  - git *           # Matches: git status, git log, git diff, etc.
+  - npm run *       # Matches: npm run test, npm run build, etc.
+  - ls *            # Matches: ls -la, ls -lh, etc.
 ```
 
 **Regex patterns:**
-```json
-"allowlist": [
-  "^git (status|log|diff)$",     // Matches only: git status, git log, git diff
-  "^npm (test|run test)$"        // Matches only: npm test, npm run test
-]
+```yaml
+allowlist:
+  - ^git (status|log|diff)$     # Matches only: git status, git log, git diff
+  - ^npm (test|run test)$       # Matches only: npm test, npm run test
 ```
 
 ### YOLO Mode
 
-For automation and CI/CD environments where you trust all commands:
+For automation and CI/CD where you trust everything:
 
-**Enable via config:**
-```json
-{
-  "command_trust": {
-    "yolo_mode": true
-  }
-}
+**Turn on in config:**
+```yaml
+command_trust:
+  yolo_mode: true
 ```
 
-**Enable per-session:**
+**Turn on per session:**
 ```bash
 shello --yolo
 ```
 
-**Important:** YOLO mode still respects the denylist and shows critical warnings for dangerous commands.
+**Note:** YOLO mode still warns about denylist commands.
 
 ### AI Safety Integration
 
-When `approval_mode` is set to `"ai_driven"`, the AI can indicate whether commands are safe:
+When `approval_mode` is `"ai_driven"`, the AI can mark commands as safe or unsafe:
 
-- **AI says safe** (`is_safe: true`) → Execute without approval (after allowlist check)
-- **AI says unsafe** (`is_safe: false`) → Show approval dialog with warning
-- **AI doesn't specify** → Show approval dialog
+- **AI says safe** (`is_safe: true`) → Runs without asking (after allowlist check)
+- **AI says unsafe** (`is_safe: false`) → Shows approval dialog with warning
+- **AI doesn't say** → Shows approval dialog
 
-The AI can also override the allowlist in `ai_driven` mode if it detects danger.
+The AI can override the allowlist in `ai_driven` mode if it spots danger.
 
 ### Approval Dialog
 
-When a command requires approval, you'll see an interactive dialog:
+When a command needs approval, you'll see this:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -624,43 +618,40 @@ Press **A** to approve or **D** to deny execution.
 
 ### Best Practices
 
-1. **Start with defaults** - The default allowlist covers most safe operations
-2. **Add project-specific commands** - Extend allowlist for your workflow (e.g., `npm run dev`)
-3. **Use wildcards carefully** - `git *` is safe, but `rm *` is not
-4. **Never remove denylist defaults** - User denylist patterns are additive for safety
-5. **Use YOLO mode sparingly** - Only in trusted automation environments
-6. **Review AI warnings** - When AI flags a command as unsafe, take it seriously
+1. **Start with defaults** - Default allowlist covers most safe stuff
+2. **Add project commands** - Extend allowlist for your workflow (like `npm run dev`)
+3. **Be careful with wildcards** - `git *` is fine, `rm *` is not
+4. **Don't remove denylist defaults** - Your patterns get added to them, not replace them
+5. **Use YOLO mode sparingly** - Only in trusted automation
+6. **Listen to AI warnings** - When AI flags something as unsafe, pay attention
 
 ### Disabling Trust System
 
-If you prefer to disable all safety checks:
+To turn off all safety checks:
 
-```json
-{
-  "command_trust": {
-    "enabled": false
-  }
-}
+```yaml
+command_trust:
+  enabled: false
 ```
 
-**Warning:** This removes all protections. Use with caution.
+**Warning:** This removes all protections.
 
 ## Technical Deep Dive
 
 ### Architecture Highlights
 
-**For developers debugging production systems:**
+**For developers who want the details:**
 
-- **Hybrid execution model** - Direct shell execution for instant commands, AI routing for analysis and complex queries
-- **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
-- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor—errors never hidden
-- **Persistent LRU cache** - Sequential cache IDs (cmd_001, cmd_002...), 100MB limit, conversation-scoped
-- **Streaming architecture** - Real-time output for you, processed summary for AI—no token waste
-- **Zero data loss** - Full output always cached, retrieve any section on demand for deeper debugging
+- **Hybrid execution model** - Direct shell for instant commands, AI routing for analysis
+- **Formal correctness properties** - 8 properties tested via property-based testing (Hypothesis)
+- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor keep errors visible
+- **Persistent LRU cache** - Sequential IDs (cmd_001, cmd_002...), 100MB limit, per-conversation
+- **Streaming architecture** - Real-time output for you, processed summary for AI (no token waste)
+- **Zero data loss** - Full output always cached, grab any section for deeper debugging
 - **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
-- **Token optimization** - Strips column padding, compresses progress bars—2-3x reduction in token usage
+- **Token optimization** - Strips column padding, compresses progress bars (2-3x fewer tokens)
 
-See [design.md](docs/design.md) for architecture details.
+Check out [design.md](docs/design.md) for architecture details.
 
 ## Install from Source
 
@@ -673,13 +664,13 @@ python main.py
 
 **Optional: AWS Bedrock Support**
 
-If you plan to use AWS Bedrock as your AI provider, boto3 is included in requirements.txt. If you only need OpenAI-compatible APIs, you can skip boto3:
+If you want to use AWS Bedrock, boto3 is in requirements.txt. If you only need OpenAI-compatible APIs, you can skip it:
 
 ```bash
-# Install without boto3 (OpenAI-compatible APIs only)
+# Without boto3 (OpenAI-compatible APIs only)
 pip install python-dotenv pydantic rich requests urllib3 click prompt_toolkit keyring pyperclip openai hypothesis pytest
 
-# Or install boto3 separately when needed
+# Or add boto3 later
 pip install boto3
 ```
 
@@ -693,13 +684,13 @@ build.bat
 chmod +x build.sh && ./build.sh
 ```
 
-Output in `dist/` folder. See [BUILD_INSTRUCTIONS.md](doc/BUILD_INSTRUCTIONS.md) for details.
+Output goes in the `dist/` folder. Check [BUILD_INSTRUCTIONS.md](doc/BUILD_INSTRUCTIONS.md) for details.
 
 ## Contributing
 
-Contributions welcome! Fork, create a feature branch, and submit a PR.
+Contributions welcome! Fork the repo, make a feature branch, and send a PR.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Check [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Links
 
