@@ -14,34 +14,6 @@ Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kube
 
 **Logs too big? Errors hidden? Shello handles it pretty well.**
 
-## Why Shello is Different
-
-Unlike code-generation AI CLIs, Shello is engineered for production debugging:
-
-- **⚡ Executes Real Commands** - Runs shell commands instantly, no refusal, no suggestions—actual execution
-- **🧠 Smart Output Management** - Semantic truncation keeps errors visible even in 50K-line logs without token waste
-- **💾 Persistent Output Cache** - 100MB cache stores full command output—retrieve any section anytime during debugging
-- **📊 JSON Intelligence** - Auto-analyzes massive JSON with jq paths instead of flooding your terminal
-- **🎯 Failure-First Truncation** - Logs show end (where errors are), builds show both ends, lists show start
-- **🔍 Semantic Error Detection** - Critical errors always visible regardless of position in output
-- **⚙️ Progress Bar Compression** - npm install with 500 progress lines? Compressed to final state
-- **☁️ Production-Ready** - Built for Cloud, Kubernetes, Docker debugging with comprehensive test coverage
-
-## Technical Highlights
-
-**For developers debugging production systems:**
-
-- **Hybrid execution model** - Direct shell execution for instant commands, AI routing for analysis and complex queries
-- **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
-- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor—errors never hidden
-- **Persistent LRU cache** - Sequential cache IDs (cmd_001, cmd_002...), 100MB limit, conversation-scoped
-- **Streaming architecture** - Real-time output for you, processed summary for AI—no token waste
-- **Zero data loss** - Full output always cached, retrieve any section on demand for deeper debugging
-- **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
-- **Token optimization** - Strips column padding, compresses progress bars—2-3x reduction in token usage
-
-See [design.md](docs/design.md) for architecture details.
-
 ## Quick Start
 
 **One-line installation:**
@@ -79,7 +51,7 @@ The interactive wizard will guide you through API key and model configuration.
 shello
 ```
 
-## What Can It Do?
+## See It In Action
 
 ### Real-World Debugging Examples
 
@@ -197,6 +169,19 @@ refused on port 5432. Check if your database service is running and if the
 connection string in your deployment config is correct.
 ```
 
+## Why Shello is Different
+
+Unlike code-generation AI CLIs, Shello is engineered for production debugging:
+
+- **⚡ Executes Real Commands** - Runs shell commands instantly, no refusal, no suggestions—actual execution
+- **🧠 Smart Output Management** - Semantic truncation keeps errors visible even in 50K-line logs without token waste
+- **💾 Persistent Output Cache** - 100MB cache stores full command output—retrieve any section anytime during debugging
+- **📊 JSON Intelligence** - Auto-analyzes massive JSON with jq paths instead of flooding your terminal
+- **🎯 Failure-First Truncation** - Logs show end (where errors are), builds show both ends, lists show start
+- **🔍 Semantic Error Detection** - Critical errors always visible regardless of position in output
+- **⚙️ Progress Bar Compression** - npm install with 500 progress lines? Compressed to final state
+- **☁️ Production-Ready** - Built for Cloud, Kubernetes, Docker debugging with comprehensive test coverage
+
 ## Key Features
 
 ### Production Debugging
@@ -228,6 +213,51 @@ connection string in your deployment config is correct.
 - **Critical warnings** - Denylist commands show prominent warnings before execution
 - **Flexible approval modes** - Choose between AI-driven or user-driven approval workflows
 
+## Configuration
+
+### Quick Setup (Recommended)
+
+Run the interactive setup wizard:
+
+```bash
+shello setup
+```
+
+This will guide you through:
+- AI provider selection (OpenAI-compatible API or AWS Bedrock)
+- Provider-specific configuration (API keys or AWS credentials)
+- Default model selection
+
+The setup wizard generates a well-documented `~/.shello_cli/user-settings.yml` file with all available options as comments, making it easy to customize later.
+
+**Using AWS Bedrock?** See the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for detailed instructions on configuring AWS credentials and accessing Claude, Nova, and other foundation models.
+
+### Configuration Management
+
+**View current settings:**
+```bash
+shello config
+```
+
+**Edit settings in your default editor:**
+```bash
+shello config --edit
+```
+
+**Get/set specific values:**
+```bash
+shello config get provider
+shello config set provider bedrock
+shello config set openai_config.default_model gpt-4o-mini
+```
+
+**Reset to defaults:**
+```bash
+shello config reset
+```
+
+See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed configuration options.
+
 ## Commands
 
 While chatting:
@@ -241,7 +271,9 @@ CLI commands:
 - `shello config` - Show current settings
 - `shello --version` - Display version
 
-## AI Provider Support
+## Advanced Features
+
+### AI Provider Support
 
 Shello supports multiple AI providers for debugging flexibility:
 
@@ -331,49 +363,6 @@ export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
 Environment variables take precedence over configuration files, making it easy to switch credentials per session or use different credentials in CI/CD.
-
-## Configuration
-
-### Quick Setup (Recommended)
-
-Run the interactive setup wizard:
-
-```bash
-shello setup
-```
-
-This will guide you through:
-- AI provider selection (OpenAI-compatible API or AWS Bedrock)
-- Provider-specific configuration (API keys or AWS credentials)
-- Default model selection
-
-The setup wizard generates a well-documented `~/.shello_cli/user-settings.yml` file with all available options as comments, making it easy to customize later.
-
-**Using AWS Bedrock?** See the [AWS Bedrock Setup Guide](doc/BEDROCK_SETUP_GUIDE.md) for detailed instructions on configuring AWS credentials and accessing Claude, Nova, and other foundation models.
-
-### Configuration Management
-
-**View current settings:**
-```bash
-shello config
-```
-
-**Edit settings in your default editor:**
-```bash
-shello config --edit
-```
-
-**Get/set specific values:**
-```bash
-shello config get provider
-shello config set provider bedrock
-shello config set openai_config.default_model gpt-4o-mini
-```
-
-**Reset to defaults:**
-```bash
-shello config reset
-```
 
 ### Manual Configuration
 
@@ -470,9 +459,7 @@ export AWS_ACCESS_KEY_ID="your-access-key"
 export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
-See [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md) for detailed configuration options.
-
-## Command Trust and Safety
+### Command Trust and Safety
 
 Shello includes a comprehensive trust and safety system to protect you from accidentally executing dangerous commands while maintaining a smooth workflow for safe operations.
 
@@ -657,6 +644,23 @@ If you prefer to disable all safety checks:
 ```
 
 **Warning:** This removes all protections. Use with caution.
+
+## Technical Deep Dive
+
+### Architecture Highlights
+
+**For developers debugging production systems:**
+
+- **Hybrid execution model** - Direct shell execution for instant commands, AI routing for analysis and complex queries
+- **Formal correctness properties** - 8 properties validated via property-based testing (Hypothesis)
+- **Intelligent truncation** - Type detector, semantic classifier, progress bar compressor—errors never hidden
+- **Persistent LRU cache** - Sequential cache IDs (cmd_001, cmd_002...), 100MB limit, conversation-scoped
+- **Streaming architecture** - Real-time output for you, processed summary for AI—no token waste
+- **Zero data loss** - Full output always cached, retrieve any section on demand for deeper debugging
+- **Modular design** - Clean separation: cache → detect → compress → truncate → analyze
+- **Token optimization** - Strips column padding, compresses progress bars—2-3x reduction in token usage
+
+See [design.md](docs/design.md) for architecture details.
 
 ## Install from Source
 
