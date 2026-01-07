@@ -94,8 +94,28 @@ class ShelloClient:
                 print(f"\n  [{i}] Role: {role.upper()}")
                 print(f"  {'─' * 76}")
                 
-                # Show tool calls if present (assistant making tool requests)
+                # Show content FIRST (if present)
+                has_content = isinstance(content, str) and content
+                if has_content:
+                    # For system messages, show only first line
+                    if role.lower() == 'system':
+                        first_line = content.split('\n')[0]
+                        print(f"  {first_line}")
+                        print(f"  ... (system prompt truncated)")
+                    else:
+                        # Show full content for user/assistant/tool messages
+                        lines = content.split('\n')
+                        for line in lines[:50]:  # Limit to first 50 lines per message
+                            print(f"  {line}")
+                        if len(lines) > 50:
+                            print(f"  ... ({len(lines) - 50} more lines)")
+                
+                # Show tool calls AFTER content (if present)
                 if tool_calls:
+                    # Add visual separator if there was content before
+                    if has_content:
+                        print(f"\n  {'─' * 76}")
+                    
                     print(f"  🔧 Tool Calls: {len(tool_calls)}")
                     for tc in tool_calls:
                         func = tc.get('function', {})
@@ -121,23 +141,10 @@ class ShelloClient:
                 if tool_call_id:
                     print(f"  🔧 Tool Result for Call ID: {tool_call_id}")
                 
-                # Show content
-                if isinstance(content, str) and content:
-                    # For system messages, show only first line
-                    if role.lower() == 'system':
-                        first_line = content.split('\n')[0]
-                        print(f"  {first_line}")
-                        print(f"  ... (system prompt truncated)")
-                    else:
-                        # Show full content for user/assistant/tool messages
-                        lines = content.split('\n')
-                        for line in lines[:50]:  # Limit to first 50 lines per message
-                            print(f"  {line}")
-                        if len(lines) > 50:
-                            print(f"  ... ({len(lines) - 50} more lines)")
-                elif content is None and not tool_calls:
+                # Show status if neither content nor tool calls
+                if not has_content and not tool_calls and not tool_call_id:
                     print(f"  <no content>")
-                elif not isinstance(content, str):
+                elif not isinstance(content, str) and content is not None:
                     print(f"  <complex content: {type(content).__name__}>")
             
             # Show tools summary
@@ -205,13 +212,20 @@ class ShelloClient:
                         
                         print(f"  [{i}] Finish reason: {finish_reason}")
                         
-                        if content:
+                        # Check if both content and tool_calls are present
+                        has_content = content and isinstance(content, str)
+                        has_tool_calls = tool_calls and len(tool_calls) > 0
+                        
+                        if has_content and has_tool_calls:
+                            print(f"      ✨ BOTH content AND tool_calls present!")
+                        
+                        if has_content:
                             preview = content[:100].replace('\n', ' ')
                             if len(content) > 100:
                                 preview += "..."
                             print(f"      Content: {preview}")
                         
-                        if tool_calls:
+                        if has_tool_calls:
                             print(f"      Tool calls: {len(tool_calls)}")
                             for tc in tool_calls:
                                 func = tc.get('function', {})

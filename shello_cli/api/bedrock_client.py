@@ -46,7 +46,7 @@ class ShelloBedrockClient:
             aws_session_token: Optional AWS session token for temporary credentials
             aws_profile: AWS profile name from credentials file
             endpoint_url: Optional custom endpoint URL for testing or private endpoints
-            debug: Enable detailed request/response logging (default: False)
+            debug: Enable detailed request/response logging (default: True)
         
         Raises:
             ValueError: If region is invalid or missing
@@ -669,22 +669,46 @@ class ShelloBedrockClient:
             print(f"\n  [{i}] Role: {role.upper()}")
             print(f"  {'─' * 76}")
             
-            # Process content blocks
+            # Separate content blocks by type
+            text_blocks = []
+            tool_use_blocks = []
+            tool_result_blocks = []
+            
             for block in content_blocks:
-                # Handle text content
                 if 'text' in block:
-                    text = block['text']
-                    lines = text.split('\n')
-                    for line in lines[:50]:  # Limit to first 50 lines
-                        print(f"  {line}")
-                    if len(lines) > 50:
-                        print(f"  ... ({len(lines) - 50} more lines)")
-                
-                # Handle tool use
+                    text_blocks.append(block)
                 elif 'toolUse' in block:
+                    tool_use_blocks.append(block)
+                elif 'toolResult' in block:
+                    tool_result_blocks.append(block)
+            
+            # Show TEXT CONTENT FIRST (if present)
+            has_text = len(text_blocks) > 0
+            if has_text:
+                for block in text_blocks:
+                    text = block['text']
+                    # For system messages, show only first line
+                    if role.lower() == 'system':
+                        first_line = text.split('\n')[0]
+                        print(f"  {first_line}")
+                        print(f"  ... (system prompt truncated)")
+                    else:
+                        lines = text.split('\n')
+                        for line in lines[:50]:  # Limit to first 50 lines
+                            print(f"  {line}")
+                        if len(lines) > 50:
+                            print(f"  ... ({len(lines) - 50} more lines)")
+            
+            # Show TOOL USE AFTER content (if present)
+            if tool_use_blocks:
+                # Add visual separator if there was text before
+                if has_text:
+                    print(f"\n  {'─' * 76}")
+                
+                print(f"  🔧 Tool Calls: {len(tool_use_blocks)}")
+                for block in tool_use_blocks:
                     tool_use = block['toolUse']
-                    print(f"  🔧 Tool Use:")
-                    print(f"    • Function: {tool_use.get('name', 'unknown')}")
+                    print(f"\n    • Function: {tool_use.get('name', 'unknown')}")
                     print(f"      Tool Use ID: {tool_use.get('toolUseId', 'unknown')}")
                     print(f"      Input:")
                     
@@ -697,9 +721,10 @@ class ShelloBedrockClient:
                             print(f"      {line}")
                     except:
                         print(f"        {tool_use.get('input', {})}")
-                
-                # Handle tool result
-                elif 'toolResult' in block:
+            
+            # Show TOOL RESULTS (if present)
+            if tool_result_blocks:
+                for block in tool_result_blocks:
                     tool_result = block['toolResult']
                     print(f"  🔧 Tool Result for ID: {tool_result.get('toolUseId', 'unknown')}")
                     result_content = tool_result.get('content', [])
@@ -711,6 +736,10 @@ class ShelloBedrockClient:
                                 print(f"  {line}")
                             if len(lines) > 20:
                                 print(f"  ... ({len(lines) - 20} more lines)")
+            
+            # Show status if no content at all
+            if not has_text and not tool_use_blocks and not tool_result_blocks:
+                print(f"  <no content>")
         
         # Show tools summary
         if tools:
@@ -760,17 +789,24 @@ class ShelloBedrockClient:
         stop_reason = response.get('stopReason', 'unknown')
         print(f"\nStop Reason: {stop_reason}")
         
-        # Show content preview
+        # Check if both content and tool_calls are present
         content = response.get('content', '')
-        if content:
+        tool_calls = response.get('toolCalls', [])
+        has_content = content and isinstance(content, str)
+        has_tool_calls = tool_calls and len(tool_calls) > 0
+        
+        if has_content and has_tool_calls:
+            print(f"✨ BOTH content AND tool_calls present!")
+        
+        # Show content preview
+        if has_content:
             preview = content[:100].replace('\n', ' ')
             if len(content) > 100:
                 preview += "..."
             print(f"Content: {preview}")
         
         # Show tool calls if present
-        tool_calls = response.get('toolCalls', [])
-        if tool_calls:
+        if has_tool_calls:
             print(f"\nTool Calls: {len(tool_calls)}")
             for tc in tool_calls:
                 func = tc.get('function', {})
