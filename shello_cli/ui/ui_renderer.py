@@ -252,7 +252,6 @@ def print_welcome_banner(user_info, version):
     banner_content.append("Say Hello to Shello. Making terminals less... terminal".center(55), style="white")
     banner_content.append("\n")
     banner_content.append("\n")
-    banner_content.append(">> AI-Powered CLI with OpenAI Integration <<".center(45), style="bright_blue")
     
     console.print(Panel(
         banner_content,
