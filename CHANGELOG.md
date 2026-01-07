@@ -5,6 +5,21 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-01-07
+
+### Fixed
+- **Stream Lifecycle Management**: Handle missing messageStop events and improve stream lifecycle management
+- **Message Content Display**: Improve message content display ordering and formatting
+
+### Changed
+- **Direct Command Execution**: Remove trust evaluation from direct commands for faster execution
+- **Welcome Message**: Remove AI-powered CLI banner text from welcome message for cleaner UI
+- **Live Display**: Improve live display lifecycle management with comprehensive message processor tests
+
+### Added
+- **Bash Tool Safety**: Add explanation requirement to bash tool and simplify safety documentation
+- **Tool Execution**: Add is_safe parameter to bash tool execution for better safety control
+
 ## [0.4.0] - 2026-01-06
 
 ### Added
@@ -631,7 +646,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.1
 [0.4.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.0
 [0.3.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.3.0
 [0.2.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.2.0
