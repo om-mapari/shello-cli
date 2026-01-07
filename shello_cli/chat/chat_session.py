@@ -84,57 +84,69 @@ class ChatSession:
                 return
             
             # Use Live display for streaming markdown updates
-            with Live(EnhancedMarkdown(""), console=console, refresh_per_second=10) as live:
-                for chunk in stream:
-                    if chunk.type == "content":
-                        # Accumulate content and update live markdown display
-                        if chunk.content:
-                            accumulated_content += chunk.content
-                            # Update the live display with current markdown
-                            live.update(EnhancedMarkdown(accumulated_content))
-                    
-                    elif chunk.type == "tool_calls":
-                        # Tool calls received - stop live display and render final markdown
-                        if chunk.tool_calls and accumulated_content:
+            live = Live(EnhancedMarkdown(""), console=console, refresh_per_second=10)
+            live.start()
+            
+            for chunk in stream:
+                if chunk.type == "content":
+                    # Accumulate content and update live markdown display
+                    if chunk.content:
+                        accumulated_content += chunk.content
+                        # Update the live display with current markdown
+                        live.update(EnhancedMarkdown(accumulated_content))
+                
+                elif chunk.type == "tool_calls":
+                    # Tool calls received - stop live display and render final markdown
+                    if chunk.tool_calls:
+                        if accumulated_content:
+                            # If there was content before tool calls, finalize it
                             live.stop()
                             console.print()
-                            accumulated_content = ""  # Reset for next section
+                        accumulated_content = ""  # Reset for next section
+                
+                elif chunk.type == "tool_call":
+                    # Individual tool call starting
+                    if chunk.tool_call:
+                        current_tool_call = chunk.tool_call
+                        # Extract command for interrupt tracking
+                        func_data = chunk.tool_call.get("function", {})
+                        if func_data.get("name") == "bash":
+                            try:
+                                args = json.loads(func_data.get("arguments", "{}"))
+                                current_command = args.get("command", "")
+                            except:
+                                current_command = "unknown command"
+                        else:
+                            current_command = f"{func_data.get('name', 'tool')} execution"
+                        
+                        self._handle_tool_call(chunk.tool_call)
+                        console.print()  # Add newline after tool header
+                
+                elif chunk.type == "tool_output":
+                    # Stream tool output as it arrives
+                    if chunk.content:
+                        console.print(chunk.content, end="", markup=False)
+                
+                elif chunk.type == "tool_result":
+                    # Tool execution complete
+                    current_command = None  # Clear command tracking
+                    if chunk.tool_result:
+                        # Display final result status if there was an error
+                        if not chunk.tool_result.success and chunk.tool_result.error:
+                            console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
+                        console.print()  # Add spacing after tool output
                     
-                    elif chunk.type == "tool_call":
-                        # Individual tool call starting
-                        if chunk.tool_call:
-                            current_tool_call = chunk.tool_call
-                            # Extract command for interrupt tracking
-                            func_data = chunk.tool_call.get("function", {})
-                            if func_data.get("name") == "bash":
-                                try:
-                                    args = json.loads(func_data.get("arguments", "{}"))
-                                    current_command = args.get("command", "")
-                                except:
-                                    current_command = "unknown command"
-                            else:
-                                current_command = f"{func_data.get('name', 'tool')} execution"
-                            
-                            self._handle_tool_call(chunk.tool_call)
-                            console.print()  # Add newline after tool header
-                    
-                    elif chunk.type == "tool_output":
-                        # Stream tool output as it arrives
-                        if chunk.content:
-                            console.print(chunk.content, end="", markup=False)
-                    
-                    elif chunk.type == "tool_result":
-                        # Tool execution complete
-                        current_command = None  # Clear command tracking
-                        if chunk.tool_result:
-                            # Display final result status if there was an error
-                            if not chunk.tool_result.success and chunk.tool_result.error:
-                                console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
-                            console.print()  # Add spacing after tool output
-                    
-                    elif chunk.type == "done":
-                        # Streaming complete
-                        break
+                    # Restart live display for any content that follows
+                    if not live.is_started:
+                        live.start()
+                
+                elif chunk.type == "done":
+                    # Streaming complete
+                    break
+            
+            # Stop live display if still running
+            if live.is_started:
+                live.stop()
             
             # Final newline after response
             console.print()
