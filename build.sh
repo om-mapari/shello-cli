@@ -3,7 +3,7 @@ echo "Building Shello CLI with PyInstaller..."
 echo
 
 # Install PyInstaller if not already installed
-pip install pyinstaller
+uv pip install pyinstaller
 
 # Clean previous builds
 rm -rf build dist/shello

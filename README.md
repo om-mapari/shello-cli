@@ -655,24 +655,37 @@ Check out [design.md](docs/design.md) for architecture details.
 
 ## Install from Source
 
+### Using UV (Recommended - 10-100x faster)
+
 ```bash
+# Install uv if you haven't already
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
 git clone https://github.com/om-mapari/shello-cli.git
 cd shello-cli
-pip install -r requirements.txt
+uv venv
+# Activate: .venv\Scripts\Activate.ps1 (Windows) or source .venv/bin/activate (Linux/macOS)
+uv pip install -e .
 python main.py
 ```
 
-**Optional: AWS Bedrock Support**
-
-If you want to use AWS Bedrock, boto3 is in requirements.txt. If you only need OpenAI-compatible APIs, you can skip it:
+### Alternative: Using pip (if you don't have uv)
 
 ```bash
-# Without boto3 (OpenAI-compatible APIs only)
-pip install python-dotenv pydantic rich requests urllib3 click prompt_toolkit keyring pyperclip openai hypothesis pytest
-
-# Or add boto3 later
-pip install boto3
+git clone https://github.com/om-mapari/shello-cli.git
+cd shello-cli
+python -m venv venv
+# Activate: venv\Scripts\Activate.ps1 (Windows) or source venv/bin/activate (Linux/macOS)
+pip install -e .
+python main.py
 ```
+
+**Note:** All dependencies including boto3 (AWS Bedrock support) are defined in `pyproject.toml` and installed automatically.
 
 ## Build Executable
 

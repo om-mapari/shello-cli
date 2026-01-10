@@ -91,7 +91,7 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md).
 
 ### Prerequisites
 - Python 3.11 or higher
-- pip
+- uv (recommended) or pip
 - git
 
 ### Setup
@@ -109,11 +109,11 @@ venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (with uv - recommended)
+uv pip install -e ".[dev]"
 
-# Install development dependencies
-pip install pytest hypothesis pyinstaller
+# Or with pip
+pip install -e ".[dev]"
 
 # Run tests
 pytest tests/ -v

@@ -37,11 +37,33 @@ python main.py config  # Show current configuration
 
 ### 1. Clone and Install
 
+**Using UV (Recommended - 10-100x faster):**
+
 ```bash
+# Install uv if you haven't already
+# Windows (PowerShell)
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+# Linux/macOS
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and setup
 git clone https://github.com/om-mapari/shello-cli.git
 cd shello-cli
-pip install -r requirements.txt
+
+# Create virtual environment
+uv venv
+
+# Activate virtual environment
+# Windows (PowerShell): .venv\Scripts\Activate.ps1
+# Windows (CMD): .venv\Scripts\activate.bat
+# Linux/macOS: source .venv/bin/activate
+
+# Install dependencies
+uv pip install -e ".[dev]"
 ```
+
+
 
 ### 2. Configure for Development
 
@@ -471,16 +493,16 @@ File permissions are handled automatically by the application.
 ### "boto3 not installed" error (Bedrock only)
 If you're using AWS Bedrock and see this error:
 ```bash
-pip install boto3
+uv pip install boto3
 ```
 
 Or reinstall all dependencies:
 ```bash
-pip install -r requirements.txt
+uv pip install -e .
 ```
 
 ### Import errors
-- Make sure you've installed all dependencies: `pip install -r requirements.txt`
+- Make sure you've installed all dependencies: `uv pip install -e .`
 - Verify you're in the correct Python environment (check with `which python` or `where python`)
 
 ### Configuration not loading

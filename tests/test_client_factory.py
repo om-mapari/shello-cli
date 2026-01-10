@@ -248,14 +248,14 @@ class TestCreateClientBoto3Import:
                 with patch('shello_cli.api.client_factory._create_bedrock_client') as mock_create:
                     mock_create.side_effect = ValueError(
                         "AWS Bedrock support requires boto3. "
-                        "Install it with: pip install boto3"
+                        "Install it with: uv pip install boto3 (or pip install boto3)"
                     )
                     
                     with pytest.raises(ValueError) as exc_info:
                         create_client(manager)
                     
                     assert "boto3" in str(exc_info.value)
-                    assert "pip install boto3" in str(exc_info.value)
+                    assert "uv pip install boto3" in str(exc_info.value)
 
 
 @pytest.mark.no_mock_settings

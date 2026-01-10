@@ -1,0 +1,77 @@
+[project]
+name = "shello-cli"
+dynamic = ["version"]
+description = "AI Assistant with Command Execution - Built for failures, not for code"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Om Mapari" }
+]
+keywords = ["cli", "ai", "assistant", "debugging", "devops"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "python-dotenv~=1.0.0",
+    "pydantic~=2.12.0",
+    "rich~=13.7.0",
+    "requests~=2.31.0",
+    "urllib3~=2.0.7",
+    "click~=8.1.0",
+    "prompt_toolkit~=3.0.0",
+    "keyring~=25.6.0",
+    "pyperclip~=1.11.0",
+    "openai~=2.14.0",
+    "hypothesis~=6.131.0",
+    "pytest~=9.0.0",
+    "pyyaml~=6.0.0",
+    "boto3~=1.35.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0.0",
+    "pytest-cov>=4.0.0",
+]
+
+[project.scripts]
+shello = "shello_cli.cli:cli"
+
+[project.urls]
+Homepage = "https://github.com/om-mapari/shello-cli"
+Repository = "https://github.com/om-mapari/shello-cli"
+Issues = "https://github.com/om-mapari/shello-cli/issues"
+Changelog = "https://github.com/om-mapari/shello-cli/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "shello_cli/__init__.py"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["shello_cli"]
+omit = ["tests/*", "venv/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

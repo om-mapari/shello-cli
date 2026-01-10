@@ -17,13 +17,16 @@ chmod +x build.sh
 
 If you prefer to build manually:
 
+**Using UV (Recommended):**
 ```bash
 # Install PyInstaller
-pip install pyinstaller
+uv pip install pyinstaller
 
 # Build the executable
 pyinstaller shello.spec --clean
 ```
+
+
 
 ## Output
 

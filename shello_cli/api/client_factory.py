@@ -121,7 +121,7 @@ def _create_bedrock_client(settings_manager: 'SettingsManager') -> 'ShelloBedroc
         if "boto3" in str(e) or "botocore" in str(e):
             raise ValueError(
                 "AWS Bedrock support requires boto3. "
-                "Install it with: pip install boto3"
+                "Install it with: uv pip install boto3 (or pip install boto3)"
             ) from e
         raise
     
