@@ -232,15 +232,15 @@ class MessageProcessor:
                                 }
                             }
                         
-                        # Update tool call fields
-                        if "id" in tool_call_delta:
+                        # Update tool call fields - only if value is not None
+                        if "id" in tool_call_delta and tool_call_delta["id"] is not None:
                             tool_call_accumulator[index]["id"] = tool_call_delta["id"]
                         
-                        if "function" in tool_call_delta:
+                        if "function" in tool_call_delta and tool_call_delta["function"] is not None:
                             func_delta = tool_call_delta["function"]
-                            if "name" in func_delta:
+                            if "name" in func_delta and func_delta["name"] is not None:
                                 tool_call_accumulator[index]["function"]["name"] = func_delta["name"]
-                            if "arguments" in func_delta:
+                            if "arguments" in func_delta and func_delta["arguments"] is not None:
                                 tool_call_accumulator[index]["function"]["arguments"] += func_delta["arguments"]
             
             # Convert accumulated tool calls to list
