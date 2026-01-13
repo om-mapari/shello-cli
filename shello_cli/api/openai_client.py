@@ -23,7 +23,7 @@ class ShelloClient:
         _model: The current model being used for completions
     """
     
-    def __init__(self, api_key: str, model: str = "gpt-4o", base_url: Optional[str] = None, debug: bool = True):
+    def __init__(self, api_key: str, model: str = "gpt-4o", base_url: Optional[str] = None, debug: bool = False):
         """Initialize the Shello client with API credentials.
         
         Args:

@@ -203,40 +203,6 @@ Above: jq paths for querying the data
 💡 Use get_cached_output(cache_id="{cache_id}", lines="+50") to see first 50 lines of raw JSON
 ───────────────────────────────────────────────────────────
 """
-
-# =============================================================================
-# TOOL DESCRIPTIONS
-# =============================================================================
-
-GET_CACHED_OUTPUT_DESCRIPTION = """Retrieve full or partial command output from cache.
-
-WHEN TO USE:
-- When you need to see more of a command's output (truncated or not)
-- When you want to analyze specific sections of previous output
-- When you need to reference earlier command results
-- When user asks to "show more", "see the rest", "check the full output"
-
-IMPORTANT:
-- Every bash command execution returns a cache_id in the tool result
-- Cache persists for the entire conversation (cleared on /new or exit)
-- You can retrieve from ANY previous command in this conversation
-
-Parameters:
-- cache_id (required): Cache ID from tool result (e.g., "cmd_001", "cmd_002")
-- lines (optional): Line selection format:
-  - "+N": First N lines (e.g., "+50" for first 50 lines)
-  - "-N": Last N lines (e.g., "-100" for last 100 lines) 
-  - "+N,-M": First N + last M (e.g., "+20,-80" for first 20 and last 80)
-  - "N-M": Lines N to M (e.g., "100-200" for lines 100-200)
-  - Omit to get full output (50K char safety limit)
-
-EXAMPLES:
-- get_cached_output(cache_id="cmd_001", lines="-100")  # Last 100 lines of cmd_001
-- get_cached_output(cache_id="cmd_005")  # Full output of cmd_005
-- get_cached_output(cache_id="cmd_003", lines="+50,-50")  # First 50 + last 50
-
-TIP: For install/build commands, use lines="-100" to see the end where success/failure appears."""
-
 # =============================================================================
 # COMMAND TRUST AND SAFETY CONSTANTS
 # =============================================================================

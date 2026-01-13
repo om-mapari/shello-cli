@@ -1,59 +1,50 @@
 """
-Tool definitions for Shello CLI.
-
-This module defines all available tools in OpenAI function calling format,
-providing a registry of tools that the AI agent can invoke.
+Improved tool definitions for Shello CLI.
 """
 
 from typing import List
 from shello_cli.types import ShelloTool
-from shello_cli.patterns import GET_CACHED_OUTPUT_DESCRIPTION
 
 
-# Registry of all available tools in OpenAI function calling format
 SHELLO_TOOLS: List[ShelloTool] = [
     ShelloTool(
         type="function",
         function={
             "name": "bash",
             "description": (
-                "Execute a shell command in the current working directory.\n\n"
-                "IMPORTANT - EXPLAIN BEFORE EXECUTING:\n"
-                "- ALWAYS provide a brief explanation of what the command will do BEFORE calling this tool\n"
-                "- For simple commands: one line explanation (e.g., 'Listing files in current directory')\n"
-                "- For complex commands: explain the purpose and expected outcome\n"
-                "- This helps users understand what's happening before execution\n\n"
-                "USE FOR:\n"
+                "Execute a shell command on the user's machine.\n\n"
+                "WHEN TO USE:\n"
                 "- Running shell commands (ls, dir, grep, find, etc.)\n"
                 "- File operations (cat, type, cp, mv, rm)\n"
-                "- Directory navigation (cd)\n"
-                "- System operations and utilities\n"
-                "- AWS CLI, Docker, Git, and other CLI tools\n"
+                "- CLI tools (aws, docker, git, kubectl, etc.)\n"
                 "- Piping and filtering with jq, grep, awk\n\n"
-                "SAFETY:\n"
-                "- Commands are evaluated by the trust system before execution\n"
-                "- You MUST provide is_safe parameter for every command\n"
-                "- Set is_safe=true for commands you've verified as safe (read-only operations)\n"
-                "- Set is_safe=false for potentially dangerous commands (rm, dd, format, etc.)\n\n"
                 "RULES:\n"
-                "- Use shell-appropriate commands for the detected OS/shell\n"
-                "- For large outputs, use filtering flags (--max-items, | head, Select-Object -First)\n"
-                "- cd command updates working directory for subsequent commands\n"
-                "- Output is shown directly to user - don't repeat it in your response"
+                "- Use shell-appropriate commands for detected OS/shell\n"
+                "- For large outputs, filter at source (--max-items, | head, Select-Object -First)\n"
+                "- cd updates working directory for subsequent commands\n"
+                "- Output is shown directly to user - DON'T repeat it in your response\n"
+                "- NEVER use echo to communicate with user - respond directly instead\n\n"
+                "SAFETY:\n"
+                "- Set is_safe=true for read-only operations (ls, cat, git status)\n"
+                "- Set is_safe=false for destructive operations (rm, dd, format)\n"
+                "- NEVER expose secrets in plain-text - use environment variables\n\n"
+                "BEFORE EXECUTING:\n"
+                "- Provide brief explanation of what command does (one line for simple commands)\n"
+                "- For complex/destructive commands, explain purpose and expected outcome"
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "The shell command to execute"
+                        "description": "The shell command to execute. Must be appropriate for the user's OS and shell."
                     },
                     "is_safe": {
                         "type": "boolean",
                         "description": (
-                            "Safety flag indicating if the command is safe to execute. "
-                            "Set to true for verified safe commands (read-only operations like ls, git status, cat). "
-                            "Set to false for potentially dangerous commands (destructive operations like rm, dd, format). "
+                            "true = read-only/safe operation (ls, cat, git status). "
+                            "false = potentially destructive (rm, dd, format). "
+                            "When unsure, use false."
                         )
                     }
                 },
@@ -66,24 +57,21 @@ SHELLO_TOOLS: List[ShelloTool] = [
         function={
             "name": "analyze_json",
             "description": (
-                "Execute a command and analyze its JSON output structure.\n\n"
-                "USE FOR:\n"
-                "- Understanding JSON structure from AWS CLI, Docker, curl, etc.\n"
-                "- Discovering jq paths before filtering large JSON outputs\n"
-                "- Preventing terminal flooding from large JSON responses\n\n"
-                "HOW IT WORKS:\n"
-                "1. Pass the COMMAND (not JSON) - tool executes it internally\n"
-                "2. Returns ONLY jq paths with data types (user never sees raw JSON)\n"
-                "3. Use discovered paths to construct filtered bash command with jq\n\n"
-                "EXAMPLE WORKFLOW:\n"
-                "1. analyze_json(command='aws lambda list-functions --output json')\n"
-                "   → Returns: .Functions[].FunctionName | string\n"
-                "2. bash(command=\"aws lambda list-functions --output json | jq '.Functions[].FunctionName'\")\n"
-                "   → Returns clean, filtered output\n\n"
+                "Execute a command and analyze its JSON output structure WITHOUT showing raw JSON.\n\n"
                 "WHEN TO USE:\n"
                 "- You don't know the JSON structure of a command's output\n"
                 "- You expect large JSON that would flood the terminal\n"
-                "- You need to find the right jq path for filtering"
+                "- You need to discover jq paths for filtering\n\n"
+                "HOW IT WORKS:\n"
+                "1. Pass the COMMAND (not JSON) - tool executes internally\n"
+                "2. Returns ONLY jq paths with types (user never sees raw JSON)\n"
+                "3. Use discovered paths to construct filtered bash command\n\n"
+                "EXAMPLE:\n"
+                "  analyze_json(command='aws lambda list-functions --output json')\n"
+                "  → Returns: .Functions[].FunctionName | string\n"
+                "  \n"
+                "  Then use: bash(command=\"aws lambda list-functions | jq '.Functions[].FunctionName'\")\n\n"
+                "IMPORTANT: Pass the COMMAND string, not JSON data."
             ),
             "parameters": {
                 "type": "object",
@@ -101,7 +89,25 @@ SHELLO_TOOLS: List[ShelloTool] = [
         type="function",
         function={
             "name": "get_cached_output",
-            "description": GET_CACHED_OUTPUT_DESCRIPTION,
+            "description": (
+                "Retrieve cached output from a previous command execution.\n\n"
+                "WHEN TO USE:\n"
+                "- Output was truncated and you need to see more\n"
+                "- User asks about details from earlier command\n"
+                "- You need specific lines from large output\n\n"
+                "CACHE IDs:\n"
+                "- Every command returns a cache_id (cmd_001, cmd_002, etc.)\n"
+                "- Cache persists for entire conversation\n"
+                "- Shown in truncation summary: 💾 Cache ID: cmd_001\n\n"
+                "LINE SELECTION:\n"
+                "- lines='-100'    → Last 100 lines (most common for logs)\n"
+                "- lines='+50'     → First 50 lines\n"
+                "- lines='+20,-80' → First 20 + last 80 lines\n"
+                "- lines='10-50'   → Lines 10 through 50\n"
+                "- (omit lines)    → Full output (50K char limit)\n\n"
+                "EXAMPLE:\n"
+                "  get_cached_output(cache_id='cmd_001', lines='-100')"
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -111,7 +117,7 @@ SHELLO_TOOLS: List[ShelloTool] = [
                     },
                     "lines": {
                         "type": "string",
-                        "description": "Line selection: '+N' (first N), '-N' (last N), '+N,-M' (first+last), 'N-M' (range)"
+                        "description": "Line selection: '+N' (first N), '-N' (last N), '+N,-M' (first+last), 'N-M' (range). Omit for full output."
                     }
                 },
                 "required": ["cache_id"]
@@ -122,26 +128,16 @@ SHELLO_TOOLS: List[ShelloTool] = [
 
 
 def get_all_tools() -> List[ShelloTool]:
-    """Return all available tools for the AI agent.
-    
-    Returns:
-        List[ShelloTool]: A list of all tool definitions in OpenAI function calling format.
-    """
+    """Return all available tools for the AI agent."""
     return SHELLO_TOOLS
 
 
 def get_tool_descriptions() -> str:
-    """Generate a formatted string describing all available tools.
-    
-    Returns:
-        str: A formatted string with tool names and descriptions for the system prompt.
-    """
+    """Generate formatted tool descriptions for system prompt."""
     descriptions = []
     for tool in SHELLO_TOOLS:
         name = tool.function["name"]
         desc = tool.function["description"]
-        # Get first line as summary for the system prompt
         summary = desc.split('\n')[0]
         descriptions.append(f"- {name}: {summary}")
-    
     return "\n".join(descriptions)

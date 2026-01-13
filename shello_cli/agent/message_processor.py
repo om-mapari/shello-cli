@@ -70,7 +70,18 @@ class MessageProcessor:
                 return entries
             
             # Extract the assistant's message
-            choice = response.get("choices", [{}])[0]
+            choices = response.get("choices", [])
+            if not choices:
+                error_entry = ChatEntry(
+                    type="assistant",
+                    content="Error: API returned empty choices array",
+                    timestamp=datetime.now()
+                )
+                entries.append(error_entry)
+                chat_history.append(error_entry)
+                return entries
+            
+            choice = choices[0]
             message_data = choice.get("message", {})
             
             # Check if there are tool calls
@@ -207,7 +218,11 @@ class MessageProcessor:
             tool_call_accumulator: Dict[int, Dict[str, Any]] = {}
             
             for chunk in stream:
-                choice = chunk.get("choices", [{}])[0]
+                choices = chunk.get("choices", [])
+                # Skip chunks with empty choices (common in Azure OpenAI)
+                if not choices:
+                    continue
+                choice = choices[0]
                 delta = choice.get("delta", {})
                 
                 # Handle content delta
