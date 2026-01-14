@@ -238,7 +238,10 @@ If you encounter repeated failures:
 
 <version_control>
 When working with git:
-- Always use --no-pager flag to avoid pagination issues
+- Use --no-pager as a GLOBAL flag BEFORE the command: git --no-pager diff (NOT git diff --no-pager)
+- Correct: git --no-pager diff --cached
+- Correct: git --no-pager log -10
+- Wrong: git diff --no-pager ❌
 - For "recent changes", check git status/diff first
 - When committing (if asked), include: Co-Authored-By: Shello <assistant@shello.dev>
 - IMPORTANT: NEVER commit unless user explicitly asks
