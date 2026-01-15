@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-01-16
+
+### Added
+- **Python 3.13 Support**: Added official support for Python 3.13
+
+### Changed
+- **Tool Naming**: Renamed bash tool to `run_shell_command` for better clarity and consistency
+- **Version Display**: Enhanced version display with improved formatting
+- **Command Detection**: Enhanced input detection with comprehensive heuristics for better natural language vs command differentiation
+
+### Documentation
+- **License**: Updated license information
+- **Security**: Added SECURITY.md policy file
+- **README**: Enhanced readme with release and download badges
+
 ## [0.4.2] - 2026-01-14
 
 ### Fixed
@@ -663,7 +678,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.3
 [0.4.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.2
 [0.4.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.1
 [0.4.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.0
