@@ -1,8 +1,11 @@
 # 🐚 Shello CLI
 
+[![Latest Release](https://img.shields.io/github/release/om-mapari/shello-cli.svg)](https://github.com/om-mapari/shello-cli/releases)
 [![Build and Release](https://github.com/om-mapari/shello-cli/actions/workflows/release.yml/badge.svg)](https://github.com/om-mapari/shello-cli/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Downloads](https://img.shields.io/github/downloads/om-mapari/shello-cli/total.svg)](https://github.com/om-mapari/shello-cli/releases)
+[![Stars](https://img.shields.io/github/stars/om-mapari/shello-cli.svg)](https://github.com/om-mapari/shello-cli/stargazers)
 
 > **Not yet another AI CLI.** Built for failures, not for code.
 
