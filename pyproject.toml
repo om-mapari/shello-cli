@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-    { name = "Om Mapari" }
+    { name = "Om Mapari", email = "mapariom05@gmail.com" }
 ]
 keywords = ["cli", "ai", "assistant", "debugging", "devops"]
 classifiers = [

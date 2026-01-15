@@ -716,10 +716,25 @@ Check [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 - 🐛 [Report Issues](https://github.com/om-mapari/shello-cli/issues)
 - 🚀 [Latest Release](https://github.com/om-mapari/shello-cli/releases/latest)
 
+## Author
+
+**Om Mapari**
+
+- GitHub: [@om-mapari](https://github.com/om-mapari)
+- Project: [Shello CLI](https://github.com/om-mapari/shello-cli)
+
 ## License
 
 MIT License - see [LICENSE](LICENSE)
 
+## Acknowledgments
+
+Built with:
+- [Click](https://click.palletsprojects.com/) - CLI framework
+- [Rich](https://rich.readthedocs.io/) - Terminal UI
+- [OpenAI](https://openai.com/) - AI capabilities
+- [AWS Bedrock](https://aws.amazon.com/bedrock/) - Multi-model support
+
 ---
 
-Built with [Click](https://click.palletsprojects.com/), [Rich](https://rich.readthedocs.io/), and ☕
+**Made with ☕ and 🐚 by Om Mapari**
