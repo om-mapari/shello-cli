@@ -11,14 +11,14 @@ import shutil
 import pytest
 from pathlib import Path
 from hypothesis import given, strategies as st, settings
-from shello_cli.utils.settings_manager import SettingsManager, UserSettings, ProjectSettings
+from shello_cli.settings import SettingsManager, UserSettings, ProjectSettings
 
 
 # Custom strategies for generating valid settings
 @st.composite
 def user_settings_strategy(draw):
     """Generate valid UserSettings instances with provider configs."""
-    from shello_cli.utils.settings_manager import ProviderConfig
+    from shello_cli.settings import ProviderConfig
     
     # Generate OpenAI config
     api_key = draw(st.one_of(
@@ -155,7 +155,7 @@ class TestSettingsManagerUnitTests:
     
     def test_save_and_load_user_settings(self):
         """Test saving and loading user settings."""
-        from shello_cli.utils.settings_manager import ProviderConfig
+        from shello_cli.settings import ProviderConfig
         
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
@@ -208,7 +208,7 @@ class TestSettingsManagerUnitTests:
     
     def test_get_api_key_from_environment(self):
         """Test that get_api_key prioritizes environment variable."""
-        from shello_cli.utils.settings_manager import ProviderConfig
+        from shello_cli.settings import ProviderConfig
         
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
@@ -241,7 +241,7 @@ class TestSettingsManagerUnitTests:
     
     def test_get_api_key_from_settings(self):
         """Test that get_api_key falls back to settings."""
-        from shello_cli.utils.settings_manager import ProviderConfig
+        from shello_cli.settings import ProviderConfig
         
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
@@ -271,7 +271,7 @@ class TestSettingsManagerUnitTests:
     
     def test_get_current_model_priority(self):
         """Test that get_current_model follows priority: project > user > default."""
-        from shello_cli.utils.settings_manager import ProviderConfig
+        from shello_cli.settings import ProviderConfig
         
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
@@ -309,7 +309,7 @@ class TestSettingsManagerUnitTests:
     
     def test_get_base_url(self):
         """Test that get_base_url returns configured URL."""
-        from shello_cli.utils.settings_manager import ProviderConfig
+        from shello_cli.settings import ProviderConfig
         
         with tempfile.TemporaryDirectory() as temp_dir:
             manager = SettingsManager()
@@ -527,7 +527,7 @@ class TestCommandTrustConfigLoading:
             manager = SettingsManager()
             manager._user_settings_path = Path(temp_dir) / "user-settings.json"
             
-            from shello_cli.utils.settings_manager import UserSettings, CommandTrustConfig, ProviderConfig
+            from shello_cli.settings import UserSettings, CommandTrustConfig, ProviderConfig
             
             # Create settings with command_trust
             command_trust = CommandTrustConfig(

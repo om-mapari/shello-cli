@@ -51,7 +51,7 @@ class ToolExecutor:
             )
         
         # Dispatch to appropriate tool
-        if function_name == "bash":
+        if function_name == "run_shell_command":
             command = arguments.get("command", "")
             is_safe = arguments.get("is_safe")
             if not command:
@@ -117,7 +117,7 @@ class ToolExecutor:
             )
         
         # Dispatch to appropriate tool
-        if function_name == "bash":
+        if function_name == "run_shell_command":
             command = arguments.get("command", "")
             is_safe = arguments.get("is_safe")
             if not command:
@@ -129,7 +129,7 @@ class ToolExecutor:
                     output=None,
                     error="No command provided"
                 )
-            # Use streaming bash execution - yield from the generator
+            # Use streaming shell execution - yield from the generator
             stream = self._bash_tool.execute_stream(command, is_safe=is_safe)
             result = None
             try:

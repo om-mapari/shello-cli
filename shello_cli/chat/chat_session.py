@@ -118,7 +118,7 @@ class ChatSession:
                             current_tool_call = chunk.tool_call
                             # Extract command for interrupt tracking
                             func_data = chunk.tool_call.get("function", {})
-                            if func_data.get("name") == "bash":
+                            if func_data.get("name") == "run_shell_command":
                                 try:
                                     args = json.loads(func_data.get("arguments", "{}"))
                                     current_command = args.get("command", "")

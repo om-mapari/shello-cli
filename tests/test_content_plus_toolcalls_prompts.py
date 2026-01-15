@@ -8,7 +8,7 @@ import pytest
 from shello_cli.agent.message_processor import MessageProcessor
 from shello_cli.agent.tool_executor import ToolExecutor
 from shello_cli.api.openai_client import ShelloClient
-from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.settings import SettingsManager
 
 
 # Test prompts - ordered from most likely to least likely to produce content + tool_calls
@@ -26,7 +26,7 @@ TEST_PROMPTS = [
     },
     {
         "name": "Step-by-step",
-        "prompt": "Walk me through checking the current date using a bash command.",
+        "prompt": "Walk me through checking the current date using a shell command.",
         "expected": "content + tool_calls"
     },
     {
@@ -120,7 +120,7 @@ class TestContentPlusToolCallsPrompts:
         name = test_case["name"]
         
         messages = [
-            {"role": "system", "content": "You are a helpful assistant with bash access."},
+            {"role": "system", "content": "You are a helpful assistant with shell access."},
             {"role": "user", "content": prompt}
         ]
         chat_history = []

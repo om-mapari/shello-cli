@@ -618,7 +618,7 @@ class TestBedrockClientDebugLogging:
                         {
                             'toolUse': {
                                 'toolUseId': 'tool_123',
-                                'name': 'bash',
+                                'name': 'run_shell_command',
                                 'input': {'command': 'ls -la'}
                             }
                         }
@@ -649,7 +649,7 @@ class TestBedrockClientDebugLogging:
             ShelloTool(
                 type="function",
                 function={
-                    "name": "bash",
+                    "name": "run_shell_command",
                     "description": "Execute bash command",
                     "parameters": {
                         "type": "object",

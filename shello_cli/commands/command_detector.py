@@ -355,11 +355,22 @@ class CommandDetector:
         
         # "find" command - can be natural language
         if command == 'find':
-            if args_lower.startswith(('out', 'me', 'the way', 'how', 'a way')):
+            # Strong natural language indicators for "find"
+            if args_lower.startswith(('out', 'me', 'the way', 'how', 'a way', 'the ')):
                 score += 5
+            
+            # Check for articles (the, a, an) which are rare in shell find commands
+            args_words = args_lower.split()
+            if len(args_words) > 0 and args_words[0] in self.ARTICLES:
+                score += 5
+            
             # "find out", "find me", etc.
-            if any(phrase in args_lower for phrase in ['find out', 'find me', 'find how']):
+            if any(phrase in args_lower for phrase in ['find out', 'find me', 'find how', 'find the']):
                 score += 5
+            
+            # Multiple words without shell patterns suggest natural language
+            if len(args_words) > 3 and not any(c in args_lower for c in ['.', '/', '-', '*']):
+                score += 3
         
         # "cat" command - can be used in questions about cats (the animal)
         if command == 'cat' and any(word in words for word in ['my', 'a', 'the', 'your']):

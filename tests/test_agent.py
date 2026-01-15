@@ -101,7 +101,7 @@ class TestShelloAgentProperties:
                         "id": "call_123",
                         "type": "function",
                         "function": {
-                            "name": "bash",
+                            "name": "run_shell_command",
                             "arguments": '{"command": "echo test"}'
                         }
                     }]
@@ -155,7 +155,7 @@ class TestShelloAgentProperties:
                                 "id": "call_123",
                                 "type": "function",
                                 "function": {
-                                    "name": "bash",
+                                    "name": "run_shell_command",
                                     "arguments": '{"command": "failing_command"}'
                                 }
                             }]
@@ -294,7 +294,7 @@ class TestShelloAgentUnitTests:
                                 "id": "call_123",
                                 "type": "function",
                                 "function": {
-                                    "name": "bash",
+                                    "name": "run_shell_command",
                                     "arguments": '{"command": "echo test"}'
                                 }
                             }]
@@ -337,7 +337,7 @@ class TestShelloAgentUnitTests:
         tool_call = {
             "id": "call_123",
             "function": {
-                "name": "bash",
+                "name": "run_shell_command",
                 "arguments": "invalid json {"
             }
         }
@@ -366,14 +366,14 @@ class TestShelloAgentUnitTests:
         assert "Unknown tool" in result.error
     
     def test_execute_tool_with_missing_command(self):
-        """Test bash tool execution with missing command parameter."""
+        """Test run_shell_command tool execution with missing command parameter."""
         mock_client = _create_mock_client()
         agent = ShelloAgent(client=mock_client)
         
         tool_call = {
             "id": "call_123",
             "function": {
-                "name": "bash",
+                "name": "run_shell_command",
                 "arguments": '{}'
             }
         }

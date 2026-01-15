@@ -7,7 +7,7 @@ They are marked as integration tests and can be skipped in CI/CD.
 
 import pytest
 from shello_cli.api.openai_client import ShelloClient
-from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.settings import SettingsManager
 from shello_cli.types import ShelloTool
 
 

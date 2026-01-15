@@ -73,34 +73,34 @@ class TestToolDefinitionUnitTests:
         tools = get_all_tools()
         assert isinstance(tools, list), "get_all_tools must return a list"
     
-    def test_bash_tool_exists(self):
-        """Test that bash tool is defined in the registry."""
+    def test_run_shell_command_tool_exists(self):
+        """Test that run_shell_command tool is defined in the registry."""
         tools = get_all_tools()
-        bash_tools = [t for t in tools if t.function.get("name") == "bash"]
+        shell_tools = [t for t in tools if t.function.get("name") == "run_shell_command"]
         
-        assert len(bash_tools) > 0, "Bash tool must be defined in the registry"
+        assert len(shell_tools) > 0, "run_shell_command tool must be defined in the registry"
     
-    def test_bash_tool_has_command_parameter(self):
-        """Test that bash tool has a command parameter."""
+    def test_run_shell_command_tool_has_command_parameter(self):
+        """Test that run_shell_command tool has a command parameter."""
         tools = get_all_tools()
-        bash_tool = next((t for t in tools if t.function.get("name") == "bash"), None)
+        shell_tool = next((t for t in tools if t.function.get("name") == "run_shell_command"), None)
         
-        assert bash_tool is not None, "Bash tool must exist"
-        assert "properties" in bash_tool.function["parameters"], \
-            "Bash tool parameters must have properties"
-        assert "command" in bash_tool.function["parameters"]["properties"], \
-            "Bash tool must have a command parameter"
+        assert shell_tool is not None, "run_shell_command tool must exist"
+        assert "properties" in shell_tool.function["parameters"], \
+            "run_shell_command tool parameters must have properties"
+        assert "command" in shell_tool.function["parameters"]["properties"], \
+            "run_shell_command tool must have a command parameter"
     
-    def test_bash_tool_command_is_required(self):
-        """Test that bash tool command parameter is required."""
+    def test_run_shell_command_tool_command_is_required(self):
+        """Test that run_shell_command tool command parameter is required."""
         tools = get_all_tools()
-        bash_tool = next((t for t in tools if t.function.get("name") == "bash"), None)
+        shell_tool = next((t for t in tools if t.function.get("name") == "run_shell_command"), None)
         
-        assert bash_tool is not None, "Bash tool must exist"
-        assert "required" in bash_tool.function["parameters"], \
-            "Bash tool parameters must have required field"
-        assert "command" in bash_tool.function["parameters"]["required"], \
-            "Bash tool command parameter must be required"
+        assert shell_tool is not None, "run_shell_command tool must exist"
+        assert "required" in shell_tool.function["parameters"], \
+            "run_shell_command tool parameters must have required field"
+        assert "command" in shell_tool.function["parameters"]["required"], \
+            "run_shell_command tool command parameter must be required"
     
     def test_tool_function_schema_structure(self):
         """Test that tool function follows OpenAI schema structure."""

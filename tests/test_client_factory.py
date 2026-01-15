@@ -13,7 +13,7 @@ from pathlib import Path
 from unittest.mock import Mock, MagicMock, patch
 
 from shello_cli.api.client_factory import create_client, _create_openai_client, _create_bedrock_client
-from shello_cli.utils.settings_manager import SettingsManager, UserSettings, ProviderConfig
+from shello_cli.settings import SettingsManager, UserSettings, ProviderConfig
 
 
 class TestCreateClientOpenAI:

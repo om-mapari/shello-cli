@@ -7,7 +7,7 @@ a simple API call to verify everything works.
 """
 
 from shello_cli.api.openai_client import ShelloClient
-from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.settings import SettingsManager
 
 
 def main():

@@ -89,7 +89,7 @@ class TestSettingsManagerValidation:
     
     def test_invalid_approval_mode_falls_back_to_defaults(self, tmp_path, capsys):
         """Test that invalid approval_mode falls back to defaults with warning."""
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         
         # Create a settings file with invalid approval_mode
         settings_file = tmp_path / "user-settings.json"
@@ -120,7 +120,7 @@ class TestSettingsManagerValidation:
     
     def test_invalid_regex_falls_back_to_defaults(self, tmp_path, capsys):
         """Test that invalid regex pattern is accepted (validation happens at use time)."""
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         
         # Create a settings file with invalid regex
         settings_file = tmp_path / "user-settings.json"
@@ -146,7 +146,7 @@ class TestSettingsManagerValidation:
     
     def test_valid_config_loads_successfully(self, tmp_path):
         """Test that valid command_trust config loads without warnings."""
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         
         # Create a settings file with valid config
         settings_file = tmp_path / "user-settings.json"
@@ -178,7 +178,7 @@ class TestSettingsManagerValidation:
     
     def test_missing_command_trust_uses_defaults(self, tmp_path):
         """Test that missing command_trust section uses defaults."""
-        from shello_cli.utils.settings_manager import SettingsManager
+        from shello_cli.settings import SettingsManager
         
         # Create a settings file without command_trust
         settings_file = tmp_path / "user-settings.json"

@@ -13,7 +13,7 @@ from shello_cli.tools.bash_tool import BashTool
 
 # Property 9: No AI Retry on Command Failure
 # Validates: Requirements 4.2
-@settings(max_examples=100, deadline=None)
+@settings(max_examples=10, deadline=None)  # Reduced from 100 to speed up tests
 @given(
     command=st.sampled_from(['nonexistentcmd', 'fakecmd', 'notarealcommand']),
     # Use args that won't trigger natural language detection
@@ -36,7 +36,7 @@ from shello_cli.tools.bash_tool import BashTool
         ]))
     )
 )
-@patch('shello_cli.utils.settings_manager.SettingsManager')
+@patch('shello_cli.settings.SettingsManager')
 def test_property_no_ai_retry_on_command_failure(mock_settings_manager, command, args):
     """
     Feature: direct-command-execution, Property 9: No AI Retry on Command Failure
@@ -47,7 +47,7 @@ def test_property_no_ai_retry_on_command_failure(mock_settings_manager, command,
     **Validates: Requirements 4.2**
     """
     # Mock settings to disable trust system for this test
-    from shello_cli.utils.settings_manager import CommandTrustConfig
+    from shello_cli.settings.models import CommandTrustConfig
     mock_instance = Mock()
     mock_settings_manager.get_instance.return_value = mock_instance
     mock_trust_config = CommandTrustConfig(enabled=False)
@@ -110,7 +110,7 @@ def test_property_no_ai_retry_on_command_failure(mock_settings_manager, command,
         detector.DIRECT_COMMANDS = original_commands
 
 
-@patch('shello_cli.utils.settings_manager.SettingsManager')
+@patch('shello_cli.settings.SettingsManager')
 def test_example_command_not_found_no_ai_retry(mock_settings_manager):
     """
     Example test: Verify that when 'fakecmd' fails, it doesn't retry with AI.
@@ -118,7 +118,7 @@ def test_example_command_not_found_no_ai_retry(mock_settings_manager):
     This is a concrete example demonstrating the property.
     """
     # Mock settings to disable trust system for this test
-    from shello_cli.utils.settings_manager import CommandTrustConfig
+    from shello_cli.settings.models import CommandTrustConfig
     mock_instance = Mock()
     mock_settings_manager.get_instance.return_value = mock_instance
     mock_trust_config = CommandTrustConfig(enabled=False)

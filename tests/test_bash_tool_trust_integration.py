@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from shello_cli.tools.bash_tool import BashTool
-from shello_cli.utils.settings_manager import CommandTrustConfig
+from shello_cli.settings import CommandTrustConfig
 from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
 
 
@@ -11,7 +11,7 @@ from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST
 class TestBashToolTrustIntegration:
     """Test BashTool integration with TrustManager."""
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_allowlist_command(self, mock_settings_manager_class):
         """Test that allowlist commands execute without approval."""
         # Setup mock settings manager
@@ -36,7 +36,7 @@ class TestBashToolTrustIntegration:
         assert result.success is True
         assert result.error is None
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_denylist_command_denied(self, mock_settings_manager_class):
         """Test that denylist commands require approval and can be denied."""
         # Setup mock settings manager
@@ -62,7 +62,7 @@ class TestBashToolTrustIntegration:
             assert result.success is False
             assert result.error == "Command execution denied by user"
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_denylist_command_approved(self, mock_settings_manager_class):
         """Test that denylist commands can be approved and execute."""
         # Setup mock settings manager
@@ -88,7 +88,7 @@ class TestBashToolTrustIntegration:
             # Should execute after approval
             assert result.success is True
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_yolo_mode(self, mock_settings_manager_class):
         """Test that YOLO mode bypasses approval for non-denylist commands."""
         # Setup mock settings manager
@@ -112,7 +112,7 @@ class TestBashToolTrustIntegration:
         # Should execute without approval due to YOLO mode
         assert result.success is True
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_ai_safe_flag_true(self, mock_settings_manager_class):
         """Test that is_safe=True in ai_driven mode allows execution."""
         # Setup mock settings manager
@@ -162,7 +162,7 @@ class TestBashToolTrustIntegration:
             assert result.success is False
             assert result.error == "Command execution denied by user"
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_stream_with_allowlist_command(self, mock_settings_manager_class):
         """Test that execute_stream works with allowlist commands."""
         # Setup mock settings manager
@@ -197,7 +197,7 @@ class TestBashToolTrustIntegration:
         assert result is not None
         assert result.success is True
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_stream_with_denied_command(self, mock_settings_manager_class):
         """Test that execute_stream handles denied commands."""
         # Setup mock settings manager
@@ -234,7 +234,7 @@ class TestBashToolTrustIntegration:
             assert result.success is False
             assert result.error == "Command execution denied by user"
     
-    @patch('shello_cli.utils.settings_manager.SettingsManager')
+    @patch('shello_cli.settings.SettingsManager')
     def test_execute_with_trust_disabled(self, mock_settings_manager_class):
         """Test that commands execute without checks when trust is disabled."""
         # Setup mock settings manager

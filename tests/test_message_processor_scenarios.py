@@ -70,7 +70,7 @@ class TestMessageProcessorScenarios(unittest.TestCase):
             "id": "call_123",
             "type": "function",
             "function": {
-                "name": "bash",
+                "name": "run_shell_command",
                 "arguments": '{"command": "ls -la"}'
             }
         }
@@ -134,7 +134,7 @@ class TestMessageProcessorScenarios(unittest.TestCase):
             "id": "call_456",
             "type": "function",
             "function": {
-                "name": "bash",
+                "name": "run_shell_command",
                 "arguments": '{"command": "pwd"}'
             }
         }
@@ -225,7 +225,7 @@ class TestMessageProcessorScenarios(unittest.TestCase):
             # First stream: tool calls only
             [
                 {"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "call_789", "type": "function"}]}}]},
-                {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"name": "bash"}}]}}]},
+                {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"name": "run_shell_command"}}]}}]},
                 {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": '{"command"'}}]}}]},
                 {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": ': "echo test"}'}}]}}]},
                 {"choices": [{"delta": {}}]},
@@ -278,7 +278,7 @@ class TestMessageProcessorScenarios(unittest.TestCase):
                 {"choices": [{"delta": {"content": "Let me "}}]},
                 {"choices": [{"delta": {"content": "help you."}}]},
                 {"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "call_999", "type": "function"}]}}]},
-                {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"name": "bash"}}]}}]},
+                {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"name": "run_shell_command"}}]}}]},
                 {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": '{"command": "date"}'}}]}}]},
                 {"choices": [{"delta": {}}]},
             ],
@@ -313,7 +313,7 @@ class TestMessageProcessorScenarios(unittest.TestCase):
         self.assertEqual(assistant_msg["content"], "Let me help you.")  # Content preserved
         self.assertIn("tool_calls", assistant_msg)  # Tool calls also present
         self.assertEqual(len(assistant_msg["tool_calls"]), 1)
-        self.assertEqual(assistant_msg["tool_calls"][0]["function"]["name"], "bash")
+        self.assertEqual(assistant_msg["tool_calls"][0]["function"]["name"], "run_shell_command")
 
 
 if __name__ == "__main__":

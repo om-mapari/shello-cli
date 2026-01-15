@@ -105,11 +105,11 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     """Generic tool execution rendering with box-drawing characters.
     
     This function renders any tool execution in a consistent format.
-    For bash commands, it shows user@hostname with the command.
+    For shell commands, it shows user@hostname with the command.
     For other tools, it shows a simpler format with just icon and path.
     
     Args:
-        tool_name: Name of the tool being executed (e.g., "bash", "analyze_json")
+        tool_name: Name of the tool being executed (e.g., "run_shell_command", "analyze_json")
         parameters: Dictionary of parameters passed to the tool
         cwd: Current working directory (optional)
         user: Username for display
@@ -117,7 +117,7 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     """
     # Tool icons mapping
     tool_icons = {
-        "bash": "💻",
+        "run_shell_command": "💻",
         "analyze_json": "🔍",
         "python_code_executor": "🐍",
         "file_read": "📄",
@@ -137,12 +137,12 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     else:
         short_cwd = "~"
     
-    # First line: top box - different format for bash vs other tools
+    # First line: top box - different format for shell commands vs other tools
     first_line = Text()
     first_line.append("┌─[", style="white")
     
-    if tool_name == "bash":
-        # For bash, show icon + user@hostname
+    if tool_name == "run_shell_command":
+        # For shell commands, show icon + user@hostname
         first_line.append(f"{icon} ", style="blue")
         first_line.append(user, style="bold green")
         first_line.append("@", style="white")
@@ -161,8 +161,8 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     second_line = Text()
     second_line.append("└─", style="white")
     
-    if tool_name == "bash":
-        # For bash, show the command directly
+    if tool_name == "run_shell_command":
+        # For shell commands, show the command directly
         command = parameters.get("command", "")
         second_line.append("$ ", style="bold yellow")
         second_line.append(command, style="bright_white bold")

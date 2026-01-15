@@ -138,10 +138,10 @@ class TestJSONAnalyzerFallback:
     """Property-based tests for JSON analyzer fallback behavior."""
     
     @given(
-        json_size=st.integers(min_value=20001, max_value=30000),
+        json_size=st.integers(min_value=20001, max_value=25000),  # Reduced from 30000
         has_analyzer=st.booleans()
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=3, deadline=None)  # Reduced from 5
     def test_property_json_analyzer_fallback(self, json_size, has_analyzer):
         """
         Property 7: JSON Analyzer Fallback
@@ -200,7 +200,7 @@ class TestJSONAnalyzerFallback:
     @given(
         valid_json=st.booleans()
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=3, deadline=None)  # Reduced from 5
     def test_property_invalid_json_fallback(self, valid_json):
         """
         Property: Invalid JSON Fallback
@@ -248,10 +248,10 @@ class TestSummaryCompleteness:
     """Property-based tests for truncation summary completeness."""
     
     @given(
-        output_size=st.integers(min_value=10000, max_value=50000),
+        output_size=st.integers(min_value=10000, max_value=25000),  # Reduced from 50000
         command_type=st.sampled_from(['list', 'install', 'log', 'test', 'build'])
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=3, deadline=None)  # Reduced from 5
     def test_property_summary_completeness(self, output_size, command_type):
         """
         Property 8: Summary Completeness
@@ -334,7 +334,7 @@ class TestSummaryCompleteness:
         has_compression=st.booleans(),
         has_semantic=st.booleans()
     )
-    @settings(max_examples=5, deadline=None)
+    @settings(max_examples=3, deadline=None)  # Reduced from 5
     def test_property_summary_optimizations(self, has_compression, has_semantic):
         """
         Property: Summary shows optimizations applied

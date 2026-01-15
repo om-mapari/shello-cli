@@ -10,7 +10,7 @@ SHELLO_TOOLS: List[ShelloTool] = [
     ShelloTool(
         type="function",
         function={
-            "name": "bash",
+            "name": "run_shell_command",
             "description": (
                 "Execute a shell command on the user's machine.\n\n"
                 "WHEN TO USE:\n"
@@ -65,12 +65,12 @@ SHELLO_TOOLS: List[ShelloTool] = [
                 "HOW IT WORKS:\n"
                 "1. Pass the COMMAND (not JSON) - tool executes internally\n"
                 "2. Returns ONLY jq paths with types (user never sees raw JSON)\n"
-                "3. Use discovered paths to construct filtered bash command\n\n"
+                "3. Use discovered paths to construct filtered shell command\n\n"
                 "EXAMPLE:\n"
                 "  analyze_json(command='aws lambda list-functions --output json')\n"
                 "  → Returns: .Functions[].FunctionName | string\n"
                 "  \n"
-                "  Then use: bash(command=\"aws lambda list-functions | jq '.Functions[].FunctionName'\")\n\n"
+                "  Then use: run_shell_command(command=\"aws lambda list-functions | jq '.Functions[].FunctionName'\")\n\n"
                 "IMPORTANT: Pass the COMMAND string, not JSON data."
             ),
             "parameters": {

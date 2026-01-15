@@ -11,7 +11,7 @@ import pytest
 from shello_cli.agent.message_processor import MessageProcessor
 from shello_cli.agent.tool_executor import ToolExecutor
 from shello_cli.api.openai_client import ShelloClient
-from shello_cli.utils.settings_manager import SettingsManager
+from shello_cli.settings import SettingsManager
 from shello_cli.agent.models import ChatEntry
 
 
@@ -93,8 +93,8 @@ class TestMessageProcessorIntegration:
         
         # Create a message that SHOULD trigger tool use
         messages = [
-            {"role": "system", "content": "You are a helpful assistant with access to bash commands."},
-            {"role": "user", "content": "Run the command 'echo hello' using the bash tool. Don't explain, just do it."}
+            {"role": "system", "content": "You are a helpful assistant with access to shell commands."},
+            {"role": "user", "content": "Run the command 'echo hello' using the run_shell_command tool. Don't explain, just do it."}
         ]
         chat_history = []
         
@@ -263,8 +263,8 @@ class TestMessageProcessorIntegration:
         
         # Fresh message list
         messages = [
-            {"role": "system", "content": "You are a helpful assistant with bash access."},
-            {"role": "user", "content": "Run 'date' command using bash."}
+            {"role": "system", "content": "You are a helpful assistant with shell access."},
+            {"role": "user", "content": "Run 'date' command using run_shell_command."}
         ]
         chat_history = []
         

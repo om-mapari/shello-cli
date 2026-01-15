@@ -331,16 +331,16 @@ class ShelloBedrockClient:
             Input: [ShelloTool(
                 type="function",
                 function={
-                    "name": "bash",
-                    "description": "Execute a bash command",
+                    "name": "run_shell_command",
+                    "description": "Execute a shell command",
                     "parameters": {"type": "object", "properties": {...}}
                 }
             )]
             Output: {
                 "tools": [{
                     "toolSpec": {
-                        "name": "bash",
-                        "description": "Execute a bash command",
+                        "name": "run_shell_command",
+                        "description": "Execute a shell command",
                         "inputSchema": {"json": {"type": "object", "properties": {...}}}
                     }
                 }],
