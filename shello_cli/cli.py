@@ -168,8 +168,18 @@ def switch_provider(settings_manager, agent, chat_session, context_manager, dire
 
 
 
+def version_callback(ctx, param, value):
+    """Custom version display with enhanced information"""
+    if not value or ctx.resilient_parsing:
+        return
+    
+    version = getattr(version_module, '__version__', '0.1.0')
+    console.print(f"🌊 Shello CLI - Version: {version}")
+    ctx.exit()
+
+
 @click.group(invoke_without_command=True)
-@click.version_option(version=getattr(version_module, '__version__', '0.1.0'))
+@click.option('--version', is_flag=True, callback=version_callback, expose_value=False, is_eager=True, help='Show version and exit')
 @click.pass_context
 def cli(ctx):
     """Shello CLI - AI Assistant with Command Execution"""
