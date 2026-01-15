@@ -169,12 +169,19 @@ def switch_provider(settings_manager, agent, chat_session, context_manager, dire
 
 
 def version_callback(ctx, param, value):
-    """Custom version display with enhanced information"""
+    """Custom version display"""
     if not value or ctx.resilient_parsing:
         return
     
     version = getattr(version_module, '__version__', '0.1.0')
-    console.print(f"🌊 Shello CLI - Version: {version}")
+    
+    # Use click.echo for better cross-platform compatibility
+    try:
+        click.echo(f"🌊 Shello CLI - Version: {version}")
+    except UnicodeEncodeError:
+        # Fallback for terminals that don't support emoji
+        click.echo(f"Shello CLI - Version: {version}")
+    
     ctx.exit()
 
 
