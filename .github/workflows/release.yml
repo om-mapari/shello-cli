@@ -29,6 +29,7 @@ jobs:
 
             - name: Build with PyInstaller
               run: pyinstaller shello.spec --clean
+              timeout-minutes: 10
 
             - name: Test executable
               run: dist\shello.exe --version
@@ -61,6 +62,7 @@ jobs:
 
             - name: Build with PyInstaller
               run: pyinstaller shello.spec --clean
+              timeout-minutes: 10
 
             - name: Test executable
               run: ./dist/shello --version
@@ -93,6 +95,7 @@ jobs:
 
             - name: Build with PyInstaller
               run: pyinstaller shello.spec --clean
+              timeout-minutes: 10
 
             - name: Test executable
               run: ./dist/shello --version

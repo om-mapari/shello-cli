@@ -32,13 +32,6 @@ a = Analysis(
         'keyring',
         'pyperclip',
         'openai',
-        # Pygments components for syntax highlighting
-        'pygments',
-        'pygments.lexers',
-        'pygments.styles',
-        'pygments.formatters',
-        'pygments.filters',
-        'pygments.token',
     ],
     hookspath=[],
     hooksconfig={},
