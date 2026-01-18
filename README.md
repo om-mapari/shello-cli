@@ -283,13 +283,13 @@ Shello supports multiple AI providers for debugging flexibility:
 ### Supported Providers
 
 **OpenAI-compatible APIs:**
-- OpenAI (GPT-4o, GPT-4 Turbo, GPT-3.5)
-- OpenRouter (access to Claude, Gemini, and 200+ models)
+- OpenAI (GPT-5.2, GPT-5 mini, GPT-4o)
+- OpenRouter (access to Claude 4.x, Gemini 2.5, and other popular models)
 - Custom endpoints (LM Studio, Ollama, vLLM, etc.)
 
 **AWS Bedrock:**
-- Anthropic Claude (3.5 Sonnet, 3 Opus, 3 Sonnet)
-- Amazon Nova (Pro, Lite, Micro)
+- Anthropic Claude (Claude Haiku 4.5, Sonnet 4.5, Opus 4.5)
+- Amazon Nova (Nova Micro, Nova Lite, Nova Pro, Nova Premier, Nova Canvas, Nova Reel)
 - Other Bedrock foundation models
 
 ### Provider Selection
