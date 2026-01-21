@@ -6,7 +6,7 @@ files with inline comments, examples, and section headers.
 """
 
 from typing import Any, Dict, Optional
-from .models import UserSettings, ProviderConfig, OutputManagementConfig, CommandTrustConfig
+from .models import UserSettings, ProviderConfig, OutputManagementConfig, CommandTrustConfig, UpdateConfig
 
 
 def generate_yaml_with_comments(settings: UserSettings) -> str:
@@ -179,6 +179,25 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
             "#   # denylist:",
             "#   #   - my-dangerous-command",
         ])
+    lines.append("")
+    
+    # Update Configuration Section
+    lines.extend([
+        "# =============================================================================",
+        "# UPDATE CONFIGURATION (optional - uses defaults if not specified)",
+        "# =============================================================================",
+        "# Controls automatic update checking behavior.",
+        "# Uncomment and modify to customize:",
+        "#",
+    ])
+    
+    if settings.update_config:
+        lines.extend(_serialize_update_config(settings.update_config))
+    else:
+        lines.extend([
+            "# update_config:",
+            "#   check_on_startup: true     # Check for updates when Shello CLI starts",
+        ])
     
     return "\n".join(lines)
 
@@ -275,5 +294,13 @@ def _serialize_command_trust(config: CommandTrustConfig) -> list:
         lines.append("  denylist:")
         for pattern in config.denylist:
             lines.append(f"    - {pattern}")
+    
+    return lines
+
+
+def _serialize_update_config(config: UpdateConfig) -> list:
+    """Serialize UpdateConfig to YAML lines."""
+    lines = ["update_config:"]
+    lines.append(f"  check_on_startup: {str(config.check_on_startup).lower()}")
     
     return lines

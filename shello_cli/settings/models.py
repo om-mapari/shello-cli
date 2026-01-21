@@ -88,6 +88,13 @@ class CommandTrustConfig:
 
 
 @dataclass
+class UpdateConfig:
+    """Configuration for update checking."""
+    
+    check_on_startup: bool = True
+
+
+@dataclass
 class UserSettings:
     """User-level settings stored in ~/.shello_cli/user-settings.yml."""
     
@@ -98,6 +105,7 @@ class UserSettings:
     vertex_config: Optional[ProviderConfig] = None
     output_management: Optional[OutputManagementConfig] = None
     command_trust: Optional[CommandTrustConfig] = None
+    update_config: Optional[UpdateConfig] = field(default_factory=UpdateConfig)
 
 
 @dataclass
