@@ -238,6 +238,24 @@ def chat(debug, new, yolo):
     # Display welcome banner (pass None for user_info since we don't have GitLab user)
     print_welcome_banner(None, getattr(version_module, '__version__', '0.1.0'))
     
+    # Check for updates on startup (if enabled)
+    user_settings = settings_manager.load_user_settings()
+    
+    if user_settings.update_config and user_settings.update_config.check_on_startup:
+        from shello_cli.update.update_manager import UpdateManager
+        update_manager = UpdateManager()
+        
+        # Non-blocking check with timeout
+        check_result = update_manager.check_for_updates_async(timeout=2.0)
+        
+        if check_result and check_result.update_available:
+            console.print(
+                f"\n💡 [cyan]Update available:[/cyan] "
+                f"[dim]{check_result.current_version}[/dim] → "
+                f"[bold]{check_result.latest_version}[/bold]"
+            )
+            console.print("   Run [bold]/update[/bold] to upgrade\n")
+    
     # Main chat loop
     while True:
         try:
@@ -289,6 +307,38 @@ def chat(debug, new, yolo):
             elif user_input.lower() == "/about":
                 # Display about information
                 display_about(getattr(version_module, '__version__', '0.1.0'))
+                continue
+            
+            elif user_input.lower().startswith("/update"):
+                # Handle update command
+                from shello_cli.update.update_manager import UpdateManager
+                
+                # Parse optional --force flag
+                force = "--force" in user_input.lower()
+                
+                # Create UpdateManager instance
+                update_manager = UpdateManager()
+                
+                # Perform update
+                console.print()  # Add spacing before update output
+                result = update_manager.perform_update(force=force)
+                
+                # Display result
+                if result.success:
+                    console.print(f"✓ [green]{result.message}[/green]")
+                    
+                    # Only show "Updated to version" and restart message if an actual update occurred
+                    # (not when already on latest version)
+                    if result.new_version and "already on the latest version" not in result.message.lower():
+                        console.print(f"  Updated to version [cyan]{result.new_version}[/cyan]")
+                        console.print("\n⚠️  [yellow]Please restart Shello CLI to use the new version.[/yellow]\n")
+                    else:
+                        console.print()  # Just add spacing
+                else:
+                    console.print(f"✗ [red]{result.message}[/red]")
+                    if result.error:
+                        console.print(f"  Error: {result.error}\n")
+                
                 continue
             
             # Skip empty input
