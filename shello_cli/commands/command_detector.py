@@ -292,10 +292,15 @@ class CommandDetector:
             if words[1] in self.PRONOUNS or words[1] == 'there':
                 return True
         
-        # Question word in middle with auxiliary verb
+        # Question word in middle - but only if there's additional natural language context
+        # This prevents false positives like "env why" where "why" is just an argument
         for i, word in enumerate(words[1:], 1):
             if word in self.QUESTION_WORDS and i > 0:
-                return True
+                # Require additional context: auxiliary verbs, pronouns, or multiple question words
+                if (any(w in auxiliary_verbs for w in words) or
+                    any(w in self.PRONOUNS for w in words) or
+                    sum(1 for w in words if w in self.QUESTION_WORDS) > 1):
+                    return True
         
         return False
     

@@ -148,7 +148,7 @@ IMPORTANT: These are different shells - don't mix syntax!
 <secrets_handling>
 CRITICAL - Never expose secrets in plain-text commands.
 Store in env var first: API_KEY=$(secret_manager --name=x) then use $API_KEY
-If user input has asterisks (redacted), use {{secret_name}} placeholder.
+If user input has asterisks (redacted), use {{{{secret_name}}}} placeholder.
 </secrets_handling>
 
 <output_management>
@@ -163,7 +163,7 @@ Cache System:
 
 Filter Examples:
   ✅ aws lambda list-functions | jq '.Functions[].FunctionName'
-  ✅ docker ps --format "{{.Names}}"
+  ✅ docker ps --format "{{{{.Names}}}}"
   ✅ kubectl get pods -o name
   ❌ aws lambda list-functions (dumps everything)
   ❌ aws ec2 describe-instances (massive JSON)
@@ -176,7 +176,7 @@ CRITICAL - Never dump raw JSON (can be 100K+ tokens).
 
 Common patterns:
   | jq '.Items[].Name'           # List names
-  | jq '.[] | {name, status}'    # Specific fields  
+  | jq '.[] | {{name, status}}'    # Specific fields  
   | jq '. | length'              # Count items
 </json_handling>
 
