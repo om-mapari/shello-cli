@@ -203,6 +203,7 @@ def display_help():
     commands_table.add_row("/exit", "Exit the application")
     commands_table.add_row("/new", "Start a new conversation")
     commands_table.add_row("/switch", "Switch between AI providers")
+    commands_table.add_row("/update", "Update to the latest version")
     commands_table.add_row("/about", "Show information about Shello CLI")
     commands_table.add_row("/help", "Show this help message")
     
