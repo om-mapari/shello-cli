@@ -5,6 +5,54 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-01-22
+
+### Added
+- **Self-Update System**: Built-in update mechanism for keeping Shello CLI up-to-date
+  - Version checker component with semantic version comparison
+  - Platform detector for identifying OS and architecture
+  - Executable updater with atomic file replacement and backup/rollback
+  - Update manager orchestrating the complete update workflow
+  - GitHub release integration for fetching latest versions
+  - Automatic startup version check (configurable via settings)
+  - `/update` command for manual update checks and installation
+  - Progress indicators and user-friendly update flow
+
+- **Update Configuration**: New UpdateConfig in settings
+  - `check_on_startup` - Enable/disable automatic version checks at startup (default: true)
+  - `auto_install` - Automatically install updates without prompting (default: false)
+  - Configurable via `~/.shello_cli/user-settings.yml`
+
+### Changed
+- **Agent Template**: Enhanced system prompt with improved guidance
+  - Added working directory awareness and cd command usage examples
+  - Emphasized brevity and conciseness in responses
+  - Better examples for avoiding verbose summaries
+
+- **Help Display**: Updated to include `/update` command in available commands list
+
+- **Command Detection**: Added `/update` to direct command detection for instant routing
+
+### Fixed
+- **Documentation**: Updated supported AI providers list to accurately reflect current capabilities
+
+### Dependencies
+- **packaging>=23.0**: Added for robust semantic version comparison
+
+### Testing
+- **Update System Tests**: Comprehensive test coverage for update functionality
+  - Unit tests for version checker, platform detector, executable updater, and update manager
+  - Integration tests for CLI update command and startup version check
+  - Mock-based testing for GitHub API interactions
+  - Edge case handling for network failures, permission errors, and invalid versions
+
+### Technical Details
+- **Atomic Updates**: Safe update process with backup and rollback on failure
+- **Cross-Platform**: Supports Windows (.exe), Linux, and macOS executables
+- **GitHub Integration**: Fetches releases from GitHub API with proper error handling
+- **Semantic Versioning**: Uses packaging library for accurate version comparison
+- **Non-Blocking**: Startup check doesn't delay application launch
+
 ## [0.4.3] - 2026-01-16
 
 ### Added
@@ -676,7 +724,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.1
 [0.4.3]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.3
 [0.4.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.2
 [0.4.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.1
