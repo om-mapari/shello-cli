@@ -38,13 +38,6 @@ Add new version entry at the top (after the header), **using commit messages as 
 - Documentation updates (from: docs: documentation updates)
 ```
 
-Update the version links at the bottom:
-```markdown
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.x.x...HEAD
-[0.x.x]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x
-[0.x.x-1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x-1
-```
-
 ### 3. Commit Changes
 
 ```bash
