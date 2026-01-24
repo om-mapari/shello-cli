@@ -1,8 +1,7 @@
 """Tests for the VersionChecker component."""
 
 import re
-from pathlib import Path
-from unittest.mock import Mock, patch, mock_open
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -23,44 +22,45 @@ class TestVersionChecker:
         assert checker.api_url == "https://api.github.com/repos/owner/repo/releases/latest"
 
     def test_get_current_version_success(self):
-        """Test getting current version from __init__.py."""
+        """Test getting current version from shello_cli module."""
         checker = VersionChecker("owner", "repo")
         version = checker.get_current_version()
         
-        # Should read from actual shello_cli/__init__.py
+        # Should import from actual shello_cli.__version__
         assert isinstance(version, str)
         assert re.match(r'\d+\.\d+\.\d+', version)
 
-    def test_get_current_version_with_different_formats(self):
-        """Test version parsing with different quote styles."""
+    def test_get_current_version_import_error(self):
+        """Test error when shello_cli module cannot be imported."""
         checker = VersionChecker("owner", "repo")
         
-        test_cases = [
-            '__version__ = "1.2.3"',
-            "__version__ = '1.2.3'",
-            '__version__="1.2.3"',
-            '__version__  =  "1.2.3"',
-        ]
-        
-        for content in test_cases:
-            with patch("pathlib.Path.read_text", return_value=content):
-                version = checker.get_current_version()
-                assert version == "1.2.3"
-
-    def test_get_current_version_missing_version(self):
-        """Test error when __version__ is missing."""
-        checker = VersionChecker("owner", "repo")
-        
-        with patch("pathlib.Path.read_text", return_value="# No version here"):
-            with pytest.raises(ValueError, match="Could not find __version__"):
+        # Patch the import statement inside get_current_version
+        with patch.dict('sys.modules', {'shello_cli': None}):
+            with pytest.raises(ValueError, match="Could not determine current version"):
                 checker.get_current_version()
 
-    def test_get_current_version_file_read_error(self):
-        """Test error when file cannot be read."""
+    def test_get_current_version_missing_attribute(self):
+        """Test error when __version__ attribute is missing."""
         checker = VersionChecker("owner", "repo")
         
-        with patch("pathlib.Path.read_text", side_effect=IOError("File not found")):
-            with pytest.raises(ValueError, match="Failed to read version file"):
+        # Create a mock module without __version__
+        mock_module = Mock(spec=[])
+        del mock_module.__version__  # Ensure __version__ doesn't exist
+        
+        with patch.dict('sys.modules', {'shello_cli': mock_module}):
+            with pytest.raises(ValueError, match="Could not determine current version"):
+                checker.get_current_version()
+
+    def test_get_current_version_empty_version(self):
+        """Test error when __version__ is empty."""
+        checker = VersionChecker("owner", "repo")
+        
+        # Create a mock module with empty __version__
+        mock_module = Mock()
+        mock_module.__version__ = ""
+        
+        with patch.dict('sys.modules', {'shello_cli': mock_module}):
+            with pytest.raises(ValueError, match="__version__ is empty"):
                 checker.get_current_version()
 
     @patch("requests.get")

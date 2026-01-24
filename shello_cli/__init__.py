@@ -1,4 +1,4 @@
 """Shello CLI
 AI Assistant with Command Execution"""
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"

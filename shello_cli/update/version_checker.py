@@ -1,7 +1,5 @@
 """Version checking functionality for Shello CLI updates."""
 
-import re
-from pathlib import Path
 from typing import Optional
 
 import requests
@@ -25,33 +23,26 @@ class VersionChecker:
         self.api_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
 
     def get_current_version(self) -> str:
-        """Get current version from shello_cli/__init__.py.
+        """Get current version from shello_cli.__init__.
 
         Returns:
             Current version string (e.g., "0.4.3")
 
         Raises:
-            ValueError: If version cannot be parsed from __init__.py
+            ValueError: If version cannot be determined
         """
-        # Get the path to shello_cli/__init__.py
-        # This file is in shello_cli/update/version_checker.py
-        # So we need to go up one level to get to shello_cli/__init__.py
-        init_file = Path(__file__).parent.parent / "__init__.py"
-
         try:
-            content = init_file.read_text(encoding="utf-8")
-        except Exception as e:
-            raise ValueError(f"Failed to read version file: {e}")
-
-        # Parse __version__ = "x.y.z" with flexible formatting
-        # Handles single quotes, double quotes, and various spacing
-        pattern = r'__version__\s*=\s*["\']([^"\']+)["\']'
-        match = re.search(pattern, content)
-
-        if not match:
-            raise ValueError("Could not find __version__ in __init__.py")
-
-        return match.group(1)
+            # Import version directly from the module
+            # This works in both regular Python and PyInstaller frozen executables
+            import shello_cli
+            version = shello_cli.__version__
+            
+            if not version:
+                raise ValueError("__version__ is empty")
+            
+            return version
+        except (ImportError, AttributeError) as e:
+            raise ValueError(f"Could not determine current version: {e}")
 
     def get_latest_version(self) -> Optional[str]:
         """Query GitHub API for latest release version.

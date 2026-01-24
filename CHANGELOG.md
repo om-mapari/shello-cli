@@ -5,6 +5,18 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-01-24
+
+### Fixed
+- **Update Command in Frozen Executables**: Fixed critical bug where `/update` command failed in PyInstaller-built executables with "Could not determine current version" error
+  - Changed version detection from file-based reading to module import
+  - Now uses `import shello_cli; version = shello_cli.__version__` instead of reading `__init__.py` as a file
+  - Works correctly in both development mode and frozen executables
+  - Updated all related tests to match new implementation
+
+### Documentation
+- **Community Guidelines**: Added CODE_OF_CONDUCT.md for community standards and expectations
+
 ## [0.5.1] - 2026-01-22
 
 ### Added
@@ -724,7 +736,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.5.2...HEAD
+[0.5.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.2
 [0.5.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.1
 [0.4.3]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.3
 [0.4.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.2

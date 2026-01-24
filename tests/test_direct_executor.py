@@ -7,6 +7,7 @@ Tests direct command execution and directory state management.
 
 import pytest
 import os
+import platform
 import tempfile
 from hypothesis import given, strategies as st, settings, assume
 from shello_cli.commands.direct_executor import DirectExecutor, ExecutionResult
@@ -14,11 +15,33 @@ from shello_cli.tools.bash_tool import BashTool
 from shello_cli.commands.command_detector import CommandDetector
 
 
+# Platform-specific command mappings
+def get_platform_commands():
+    """Get platform-appropriate commands for testing."""
+    is_windows = platform.system() == 'Windows'
+    
+    if is_windows:
+        return {
+            'pwd': 'cd',  # Windows cmd uses 'cd' to show current directory
+            'ls': 'dir',
+            'echo': 'echo'
+        }
+    else:
+        return {
+            'pwd': 'pwd',
+            'ls': 'ls',
+            'echo': 'echo'
+        }
+
+
+PLATFORM_COMMANDS = get_platform_commands()
+
+
 class TestDirectExecutorProperties:
     """Property-based tests for DirectExecutor."""
     
     @given(
-        command=st.sampled_from(['pwd', 'echo', 'ls', 'dir'])
+        command=st.sampled_from([PLATFORM_COMMANDS['pwd'], PLATFORM_COMMANDS['echo'], PLATFORM_COMMANDS['ls']])
     )
     @settings(max_examples=100, deadline=None)
     def test_property_3_command_execution_produces_output(self, command):
@@ -125,13 +148,15 @@ class TestDirectExecutorUnitTests:
     """Unit tests for specific DirectExecutor scenarios."""
     
     def test_simple_command_execution(self):
-        """Test executing a simple command like 'pwd'."""
+        """Test executing a simple command like 'echo'."""
         executor = DirectExecutor()
         
-        result = executor.execute('pwd')
+        # Use echo command which works consistently across platforms
+        result = executor.execute(PLATFORM_COMMANDS['echo'], 'test')
         
         assert result.success
         assert result.output
+        assert 'test' in result.output.lower()
         assert result.error is None
         assert not result.directory_changed
         assert result.new_directory is None
@@ -140,8 +165,8 @@ class TestDirectExecutorUnitTests:
         """Test executing a command with arguments."""
         executor = DirectExecutor()
         
-        # Use 'ls' which is in the default allowlist
-        result = executor.execute('ls', '.')
+        # Use platform-appropriate list command
+        result = executor.execute(PLATFORM_COMMANDS['ls'], '.')
         
         assert result.success
         assert result.output
