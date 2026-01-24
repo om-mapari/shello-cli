@@ -19,18 +19,23 @@ __version__ = "0.x.x"  # Update to new version
 
 ### 2. Update CHANGELOG.md
 
-Add new version entry at the top (after the header):
+Check commits since last release:
+```bash
+git log v0.x.x-1..HEAD --oneline
+```
+
+Add new version entry at the top (after the header), **using commit messages as content**:
 ```markdown
 ## [0.x.x] - YYYY-MM-DD
 
-### Added
-- Feature descriptions...
+### Fixed
+- Version detection in executables (from: fix: version detection in executables)
+
+### Added  
+- New feature name (from: feat: new feature name)
 
 ### Changed
-- Change descriptions...
-
-### Fixed
-- Bug fix descriptions...
+- Documentation updates (from: docs: documentation updates)
 ```
 
 Update the version links at the bottom:
@@ -39,8 +44,6 @@ Update the version links at the bottom:
 [0.x.x]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x
 [0.x.x-1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x-1
 ```
-
-**Note**: Check commit messages since last tag with `git log v0.x.x-1..HEAD --oneline`
 
 ### 3. Commit Changes
 
