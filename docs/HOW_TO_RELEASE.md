@@ -19,7 +19,7 @@ __version__ = "0.x.x"  # Update to new version
 
 ### 2. Update CHANGELOG.md
 
-Move `[Unreleased]` section to new version:
+Add new version entry at the top (after the header):
 ```markdown
 ## [0.x.x] - YYYY-MM-DD
 
@@ -33,18 +33,24 @@ Move `[Unreleased]` section to new version:
 - Bug fix descriptions...
 ```
 
-Add link at bottom:
+Update the version links at the bottom:
 ```markdown
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.x.x...HEAD
 [0.x.x]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x
+[0.x.x-1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.x.x-1
 ```
+
+**Note**: Check commit messages since last tag with `git log v0.x.x-1..HEAD --oneline`
 
 ### 3. Commit Changes
 
 ```bash
 git add shello_cli/__init__.py CHANGELOG.md
-git commit -m "chore: bump version to 0.x.x"
+git commit -m "fix: short description here"
 git push origin main
 ```
+
+**Commit message format**: `fix:` or `feat:` or `chore:` followed by 3-5 words
 
 ### 4. Create and Push Tag
 
@@ -60,23 +66,30 @@ git push origin v0.x.x
 
 The release workflow will automatically:
 - Build executables for Windows, Linux, and macOS
-- Create a GitHub release
+- Create a GitHub release with CHANGELOG entry
 - Upload binaries as release assets
 
-Check the Actions tab on GitHub to monitor progress.
+Check the Actions tab on GitHub to monitor progress: https://github.com/om-mapari/shello-cli/actions
+
+**That's it!** The release is complete once GitHub Actions finishes.
 
 ## Quick Commands
 
 ```bash
+# Check commits since last release
+git log v0.x.x-1..HEAD --oneline
+
 # Update version in __init__.py (manual edit)
 # Update CHANGELOG.md (manual edit)
 
 # Commit and tag
 git add shello_cli/__init__.py CHANGELOG.md
-git commit -m "chore: bump version to 0.x.x"
-git tag -a v0.x.x -m "Release v0.x.x - Description"
+git commit -m "fix: short description here"
+git tag -a v0.x.x -m "Release v0.x.x - Brief description"
 git push origin main
 git push origin v0.x.x
+
+# Done! GitHub Actions handles the rest
 ```
 
 ## If You Need to Fix a Release
