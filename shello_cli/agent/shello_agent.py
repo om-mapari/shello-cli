@@ -21,6 +21,7 @@ from shello_cli.utils.system_info import (
     load_custom_instructions,
     get_current_datetime
 )
+from shello_cli.utils.output_utils import sanitize_surrogates
 
 # Import for type hints only
 try:
@@ -137,6 +138,9 @@ class ShelloAgent:
         Returns:
             List of ChatEntry objects representing the conversation flow
         """
+        # Sanitize surrogates from user message
+        message = sanitize_surrogates(message)
+        
         # Add user message to history
         user_entry = ChatEntry(
             type="user",
@@ -171,6 +175,9 @@ class ShelloAgent:
         Yields:
             StreamingChunk objects representing the conversation flow
         """
+        # Sanitize surrogates from user message
+        message = sanitize_surrogates(message)
+        
         # Add user message to history
         user_entry = ChatEntry(
             type="user",

@@ -7,6 +7,7 @@ from prompt_toolkit.completion import Completer, Completion, PathCompleter, merg
 import os
 from pathlib import Path
 from shello_cli.patterns import APP_DIR
+from shello_cli.utils.output_utils import sanitize_surrogates
 
 
 def abbreviate_path(path: str) -> str:
@@ -44,9 +45,35 @@ try:
 except ImportError:
     pyperclip = None
 
+class SanitizedFileHistory(FileHistory):
+    """FileHistory wrapper that sanitizes surrogate characters before writing."""
+    
+    def append_string(self, string: str) -> None:
+        """Append a string to history after sanitizing surrogates.
+        
+        This is called by prompt_toolkit during input validation.
+        
+        Args:
+            string: The string to append to history
+        """
+        # Sanitize surrogates before appending (with warning)
+        sanitized = sanitize_surrogates(string, warn=True)
+        super().append_string(sanitized)
+    
+    def store_string(self, string: str) -> None:
+        """Store a string in history after sanitizing surrogates.
+        
+        Args:
+            string: The string to store in history
+        """
+        # Sanitize surrogates before storing
+        sanitized = sanitize_surrogates(string)
+        super().store_string(sanitized)
+
+
 # Create history file path in shello_cli directory (consistent with other config)
 history_file = APP_DIR / ".shello_history"
-command_history = FileHistory(str(history_file))
+command_history = SanitizedFileHistory(str(history_file))
 
 
 class BAICompleter(Completer):
@@ -401,6 +428,9 @@ def get_user_input_with_clear(name, current_directory=None):
             # Valid completion settings
             reserve_space_for_menu=6,  # Reserve vertical space for menu
         )
+        # Sanitize surrogates from user input
+        if user_input:
+            user_input = sanitize_surrogates(user_input)
         return user_input
     except KeyboardInterrupt:
         return None

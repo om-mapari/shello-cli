@@ -12,7 +12,7 @@ from typing import Optional, Generator
 from shello_cli.types import ToolResult
 from shello_cli.tools.output.cache import OutputCache
 from shello_cli.tools.output.manager import OutputManager
-from shello_cli.utils.output_utils import strip_line_padding
+from shello_cli.utils.output_utils import strip_line_padding, sanitize_surrogates
 
 
 class BashTool:
@@ -175,6 +175,10 @@ class BashTool:
             # Combine stdout and stderr for output
             output = result.stdout
             error = result.stderr
+            
+            # Sanitize surrogate characters that can't be encoded in UTF-8
+            output = sanitize_surrogates(output)
+            error = sanitize_surrogates(error) if error else error
             
             # Strip trailing whitespace from each line (removes PowerShell padding)
             # This preserves structure but removes unnecessary spaces that inflate char counts
@@ -353,6 +357,8 @@ class BashTool:
                     while True:
                         line = process.stdout.readline()
                         if line:
+                            # Sanitize surrogates immediately as we read
+                            line = sanitize_surrogates(line)
                             output_queue.put(line)
                         elif process.poll() is not None:
                             break

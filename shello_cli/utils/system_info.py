@@ -37,10 +37,20 @@ def get_shell_info():
         # PSExecutionPolicyPreference is only set when actually running in PowerShell
         if os.environ.get('PSExecutionPolicyPreference') or \
            (os.environ.get('PSModulePath') and not os.environ.get('PROMPT', '').startswith('$P$G')):
+            # Detect PowerShell version (Core vs Windows PowerShell)
+            pwsh_path = os.environ.get('PWSH_PATH')  # PowerShell Core sets this
+            if pwsh_path:
+                shell_exe = pwsh_path
+            elif os.path.exists(r'C:\Program Files\PowerShell\7\pwsh.exe'):
+                shell_exe = r'C:\Program Files\PowerShell\7\pwsh.exe'
+            else:
+                # Windows PowerShell (5.1)
+                shell_exe = 'powershell.exe'
+            
             return {
                 "os_name": os_name,
                 "shell": "powershell",
-                "shell_executable": os.environ.get('COMSPEC', 'cmd.exe'),
+                "shell_executable": shell_exe,
                 "cwd": os.getcwd()
             }
         

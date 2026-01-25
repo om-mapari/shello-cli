@@ -251,8 +251,6 @@ def print_welcome_banner(user_info, version):
     banner_content.append(shello_cli_art, style="bold cyan")
     banner_content.append("\n")
     banner_content.append("Say Hello to Shello. Making terminals less... terminal".center(55), style="white")
-    banner_content.append("\n")
-    banner_content.append("\n")
     
     console.print(Panel(
         banner_content,
@@ -261,8 +259,8 @@ def print_welcome_banner(user_info, version):
         width=width,
         expand=False,
         padding=(1, 2),
-        title=f"[bold bright_white]🐚 Shello CLI ({version}) [/bold bright_white]",
-        title_align="center"
+        subtitle=f"[bold bright_white]🐚 Shello CLI ({version})[/bold bright_white]",
+        subtitle_align="center"
     ))
     console.print()
     
@@ -290,6 +288,9 @@ def print_welcome_banner(user_info, version):
 
 def display_about(version):
     """Display about information for Shello CLI"""
+    # Get current terminal width (same as welcome banner)
+    width = min(console.width - 4, 120)
+    
     # Create markdown content as a string
     about_markdown = f"""
 
@@ -304,16 +305,16 @@ An AI-powered terminal assistant that not only suggests commands but executes th
 - ⚡ **Instant Command Mode** - Executes common system commands directly, bypassing AI latency
 - 🧠 **Intelligent Output Processing** - Applies semantic-aware truncation instead of blind clipping
 - 💾 **Command Output Memory** - Stores and retrieves historical outputs via a persistent 100MB cache
-- 📊 **JSON-Aware Intelligence** - Auto-analyzes large JSON responses and suggests optimal `jq` query paths
+- 🔍 **JSON-Aware Intelligence** - Auto-analyzes large JSON responses and suggests optimal `jq` query paths
 - 🎯 **Context-Specific Compression** - Uses different output collapsing strategies based on command behavior
-- 🚨 **Semantic Line Prioritization** - Ensures critical errors and failure causes are never hidden
-- 🔁 **Repetition Folding** - Compresses redundant progress logs and repetitive streaming output
+- 🚨 **Semantic Line Prioritization** - Ensures critical errors and faillure causes are never hidden
+- 🔄 **Repetition Folding** - Compresses redundant progress logs and repetitive streaming output
 - 🧪 **Reliability First** - Backed by 1,400+ automated tests including property-based validation
-- 🛠️ **Battle-Tested for Production** - Designed for real systems, real failures, real fixes
+- 🔨 **Battle-Tested for Production** - Designed for real systems, real failures, real fixes
 
 **Developer**
 
-- Made with ❤️ by **Om Mapari**
+- Made with 🫶 by **Om Mapari**
 - Contributions welcome at GitHub: **https://github.com/om-mapari/shello-cli**
 
 ---
@@ -329,6 +330,8 @@ An AI-powered terminal assistant that not only suggests commands but executes th
         markdown_content,
         border_style="cyan",
         box=ROUNDED,
+        width=width,
+        expand=False,
         title=f"[bold bright_white]🐚 About Shello CLI v{version}[/bold bright_white]",
         title_align="center",
         padding=(1, 2)
