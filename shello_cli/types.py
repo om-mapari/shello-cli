@@ -22,12 +22,17 @@ class ToolResult:
         error: Error message on failure
         data: Optional additional data from the tool
         truncation_info: Optional truncation metadata
+        api_content: The exact JSON string sent to the AI as the tool result message
+                     content (includes truncation metadata and cache IDs). Set by
+                     MessageProcessor after building the tool_result_content dict.
+                     Used by SessionRecorder to store what the AI actually saw.
     """
     success: bool
     output: Optional[str] = None
     error: Optional[str] = None
     data: Optional[Any] = None
     truncation_info: Optional['TruncationResult'] = None
+    api_content: Optional[str] = None
 
 
 @dataclass

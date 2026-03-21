@@ -143,7 +143,10 @@ class SettingsManager:
         
         # Parse command trust config
         command_trust = self._parse_command_trust(data.get('command_trust'))
-        
+
+        # Parse session history config
+        session_history = self._parse_session_history(data.get('session_history'))
+
         return UserSettings(
             provider=provider,
             openai_config=openai_config,
@@ -152,6 +155,7 @@ class SettingsManager:
             vertex_config=vertex_config,
             output_management=output_management,
             command_trust=command_trust,
+            session_history=session_history,
         )
     
     def _validate_provider(self, provider: str) -> str:
@@ -315,6 +319,28 @@ class SettingsManager:
             denylist=denylist,
         )
     
+    def _parse_session_history(
+        self,
+        sh_data: Optional[Dict[str, Any]],
+    ) -> Optional[Any]:
+        """Parse session_history configuration.
+
+        Args:
+            sh_data: Dictionary with session_history config or None
+
+        Returns:
+            SessionHistoryConfig or None if not configured
+        """
+        if sh_data is None:
+            return None
+
+        from shello_cli.session.models import SessionHistoryConfig
+
+        return SessionHistoryConfig(
+            enabled=sh_data.get('enabled', True),
+            max_storage_mb=sh_data.get('max_storage_mb', 50),
+        )
+
     def _validate_approval_mode(self, approval_mode: str) -> str:
         """Validate approval_mode value and fall back to default if invalid.
         

@@ -7,7 +7,10 @@ at different levels (user, project) and for different components
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
+
+if TYPE_CHECKING:
+    from shello_cli.session.models import SessionHistoryConfig
 
 
 @dataclass
@@ -106,6 +109,7 @@ class UserSettings:
     output_management: Optional[OutputManagementConfig] = None
     command_trust: Optional[CommandTrustConfig] = None
     update_config: Optional[UpdateConfig] = field(default_factory=UpdateConfig)
+    session_history: Optional["SessionHistoryConfig"] = None
 
 
 @dataclass

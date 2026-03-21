@@ -198,7 +198,26 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
             "# update_config:",
             "#   check_on_startup: true     # Check for updates when Shello CLI starts",
         ])
-    
+
+    # Session History Section
+    lines.extend([
+        "",
+        "# =============================================================================",
+        "# SESSION HISTORY (optional - uses defaults if not specified)",
+        "# =============================================================================",
+        "# Controls session recording and storage.",
+        "#",
+    ])
+
+    if settings.session_history:
+        lines.extend(_serialize_session_history(settings.session_history))
+    else:
+        lines.extend([
+            "# session_history:",
+            "#   enabled: true              # Set false to disable session recording",
+            "#   max_storage_mb: 50         # Maximum disk space for session files",
+        ])
+
     return "\n".join(lines)
 
 
@@ -303,4 +322,12 @@ def _serialize_update_config(config: UpdateConfig) -> list:
     lines = ["update_config:"]
     lines.append(f"  check_on_startup: {str(config.check_on_startup).lower()}")
     
+    return lines
+
+
+def _serialize_session_history(config: Any) -> list:
+    """Serialize SessionHistoryConfig to YAML lines."""
+    lines = ["session_history:"]
+    lines.append(f"  enabled: {str(config.enabled).lower()}")
+    lines.append(f"  max_storage_mb: {config.max_storage_mb}")
     return lines
