@@ -5,6 +5,22 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-21
+
+### Added
+- **Session History**: Full session recording and resume system
+  - Browse past conversations with interactive picker (`/history`)
+  - Resume any previous session — conversation context fully restored
+  - Delete individual sessions or clear all history (`/history delete`, `/history clear`)
+  - Lazy recording: session files only created when user sends first message
+  - Resumed sessions append to the original session file (no duplicates)
+  - Background storage pruning with configurable size limit (`session_history.max_storage_mb`)
+  - Session history can be disabled via `session_history.enabled: false` in settings
+  - Bedrock tool-pair sanitization on restore to prevent ValidationException errors
+
+### Changed
+- **Welcome Banner**: Added `/history` command to the available commands list
+
 ## [0.5.2] - 2026-01-24
 
 ### Fixed
