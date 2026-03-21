@@ -249,8 +249,9 @@ def print_welcome_banner(user_info, version):
     # Create centered banner content
     banner_content = Text(justify="center")
     banner_content.append(shello_cli_art, style="bold cyan")
-    banner_content.append("\n")
+    banner_content.append("\n", style="white")
     banner_content.append("Say Hello to Shello. Making terminals less... terminal".center(55), style="white")
+    banner_content.append("\n", style="white")
     
     console.print(Panel(
         banner_content,
@@ -258,7 +259,7 @@ def print_welcome_banner(user_info, version):
         box=ROUNDED,
         width=width,
         expand=False,
-        padding=(1, 2),
+        padding=(0, 2),
         subtitle=f"[bold bright_white]🐚 Shello CLI ({version})[/bold bright_white]",
         subtitle_align="center"
     ))

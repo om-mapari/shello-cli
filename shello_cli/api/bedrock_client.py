@@ -34,7 +34,7 @@ class ShelloBedrockClient:
         aws_session_token: Optional[str] = None,
         aws_profile: Optional[str] = None,
         endpoint_url: Optional[str] = None,
-        debug: bool = False
+        debug: bool = True
     ):
         """Initialize the Bedrock client with AWS credentials.
         
@@ -185,27 +185,45 @@ class ShelloBedrockClient:
         bedrock_messages = []
         system_prompts = []
         
-        for msg in messages:
+        # Group consecutive tool result messages so they land in a single user message.
+        # Bedrock requires ALL toolResult blocks that correspond to a single assistant
+        # turn to be present in one user message.
+        i = 0
+        while i < len(messages):
+            msg = messages[i]
             role = msg.get("role", "")
             content = msg.get("content", "")
-            
+
             # Extract system messages separately
             if role == "system":
                 if isinstance(content, str) and content:
                     system_prompts.append({"text": content})
+                i += 1
                 continue
-            
+
             # Handle user and assistant messages
             if role in ["user", "assistant"]:
                 bedrock_msg = self._convert_message(msg)
                 if bedrock_msg:
                     bedrock_messages.append(bedrock_msg)
-            
-            # Handle tool result messages (role="tool" in OpenAI format)
+                i += 1
+
+            # Handle tool result messages (role="tool" in OpenAI format).
+            # Collect ALL consecutive tool messages and merge them into one user message.
             elif role == "tool":
-                tool_result_msg = self._convert_tool_result_message(msg)
-                if tool_result_msg:
-                    bedrock_messages.append(tool_result_msg)
+                tool_result_blocks = []
+                while i < len(messages) and messages[i].get("role") == "tool":
+                    block = self._convert_tool_result_block(messages[i])
+                    if block:
+                        tool_result_blocks.append(block)
+                    i += 1
+                if tool_result_blocks:
+                    bedrock_messages.append({
+                        "role": "user",
+                        "content": tool_result_blocks
+                    })
+            else:
+                i += 1
         
         # Return system prompts as None if empty
         return bedrock_messages, system_prompts if system_prompts else None
@@ -246,17 +264,18 @@ class ShelloBedrockClient:
         
         return None
     
-    def _convert_tool_result_message(self, msg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Convert a tool result message to Bedrock format.
+    def _convert_tool_result_block(self, msg: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Convert a single tool result message to a Bedrock toolResult content block.
         
         In OpenAI format, tool results have role="tool" with tool_call_id and content.
-        In Bedrock format, tool results are user messages with toolResult blocks.
+        In Bedrock format, tool results are toolResult content blocks that must all be
+        grouped into a single user message per assistant turn.
         
         Args:
             msg: Tool result message in OpenAI format
         
         Returns:
-            Bedrock-formatted user message with toolResult or None if invalid
+            A single toolResult content block, or None if invalid
         """
         tool_call_id = msg.get("tool_call_id", "")
         content = msg.get("content", "")
@@ -264,18 +283,11 @@ class ShelloBedrockClient:
         if not tool_call_id:
             return None
         
-        # Create toolResult block
-        tool_result_block = {
+        return {
             "toolResult": {
                 "toolUseId": tool_call_id,
                 "content": [{"text": content if isinstance(content, str) else str(content)}]
             }
-        }
-        
-        # Tool results are sent as user messages in Bedrock
-        return {
-            "role": "user",
-            "content": [tool_result_block]
         }
     
     def _convert_tool_call(self, tool_call: Dict[str, Any]) -> Optional[Dict[str, Any]]:
