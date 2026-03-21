@@ -5,6 +5,15 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-03-21
+
+### Fixed
+- **Windows Update Permission Error**: Fixed `/update` failing with `[Errno 13] Permission denied` on Windows when installed to `WindowsApps` directory
+  - Installer now redirects to `~/.shello_cli/shello.exe` (already used for settings) instead of the protected stub path
+  - Subsequent updates from that path work in-place with no permission issues
+  - One-time PATH addition required: add `%USERPROFILE%\.shello_cli` to your user PATH
+- **README Install Command**: Updated Windows quick-install to use `~/.shello_cli/` instead of `WindowsApps` to prevent the issue for new installs
+
 ## [0.6.0] - 2026-03-21
 
 ### Added

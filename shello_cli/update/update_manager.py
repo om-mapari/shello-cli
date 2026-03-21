@@ -174,8 +174,17 @@ class UpdateManager:
                 )
             
             # Step 5: Replace executable
+            executable_path = self.platform_detector.get_executable_path()
+
+            # Warn user if we're redirecting away from a WindowsApps stub
+            if self.platform_detector.is_windows_apps_install():
+                self.console.print(
+                    f"[yellow]Note:[/yellow] Running from a protected Windows App directory.\n"
+                    f"Installing to [cyan]{executable_path}[/cyan] instead.\n"
+                    f"Add that directory to your PATH to use this updated version."
+                )
+
             try:
-                executable_path = self.platform_detector.get_executable_path()
                 self.console.print("[cyan]Installing update...[/cyan]")
                 self.executable_updater.replace_executable(downloaded_path, executable_path)
             except UpdateError as e:

@@ -62,10 +62,45 @@ class PlatformDetector:
         
         return self.ASSET_MAP[platform]
     
+    # Preferred install directory for user-managed updates on Windows
+    WINDOWS_INSTALL_DIR = "~/.shello_cli"
+    WINDOWS_EXE_NAME = "shello.exe"
+
     def get_executable_path(self) -> str:
-        """Get path to currently running executable.
-        
+        """Get path to write the updated executable.
+
+        On Windows, sys.executable may point to a read-only WindowsApps stub.
+        In that case (or when sys.argv[0] also points there), we redirect the
+        install to ~/.shello_cli/shello.exe which is always user-writable.
+        Subsequent runs from that path will update in-place normally.
+
         Returns:
-            Absolute path to current executable
+            Absolute path where the executable should be written
         """
-        return sys.executable
+        import os
+
+        candidate = sys.executable
+
+        # Try sys.argv[0] first — PyInstaller sets this to the real exe path
+        if sys.argv:
+            argv0 = os.path.abspath(sys.argv[0])
+            if os.path.isfile(argv0) and (sys.platform != "win32" or "WindowsApps" not in argv0):
+                return argv0
+
+        # On Windows, if we're still pointing at a WindowsApps stub, redirect
+        # to a user-writable location instead of failing.
+        if sys.platform == "win32" and "WindowsApps" in candidate:
+            install_dir = os.path.expanduser(self.WINDOWS_INSTALL_DIR)
+            os.makedirs(install_dir, exist_ok=True)
+            return os.path.join(install_dir, self.WINDOWS_EXE_NAME)
+
+        return candidate
+
+    def is_windows_apps_install(self) -> bool:
+        """Return True if currently running from a protected WindowsApps stub."""
+        import os
+        candidate = sys.executable
+        argv0 = os.path.abspath(sys.argv[0]) if sys.argv else candidate
+        return sys.platform == "win32" and (
+            "WindowsApps" in candidate and "WindowsApps" in argv0
+        )

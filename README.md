@@ -23,7 +23,11 @@ Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kube
 
 ```powershell
 # Windows (PowerShell - Recommended, no admin needed)
-Invoke-WebRequest -Uri "https://github.com/om-mapari/shello-cli/releases/latest/download/shello.exe" -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\shello.exe"
+# Installs to ~/.shello_cli/ which is already used by Shello for settings
+New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.shello_cli" | Out-Null
+Invoke-WebRequest -Uri "https://github.com/om-mapari/shello-cli/releases/latest/download/shello.exe" -OutFile "$env:USERPROFILE\.shello_cli\shello.exe"
+# Add to PATH (run once):
+[Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";$env:USERPROFILE\.shello_cli", "User")
 ```
 
 ```bash
