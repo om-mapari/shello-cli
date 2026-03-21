@@ -344,11 +344,16 @@ class MessageProcessor:
                             "shown_lines": trunc.shown_lines
                         }
                     
+                    # Serialize once — store on result so the session recorder
+                    # captures exactly what the AI received (truncated + cache IDs).
+                    api_content = json.dumps(tool_result_content)
+                    tool_result.api_content = api_content
+
                     # Add tool result to messages
                     messages.append({
                         "role": "tool",
                         "tool_call_id": tool_call.get("id"),
-                        "content": json.dumps(tool_result_content)
+                        "content": api_content
                     })
                     
                     # Yield tool result chunk
