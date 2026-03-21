@@ -34,7 +34,7 @@ class ShelloBedrockClient:
         aws_session_token: Optional[str] = None,
         aws_profile: Optional[str] = None,
         endpoint_url: Optional[str] = None,
-        debug: bool = True
+        debug: bool = False
     ):
         """Initialize the Bedrock client with AWS credentials.
         
