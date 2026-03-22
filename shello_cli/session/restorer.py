@@ -233,8 +233,8 @@ class SessionRestorer:
                         "content": "",
                         "tool_calls": synthetic_calls,
                     })
-                    sanitized.extend(tool_msgs)
-                # If no tool_call_ids at all, drop the orphaned results.
+                # Keep tool messages regardless — even without tool_call_ids.
+                sanitized.extend(tool_msgs)
                 continue
 
             if role == "assistant":
