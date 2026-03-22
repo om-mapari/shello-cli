@@ -81,7 +81,7 @@ class BAICompleter(Completer):
     
     def __init__(self, history_obj=None):
         self.history = history_obj
-        self.commands = ['/quit', '/exit', '/new', '/about', '/help', '/history']
+        self.commands = ['/quit', '/exit', '/new', '/about', '/help', '/history', '/switch', '/model', '/update']
         self.common_phrases = [
             'can you help me with',
             'how do I',

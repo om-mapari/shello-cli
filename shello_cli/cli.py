@@ -3,6 +3,13 @@ import click
 import os
 import sys
 from pathlib import Path
+from prompt_toolkit import Application
+from prompt_toolkit.formatted_text import FormattedText
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout import Layout
+from prompt_toolkit.layout.containers import HSplit, Window
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.styles import Style
 from shello_cli.agent.shello_agent import ShelloAgent
 from shello_cli.chat.chat_session import ChatSession
 from shello_cli.ui.ui_renderer import (
@@ -24,6 +31,59 @@ import shello_cli as version_module
 
 # Session store path
 _SESSION_STORE = Path.home() / ".shello_cli" / "sessions"
+
+
+def _interactive_pick(title: str, items: list[str], current: str | None = None) -> str | None:
+    """Arrow-key interactive picker. Returns selected item or None if cancelled."""
+    state = {"selected": 0, "result": None}
+
+    # Pre-select the current item if present
+    if current and current in items:
+        state["selected"] = items.index(current)
+
+    kb = KeyBindings()
+
+    @kb.add("up")
+    def _up(event):
+        state["selected"] = (state["selected"] - 1) % len(items)
+
+    @kb.add("down")
+    def _down(event):
+        state["selected"] = (state["selected"] + 1) % len(items)
+
+    @kb.add("enter")
+    def _enter(event):
+        state["result"] = items[state["selected"]]
+        event.app.exit()
+
+    @kb.add("escape")
+    @kb.add("c-c")
+    def _cancel(event):
+        event.app.exit()
+
+    def _get_content():
+        lines = [("class:title", f" {title}\n\n")]
+        for i, item in enumerate(items):
+            marker = "✓ " if item == current else "  "
+            if i == state["selected"]:
+                lines.append(("class:selected", f" > {marker}{item}\n"))
+            else:
+                lines.append(("", f"   {marker}{item}\n"))
+        lines.append(("class:hint", "\n ↑/↓ navigate  Enter select  Esc cancel\n"))
+        return FormattedText(lines)
+
+    layout = Layout(HSplit([
+        Window(content=FormattedTextControl(text=_get_content, focusable=True), wrap_lines=False)
+    ]))
+
+    style = Style.from_dict({
+        "selected": "reverse bold",
+        "title": "bold cyan",
+        "hint": "ansidarkgray",
+    })
+
+    Application(layout=layout, key_bindings=kb, style=style, full_screen=False, mouse_support=False).run()
+    return state["result"]
 
 
 def _get_session_config(settings_manager):
@@ -90,44 +150,26 @@ def switch_provider(settings_manager, agent, chat_session, context_manager, dire
         console.print("💡 [cyan]Run 'shello setup' to configure additional providers.[/cyan]\n")
         return None, None
 
-    console.print("\n🔄 [bold]Switch Provider:[/bold]")
     provider_labels = {
         "openai": "OpenAI-compatible API",
         "bedrock": "AWS Bedrock"
     }
+    labels = [provider_labels.get(p, p.capitalize()) for p in available_providers]
+    current_label = provider_labels.get(current_provider, current_provider.capitalize())
+    current_model = agent.get_current_model()
 
-    for i, prov in enumerate(available_providers, 1):
-        marker = "✓" if prov == current_provider else " "
-        label = provider_labels.get(prov, prov.capitalize())
-        console.print(f"  {i}. [{marker}] {label}")
+    console.print(f"\n🔄 [bold]Switch Provider[/bold]  [bright_black]current: {current_label} / {current_model}[/bright_black]\n")
 
-    current_label = provider_labels.get(current_provider, current_provider)
-    console.print(f"\n  Current: {current_label}")
+    selected_label = _interactive_pick("Select a provider:", labels, current_label)
 
-    try:
-        choice = click.prompt(
-            "\nSelect provider (or 'c' to cancel)",
-            type=str,
-            default="c"
-        )
+    if selected_label is None:
+        console.print("✗ [yellow]Provider switch cancelled.[/yellow]\n")
+        return None, None
 
-        if choice.lower() == 'c':
-            console.print("✗ [yellow]Provider switch cancelled.[/yellow]\n")
-            return None, None
+    new_provider = available_providers[labels.index(selected_label)]
 
-        choice_idx = int(choice) - 1
-        if choice_idx < 0 or choice_idx >= len(available_providers):
-            console.print("✗ [red]Invalid choice.[/red]\n")
-            return None, None
-
-        new_provider = available_providers[choice_idx]
-
-        if new_provider == current_provider:
-            console.print(f"✓ [green]Already using {new_provider}.[/green]\n")
-            return None, None
-
-    except (ValueError, click.Abort):
-        console.print("\n✗ [yellow]Provider switch cancelled.[/yellow]\n")
+    if new_provider == current_provider:
+        console.print(f"✓ [green]Already using {current_label}.[/green]\n")
         return None, None
 
     old_history = agent.get_chat_history()
@@ -142,7 +184,7 @@ def switch_provider(settings_manager, agent, chat_session, context_manager, dire
         direct_executor.set_bash_tool(new_agent.get_bash_tool())
         new_model = new_agent.get_current_model()
 
-        console.print(f"\n✓ [green]Switched to {new_provider}[/green]")
+        console.print(f"\n✓ [green]Switched to {selected_label}[/green]")
         console.print(f"  Model: [cyan]{new_model}[/cyan]")
         console.print(f"  Conversation history preserved\n")
 
@@ -153,6 +195,37 @@ def switch_provider(settings_manager, agent, chat_session, context_manager, dire
         console.print("⚠️  [yellow]Staying on current provider.[/yellow]\n")
         settings_manager.set_provider(current_provider)
         return None, None
+
+
+def switch_model(settings_manager, agent):
+    """Switch the active model within the current provider (session-scoped)."""
+    current_provider = settings_manager.get_provider()
+    current_model = agent.get_current_model()
+
+    try:
+        provider_config = settings_manager.get_provider_config(current_provider)
+        available_models = provider_config.get("models", [])
+    except (ValueError, KeyError):
+        available_models = []
+
+    if not available_models or (len(available_models) == 1 and available_models[0] == current_model):
+        console.print("⚠️  [yellow]No additional models available. Configure models in your settings.[/yellow]\n")
+        return
+
+    console.print(f"\n🔄 [bold]Switch Model[/bold]  [bright_black]provider: {current_provider} / current: {current_model}[/bright_black]\n")
+
+    selected_model = _interactive_pick("Select a model:", available_models, current_model)
+
+    if selected_model is None:
+        console.print("✗ [yellow]Model switch cancelled.[/yellow]\n")
+        return
+
+    if selected_model == current_model:
+        console.print(f"✓ [green]Already using {selected_model}.[/green]\n")
+        return
+
+    agent.set_model(selected_model)
+    console.print(f"\n✓ [green]Switched to model:[/green] [cyan]{selected_model}[/cyan]\n")
 
 
 def handle_history_command(
@@ -400,6 +473,10 @@ def chat(debug, new, yolo):
                 )
                 if result[0] is not None:
                     agent, chat_session = result
+                continue
+
+            elif user_input.lower() == "/model":
+                switch_model(settings_manager, agent)
                 continue
 
             elif user_input.lower() == "/new":
