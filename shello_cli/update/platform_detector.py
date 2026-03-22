@@ -81,8 +81,10 @@ class PlatformDetector:
 
         candidate = sys.executable
 
-        # Try sys.argv[0] first — PyInstaller sets this to the real exe path
-        if sys.argv:
+        # Try sys.argv[0] first — PyInstaller sets this to the real exe path.
+        # Only do this when actually frozen (PyInstaller sets sys.frozen),
+        # otherwise sys.argv[0] points to the script/test runner, not the exe.
+        if getattr(sys, "frozen", False) and sys.argv:
             argv0 = os.path.abspath(sys.argv[0])
             if os.path.isfile(argv0) and (sys.platform != "win32" or "WindowsApps" not in argv0):
                 return argv0
