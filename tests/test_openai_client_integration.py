@@ -142,25 +142,35 @@ class TestShelloClientIntegration:
         settings_manager = SettingsManager.get_instance()
         api_key = settings_manager.get_api_key()
         base_url = settings_manager.get_base_url()
-        
+
         if not api_key:
             pytest.skip("No API key configured")
-        
-        # Initialize client with first model
-        client = ShelloClient(api_key=api_key, model="mistralai/devstral-2512:free", base_url=base_url)
-        
+
+        # Use the configured default model and pick a second from the models list
+        provider_config = settings_manager.get_provider_config(settings_manager.get_provider())
+        default_model = provider_config.get("default_model") or provider_config.get("model")
+        models_list = provider_config.get("models", [])
+        second_model = next((m for m in models_list if m != default_model), None)
+
+        if not default_model:
+            pytest.skip("No default model configured")
+
+        # Initialize client with the default model
+        client = ShelloClient(api_key=api_key, model=default_model, base_url=base_url)
+
         # Verify initial model
-        assert client.get_current_model() == "mistralai/devstral-2512:free"
-        
+        assert client.get_current_model() == default_model
+
         # Make a simple call
         messages = [{"role": "user", "content": "Say 'test1'"}]
         response1 = client.chat(messages)
         assert response1 is not None
-        
-        # Switch model
-        client.set_model("gpt-4o-mini")
-        assert client.get_current_model() == "gpt-4o-mini"
-        
+
+        # Switch model (to second configured model if available, otherwise same model)
+        target_model = second_model if second_model else default_model
+        client.set_model(target_model)
+        assert client.get_current_model() == target_model
+
         print(f"\n✓ Successfully switched models")
         print(f"✓ Current model: {client.get_current_model()}")
 
