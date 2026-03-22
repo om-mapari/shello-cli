@@ -173,190 +173,149 @@ class TestExecutableUpdater:
     def test_replace_executable_success(self):
         """Test successful executable replacement."""
         updater = ExecutableUpdater("test-owner", "test-repo")
-        
-        # Create temporary files
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
-            old_file.write("old executable")
-            old_path = old_file.name
-        
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
-            new_file.write("new executable")
-            new_path = new_file.name
-        
-        backup_path = f"{old_path}.backup"
-        
-        try:
-            # Replace executable
-            updater.replace_executable(new_path, old_path)
-            
-            # Verify new content
-            with open(old_path, 'r') as f:
-                content = f.read()
-            assert content == "new executable"
-            
-            # Verify backup was removed
-            assert not os.path.exists(backup_path)
-            
-            # Verify new binary was moved (not copied)
-            assert not os.path.exists(new_path)
-            
-        finally:
-            # Cleanup
-            if os.path.exists(old_path):
-                os.remove(old_path)
-            if os.path.exists(new_path):
-                os.remove(new_path)
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
 
-    def test_replace_executable_creates_backup(self):
-        """Test that backup is created before replacement."""
-        updater = ExecutableUpdater("test-owner", "test-repo")
-        
-        # Create temporary files
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
             old_file.write("old executable")
             old_path = old_file.name
-        
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
             new_file.write("new executable")
             new_path = new_file.name
-        
-        backup_path = f"{old_path}.backup"
-        
-        # Patch shutil.copy2 to verify backup is created
-        original_copy2 = __import__('shutil').copy2
-        copy2_called = [False]
-        
-        def mock_copy2(src, dst):
-            copy2_called[0] = True
-            return original_copy2(src, dst)
-        
+
+        old_bak = f"{old_path}.old"
+
         try:
-            with patch('shutil.copy2', side_effect=mock_copy2):
-                updater.replace_executable(new_path, old_path)
-            
-            # Verify backup was created during the process
-            assert copy2_called[0], "Backup creation (copy2) was not called"
-            
-            # Verify final state: new content in place, backup removed
+            updater.replace_executable(new_path, old_path)
+
             with open(old_path, 'r') as f:
                 content = f.read()
             assert content == "new executable"
-            assert not os.path.exists(backup_path)
-            
+
+            # .old file cleaned up on success
+            assert not os.path.exists(old_bak)
+            # new binary was moved, not copied
+            assert not os.path.exists(new_path)
+
         finally:
-            # Cleanup
-            if os.path.exists(old_path):
-                os.remove(old_path)
-            if os.path.exists(new_path):
-                os.remove(new_path)
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
+            for p in [old_path, new_path, old_bak]:
+                if os.path.exists(p):
+                    os.remove(p)
+
+    def test_replace_executable_uses_rename_on_windows(self):
+        """On Windows the old exe is renamed before placing the new one (avoids lock)."""
+        updater = ExecutableUpdater("test-owner", "test-repo")
+
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
+            old_file.write("old executable")
+            old_path = old_file.name
+
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
+            new_file.write("new executable")
+            new_path = new_file.name
+
+        old_bak = f"{old_path}.old"
+        rename_calls = []
+        original_rename = os.rename
+
+        def tracking_rename(src, dst):
+            rename_calls.append((src, dst))
+            return original_rename(src, dst)
+
+        try:
+            with patch('os.name', 'nt'), patch('os.rename', side_effect=tracking_rename):
+                updater.replace_executable(new_path, old_path)
+
+            # rename should have been called to move old exe out of the way
+            assert any(dst == old_bak for _, dst in rename_calls), \
+                "Expected old exe to be renamed to .old before replacement"
+
+            with open(old_path, 'r') as f:
+                assert f.read() == "new executable"
+
+        finally:
+            for p in [old_path, new_path, old_bak]:
+                if os.path.exists(p):
+                    os.remove(p)
 
     def test_replace_executable_restores_on_failure(self):
-        """Test that backup is restored when replacement fails."""
+        """Test that old exe is restored when replacement fails."""
         updater = ExecutableUpdater("test-owner", "test-repo")
-        
-        # Create temporary files
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
             old_file.write("original content")
             old_path = old_file.name
-        
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
             new_file.write("new content")
             new_path = new_file.name
-        
-        backup_path = f"{old_path}.backup"
-        
+
+        old_bak = f"{old_path}.old"
+
         try:
-            # Patch shutil.move to fail during replacement
-            with patch('shutil.move', side_effect=OSError("Simulated disk full")):
+            with patch('os.name', 'nt'), patch('shutil.move', side_effect=OSError("Simulated disk full")):
                 with pytest.raises(UpdateError) as exc_info:
                     updater.replace_executable(new_path, old_path)
-                
+
                 assert "Failed to replace executable" in str(exc_info.value)
-            
-            # Verify original file still exists (backup was removed after restore)
+
+            # Original file should be restored
             assert os.path.exists(old_path)
             with open(old_path, 'r') as f:
-                content = f.read()
-            assert content == "original content"
-            
-            # Verify backup was removed after restore
-            assert not os.path.exists(backup_path)
-            
+                assert f.read() == "original content"
+
+            assert not os.path.exists(old_bak)
+
         finally:
-            # Cleanup
-            if os.path.exists(old_path):
-                os.remove(old_path)
-            if os.path.exists(new_path):
-                os.remove(new_path)
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
+            for p in [old_path, new_path, old_bak]:
+                if os.path.exists(p):
+                    os.remove(p)
 
     @patch('os.name', 'posix')
     @patch('os.chmod')
     def test_replace_executable_sets_permissions_unix(self, mock_chmod):
         """Test that executable permissions are set on Unix systems."""
         updater = ExecutableUpdater("test-owner", "test-repo")
-        
-        # Create temporary files
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
             old_file.write("old")
             old_path = old_file.name
-        
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
             new_file.write("new")
             new_path = new_file.name
-        
+
         try:
             updater.replace_executable(new_path, old_path)
-            
-            # Verify chmod was called
             assert mock_chmod.called
-            
+
         finally:
-            # Cleanup
-            if os.path.exists(old_path):
-                os.remove(old_path)
-            if os.path.exists(new_path):
-                os.remove(new_path)
-            if os.path.exists(f"{old_path}.backup"):
-                os.remove(f"{old_path}.backup")
+            for p in [old_path, new_path, f"{old_path}.old"]:
+                if os.path.exists(p):
+                    os.remove(p)
 
     def test_replace_executable_cleans_up_on_failure(self):
         """Test that temporary files are cleaned up when replacement fails."""
         updater = ExecutableUpdater("test-owner", "test-repo")
-        
-        # Create temporary files
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as old_file:
             old_file.write("old")
             old_path = old_file.name
-        
+
         with tempfile.NamedTemporaryFile(delete=False, mode='w') as new_file:
             new_file.write("new")
             new_path = new_file.name
-        
-        backup_path = f"{old_path}.backup"
-        
+
+        old_bak = f"{old_path}.old"
+
         try:
-            # Force failure during replacement
-            with patch('shutil.move', side_effect=OSError("Disk full")):
+            with patch('os.name', 'nt'), patch('shutil.move', side_effect=OSError("Disk full")):
                 with pytest.raises(UpdateError):
                     updater.replace_executable(new_path, old_path)
-            
-            # Verify cleanup: backup should be removed after restore
-            assert not os.path.exists(backup_path)
-            
-            # Original file should be restored
+
+            assert not os.path.exists(old_bak)
             assert os.path.exists(old_path)
-            
+
         finally:
-            # Cleanup
-            if os.path.exists(old_path):
-                os.remove(old_path)
-            if os.path.exists(new_path):
-                os.remove(new_path)
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
+            for p in [old_path, new_path, old_bak]:
+                if os.path.exists(p):
+                    os.remove(p)

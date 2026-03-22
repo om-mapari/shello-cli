@@ -117,48 +117,52 @@ class ExecutableUpdater:
         Raises:
             UpdateError: If replacement fails
         """
-        backup_path = f"{target_path}.backup"
+        old_path = f"{target_path}.old"
         new_binary_moved = False
-        
+
         try:
-            # Step 1: Create backup of current executable
-            if os.path.exists(target_path):
-                shutil.copy2(target_path, backup_path)
-            
-            # Step 2: Replace executable with new binary
+            # Step 1: On Windows, rename the running exe out of the way first.
+            # Windows locks running executables against overwrite but allows rename.
+            if os.name == 'nt':
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+                if os.path.exists(target_path):
+                    os.rename(target_path, old_path)
+
+            # Step 2: Move new binary into place
             shutil.move(new_binary_path, target_path)
             new_binary_moved = True
-            
+
             # Step 3: Set executable permissions on Unix systems
-            if os.name != 'nt':  # Not Windows
+            if os.name != 'nt':
                 current_permissions = os.stat(target_path).st_mode
                 os.chmod(target_path, current_permissions | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-            
-            # Step 4: Remove backup on success
-            if os.path.exists(backup_path):
-                os.remove(backup_path)
-                
-        except Exception as e:
-            # Restore from backup on failure
-            if os.path.exists(backup_path):
+
+            # Step 4: Remove old binary on success (best effort — may still be locked)
+            if os.path.exists(old_path):
                 try:
-                    # Only restore if we successfully moved the new binary
-                    if new_binary_moved:
-                        shutil.move(backup_path, target_path)
-                    else:
-                        # If move failed, just remove the backup
-                        os.remove(backup_path)
+                    os.remove(old_path)
+                except Exception:
+                    pass  # Will be cleaned up on next run
+
+        except Exception as e:
+            # Restore old binary on failure
+            if os.name == 'nt' and os.path.exists(old_path):
+                try:
+                    if new_binary_moved and os.path.exists(target_path):
+                        os.remove(target_path)
+                    os.rename(old_path, target_path)
                 except Exception as restore_error:
                     raise UpdateError(
                         f"Failed to replace executable and restore backup: {e}. "
                         f"Restore error: {restore_error}"
                     )
-            
-            # Clean up new binary if it exists and wasn't moved
+
+            # Clean up new binary if it wasn't moved
             if not new_binary_moved and os.path.exists(new_binary_path):
                 try:
                     os.remove(new_binary_path)
                 except Exception:
-                    pass  # Best effort cleanup
-            
+                    pass
+
             raise UpdateError(f"Failed to replace executable: {e}")
