@@ -1,111 +1,99 @@
 """Tool for retrieving specific lines from cached command output."""
 
 from typing import Optional
-from shello_cli.types import ToolResult
+
+from shello_cli.types import ToolResult, ShelloTool
+from shello_cli.tools.base import ShelloToolBase
 from shello_cli.tools.output.cache import OutputCache
 from shello_cli.defaults import DEFAULT_CHAR_LIMITS
 
 
-class GetCachedOutputTool:
-    """
-    Tool for AI to retrieve specific line ranges from cached command output.
-    
-    This tool allows the AI agent to access full command output even when
-    the bash_tool truncated it. The cache persists for the entire conversation.
-    
-    Parameters:
-        cache_id: str - Cache ID from tool result (e.g., "cmd_001")
-        lines: Optional[str] - Line specification:
-            "+N"    - First N lines
-            "-N"    - Last N lines
-            "+N,-M" - First N + last M lines
-            "N-M"   - Lines N through M (1-indexed)
-            None    - Full output (with safety limit)
-    """
-    
+class GetCachedOutputTool(ShelloToolBase):
+    """Retrieve specific line ranges from cached command output."""
+
+    tool_name = "get_cached_output"
+
+    _SCHEMA = ShelloTool(
+        type="function",
+        function={
+            "name": "get_cached_output",
+            "description": (
+                "Retrieve cached output from previous command.\n\n"
+                "USE WHEN: Output was truncated, user asks about earlier command,"
+                " need specific lines.\n\n"
+                "LINE SELECTION:\n"
+                "  '-100'    -> Last 100 lines (best for logs)\n"
+                "  '+50'     -> First 50 lines\n"
+                "  '+20,-80' -> First 20 + last 80\n"
+                "  '10-50'   -> Lines 10-50\n"
+                "  (omit)    -> Full output (50K limit)\n\n"
+                "EXAMPLE: get_cached_output(cache_id='cmd_001', lines='-100')"
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cache_id": {
+                        "type": "string",
+                        "description": "Cache ID from truncation summary (e.g., 'cmd_001')"
+                    },
+                    "lines": {
+                        "type": "string",
+                        "description": (
+                            "Line selection: '+N' first, '-N' last,"
+                            " '+N,-M' both, 'N-M' range. Omit for full."
+                        )
+                    }
+                },
+                "required": ["cache_id"]
+            }
+        }
+    )
+
     def __init__(self, cache: OutputCache):
-        """Initialize the tool with a shared cache instance.
-        
-        Args:
-            cache: Shared OutputCache instance (same one used by BashTool)
-        """
         self._cache = cache
         self._safety_limit = DEFAULT_CHAR_LIMITS["safety"]
-    
-    def execute(self, cache_id: str, lines: Optional[str] = None) -> ToolResult:
-        """Retrieve cached output with optional line selection.
-        
-        Args:
-            cache_id: Cache ID from truncation summary
-            lines: Optional line specification (+N, -N, +N,-M, N-M)
-            
-        Returns:
-            ToolResult with retrieved output or error message
-        """
-        # Validate cache_id format
+
+    @property
+    def schema(self) -> ShelloTool:
+        return self._SCHEMA
+
+    def execute(self, cache_id: str, lines: Optional[str] = None, **_) -> ToolResult:
         if not cache_id or not isinstance(cache_id, str):
             return ToolResult(
-                success=False,
-                output="",
-                error=f"Invalid cache_id: must be a non-empty string (e.g., 'cmd_001')"
+                success=False, output="",
+                error="Invalid cache_id: must be a non-empty string (e.g., 'cmd_001')"
             )
-        
-        # Try to retrieve from cache
-        if lines is None:
-            # Get full output
-            output = self._cache.get(cache_id)
-        else:
-            # Get specific lines
-            output = self._cache.get_lines(cache_id, lines)
-        
-        # Handle cache miss
+
+        output = self._cache.get_lines(cache_id, lines) if lines else self._cache.get(cache_id)
+
         if output is None:
             return ToolResult(
-                success=False,
-                output="",
+                success=False, output="",
                 error=(
-                    f"Cache miss for '{cache_id}'. "
-                    f"Possible reasons:\n"
-                    f"  - Invalid cache ID (check the cache_id from tool result)\n"
-                    f"  - Cache evicted due to size limit (100MB max)\n\n"
-                    f"Solution: Re-run the original command to regenerate output."
+                    f"Cache miss for '{cache_id}'.\n"
+                    "Possible reasons:\n"
+                    "  - Invalid cache ID (check the cache_id from tool result)\n"
+                    "  - Cache evicted due to size limit (100MB max)\n\n"
+                    "Solution: Re-run the original command to regenerate output."
                 )
             )
-        
-        # Apply safety limit if getting full output
+
         if lines is None and len(output) > self._safety_limit:
-            # Truncate to safety limit
             truncated = output[:self._safety_limit]
-            # Find last complete line
-            last_newline = truncated.rfind('\n')
-            if last_newline > 0:
-                truncated = truncated[:last_newline]
-            
+            last_nl = truncated.rfind('\n')
+            if last_nl > 0:
+                truncated = truncated[:last_nl]
             warning = (
                 f"\n\n[Output truncated to safety limit: {self._safety_limit:,} chars]\n"
-                f"Use lines parameter to retrieve specific sections:\n"
-                f"  - lines='+100' for first 100 lines\n"
-                f"  - lines='-100' for last 100 lines\n"
-                f"  - lines='+50,-50' for first 50 + last 50 lines"
+                "Use lines parameter to retrieve specific sections:\n"
+                "  - lines='+100' for first 100 lines\n"
+                "  - lines='-100' for last 100 lines\n"
+                "  - lines='+50,-50' for first 50 + last 50 lines"
             )
-            
-            return ToolResult(
-                success=True,
-                output=truncated + warning,
-                error=None
-            )
-        
-        # Return retrieved output
-        return ToolResult(
-            success=True,
-            output=output,
-            error=None
-        )
-    
+            return ToolResult(success=True, output=truncated + warning, error=None)
+
+        return ToolResult(success=True, output=output, error=None)
+
     def get_cache_stats(self) -> dict:
-        """Get cache statistics for debugging.
-        
-        Returns:
-            Dictionary with cache statistics
-        """
+        """Get cache statistics for debugging."""
         return self._cache.get_stats()
