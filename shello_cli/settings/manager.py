@@ -45,7 +45,7 @@ class SettingsManager:
     def __init__(self):
         """Initialize settings manager."""
         self._user_settings_path = APP_DIR / "user-settings.yml"
-        self._project_settings_path = Path.cwd() / ".shello" / "settings.json"
+        self._project_settings_path = Path.cwd() / ".shello" / "settings.yml"
         self._user_settings: Optional[UserSettings] = None
         self._project_settings: Optional['ProjectSettings'] = None
     
@@ -740,13 +740,12 @@ class SettingsManager:
         return providers
     
     def load_project_settings(self) -> 'ProjectSettings':
-        """Load project settings from .shello/settings.json.
+        """Load project settings from .shello/settings.yml.
         
         Returns:
             ProjectSettings: The project settings (defaults if file doesn't exist)
         """
         from shello_cli.settings.models import ProjectSettings
-        import json
         
         # Return cached settings if available
         if self._project_settings is not None:
@@ -761,33 +760,32 @@ class SettingsManager:
             return self._project_settings
         
         try:
-            with open(self._project_settings_path, 'r') as f:
-                data = json.load(f)
+            with open(self._project_settings_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
             
             # Merge loaded data with defaults
             self._project_settings = ProjectSettings(
                 model=data.get('model', default_settings.model)
             )
             return self._project_settings
-        except (json.JSONDecodeError, IOError) as e:
+        except (yaml.YAMLError, IOError):
             # If file is corrupted or unreadable, return defaults
             self._project_settings = default_settings
             return self._project_settings
     
     def save_project_settings(self, settings: 'ProjectSettings') -> None:
-        """Save project settings to .shello/settings.json.
+        """Save project settings to .shello/settings.yml.
         
         Args:
             settings: ProjectSettings object to save
         """
-        import json
-        
         # Ensure directory exists
         self._project_settings_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # Convert to dict and save
-        with open(self._project_settings_path, 'w') as f:
-            json.dump(asdict(settings), f, indent=2)
+        # Convert to dict, remove None values, and save as YAML
+        data = {k: v for k, v in asdict(settings).items() if v is not None}
+        with open(self._project_settings_path, 'w', encoding='utf-8') as f:
+            yaml.dump(data, f, default_flow_style=False)
         
         # Update cached settings
         self._project_settings = settings

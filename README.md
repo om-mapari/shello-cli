@@ -7,13 +7,13 @@
 [![Downloads](https://img.shields.io/github/downloads/om-mapari/shello-cli/total.svg)](https://github.com/om-mapari/shello-cli/releases)
 [![Stars](https://img.shields.io/github/stars/om-mapari/shello-cli.svg)](https://github.com/om-mapari/shello-cli/stargazers)
 
-> **Not yet another AI CLI.** Built for failures, not for code.
+> **AI-Agent for SRE & DevOps — built for production, not playgrounds.**
 
-Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kubernetes ☸️, Docker 🐳, and log failures.
+Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kubernetes ☸️, Docker 🐳, Linux and log failures.
 
 **The Problem:** Other AI CLIs fail when logs explode. They either refuse to run commands, flood your terminal with 50K lines, or burn thousands of tokens trying to process everything.
 
-**Shello's Solution:** Execute real shell commands, cache full output (100MB), and show you what matters: errors, warnings, and critical context using semantic truncation that keeps failures visible.
+**Shello's Solution:** Execute real shell commands, cache full output, and show you what matters: errors, warnings, and critical context using semantic truncation that keeps failures visible. Support Human in the loop.
 
 **Logs too big? Errors hidden? Shello handles it pretty well.**
 
@@ -180,45 +180,14 @@ connection string in your deployment config is correct.
 
 Most AI CLIs are built for code generation. Shello is built for debugging production systems.
 
-- **⚡ Executes Real Commands** - Actually runs shell commands. No refusal, no suggestions, just execution
-- **🧠 Smart Output Management** - Keeps errors visible even in 50K-line logs without wasting tokens
-- **💾 Persistent Output Cache** - Stores 100MB of full command output. Retrieve any section anytime
-- **📊 JSON Intelligence** - Analyzes massive JSON with jq paths instead of dumping everything to your terminal
-- **🎯 Failure-First Truncation** - Shows the end of logs (where errors live), both ends of builds, start of lists
-- **🔍 Semantic Error Detection** - Errors and warnings stay visible no matter where they appear
-- **⚙️ Progress Bar Compression** - 500 lines of npm install progress? Gets compressed to the final state
-- **☁️ Production-Ready** - Built for Cloud, Kubernetes, and Docker debugging
-
-## Key Features
-
-### Production Debugging
-- **Executes real commands** - Runs kubectl, docker, aws, gcloud commands. No refusal, no suggestions
-- **Failure-first output** - Errors stay visible even in massive logs
-- **100MB output cache** - Full command output stored. Grab any section during your debugging session
-- **JSON analysis** - Large JSON gets analyzed with jq paths instead of flooding your terminal
-- **Multi-platform** - Works on Windows, Linux, macOS (bash/PowerShell/cmd auto-detected)
-
-### Smart Output Management
-- **Character-based limits** - 5K-20K chars depending on command type (no arbitrary line counts)
-- **Context-aware truncation** - Logs show the end (where errors are), builds show both ends, lists show the start
-- **Semantic error detection** - Errors, warnings, and stack traces stay visible wherever they appear
-- **Progress bar compression** - 500 lines of npm install progress? Gets compressed to the final state
-- **Token optimization** - Uses 2-3x fewer tokens than naive log processing
-
-### Debugging Workflow
-- **Real-time streaming** - You see output as it happens, AI gets a processed summary
-- **Zero data loss** - Full output is always cached. Retrieve any section whenever you need it
-- **Context preservation** - Your working directory persists across commands
-- **Flexible AI providers** - Works with OpenAI, AWS Bedrock, OpenRouter, or local models (LM Studio, Ollama)
-- **Project configs** - Team settings via `.shello/settings.json`
-- **Custom instructions** - Project context in `.shello/SHELLO.md`
-
-### Safety Features
-- **Smart allowlist/denylist** - Control which commands run automatically vs need approval
-- **AI safety integration** - AI flags dangerous commands for review
-- **YOLO mode** - Skip approval checks for automation and CI/CD debugging
-- **Critical warnings** - Denylist commands show big warnings before execution
-- **Flexible approval modes** - Pick between AI-driven or user-driven approval
+- **Executes Real Commands** - Actually runs shell commands. No refusal, no suggestions, just execution
+- **Smart Output Management** - Keeps errors visible even in 50K-line logs without wasting tokens
+- **Persistent Output Cache** - Stores full command output. Retrieve any section anytime
+- **JSON Intelligence** - Analyzes massive JSON with jq paths instead of dumping everything to your terminal
+- **Failure-First Truncation** - Shows the end of logs (where errors live), both ends of builds, start of lists
+- **Semantic Error Detection** - Errors and warnings stay visible no matter where they appear
+- **Progress Bar Compression** - 500 lines of npm install progress? Gets compressed to the final state
+- **Production-Ready** - Built for Cloud, Kubernetes, and Docker debugging
 
 ## Configuration
 
@@ -443,25 +412,9 @@ bedrock_config:
 - Inline documentation explains each setting
 - Environment variables can override any credential
 
-**Project settings:** `.shello/settings.json` (overrides global)
+**Project settings:** `.shello/settings.yml` (overrides global)
 ```yaml
 model: gpt-4o-mini
-```
-
-**Environment variables:**
-
-OpenAI-compatible:
-```bash
-export OPENAI_API_KEY="your-api-key"
-```
-
-AWS Bedrock:
-```bash
-export AWS_REGION="us-east-1"
-export AWS_PROFILE="default"
-# Or use explicit credentials:
-export AWS_ACCESS_KEY_ID="your-access-key"
-export AWS_SECRET_ACCESS_KEY="your-secret-key"
 ```
 
 ### Command Trust and Safety

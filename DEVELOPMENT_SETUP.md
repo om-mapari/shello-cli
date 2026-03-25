@@ -281,14 +281,12 @@ bedrock_config:
 
 ### 2. Project Settings (Local)
 
-**Location:** `.shello/settings.json` (in your project directory)
+**Location:** `.shello/settings.yml` (in your project directory)
 
 Contains project-specific overrides:
 
-```json
-{
-    "model": "gpt-4o-mini"
-}
+```yaml
+model: gpt-4o-mini
 ```
 
 ### 3. Custom Instructions
@@ -363,7 +361,7 @@ Settings are loaded in this order (later overrides earlier):
 1. Default values (in `shello_cli/defaults.py`)
 2. User settings (`~/.shello_cli/user-settings.yml`)
 3. Environment variables (`OPENAI_API_KEY`, `AWS_REGION`, `AWS_PROFILE`, etc.)
-4. Project settings (`.shello/settings.json`)
+4. Project settings (`.shello/settings.yml`)
 
 **Note:** The settings system uses a merge strategy where:
 - Only values you explicitly set in `user-settings.yml` override defaults
@@ -399,65 +397,62 @@ The client supports any OpenAI-compatible API endpoint and AWS Bedrock foundatio
 ## AI Providers
 
 ### OpenAI
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "base_url": "https://api.openai.com/v1",
-        "api_key": "sk-...",
-        "default_model": "gpt-4o",
-        "models": ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  provider_type: openai
+  base_url: https://api.openai.com/v1
+  api_key: sk-...
+  default_model: gpt-4o
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+    - gpt-4-turbo
 ```
 
 ### OpenRouter (Recommended for Free Models)
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "base_url": "https://openrouter.ai/api/v1",
-        "api_key": "sk-or-v1-...",
-        "default_model": "mistralai/devstral-2512:free",
-        "models": ["mistralai/devstral-2512:free", "anthropic/claude-3.5-sonnet"]
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  provider_type: openai
+  base_url: https://openrouter.ai/api/v1
+  api_key: sk-or-v1-...
+  default_model: mistralai/devstral-2512:free
+  models:
+    - mistralai/devstral-2512:free
+    - anthropic/claude-3.5-sonnet
 ```
 
 ### AWS Bedrock
-```json
-{
-    "provider": "bedrock",
-    "bedrock_config": {
-        "provider_type": "bedrock",
-        "aws_region": "us-east-1",
-        "aws_profile": "default",
-        "default_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
-        "models": [
-            "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            "anthropic.claude-3-opus-20240229-v1:0",
-            "amazon.nova-pro-v1:0"
-        ]
-    }
-}
+```yaml
+provider: bedrock
+
+bedrock_config:
+  provider_type: bedrock
+  aws_region: us-east-1
+  aws_profile: default
+  default_model: anthropic.claude-3-5-sonnet-20241022-v2:0
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
+    - anthropic.claude-3-opus-20240229-v1:0
+    - amazon.nova-pro-v1:0
 ```
 
 See [doc/BEDROCK_SETUP_GUIDE.md](doc/BEDROCK_SETUP_GUIDE.md) for detailed AWS Bedrock setup instructions.
 
 ### Local Models (LM Studio, Ollama)
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "provider_type": "openai",
-        "base_url": "http://localhost:1234/v1",
-        "api_key": "not-needed",
-        "default_model": "local-model-name",
-        "models": ["local-model-name"]
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  provider_type: openai
+  base_url: http://localhost:1234/v1
+  api_key: not-needed
+  default_model: local-model-name
+  models:
+    - local-model-name
 ```
 
 ## Security
@@ -468,7 +463,7 @@ The settings manager automatically sets secure file permissions (0600) on user s
 
 **On Unix-like systems:**
 ```bash
-chmod 600 ~/.shello_cli/user-settings.json
+chmod 600 ~/.shello_cli/user-settings.yml
 ```
 
 **On Windows:**
@@ -508,7 +503,7 @@ uv pip install -e .
 ### Configuration not loading
 - Check file locations:
   - User: `~/.shello_cli/user-settings.yml`
-  - Project: `.shello/settings.json`
+  - Project: `.shello/settings.yml`
 - Verify YAML syntax is valid (use a YAML validator)
 - Check file permissions (should be readable, automatically set to 0600 for security)
 
@@ -588,32 +583,26 @@ python main.py chat    # Start chat session
 Edit your user settings file to add new models to your configured provider:
 
 **For OpenAI-compatible APIs:**
-```json
-{
-    "provider": "openai",
-    "openai_config": {
-        "models": [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "your-new-model"
-        ],
-        "default_model": "your-new-model"
-    }
-}
+```yaml
+provider: openai
+
+openai_config:
+  models:
+    - gpt-4o
+    - gpt-4o-mini
+    - your-new-model
+  default_model: your-new-model
 ```
 
 **For AWS Bedrock:**
-```json
-{
-    "provider": "bedrock",
-    "bedrock_config": {
-        "models": [
-            "anthropic.claude-3-5-sonnet-20241022-v2:0",
-            "your-new-bedrock-model-id"
-        ],
-        "default_model": "your-new-bedrock-model-id"
-    }
-}
+```yaml
+provider: bedrock
+
+bedrock_config:
+  models:
+    - anthropic.claude-3-5-sonnet-20241022-v2:0
+    - your-new-bedrock-model-id
+  default_model: your-new-bedrock-model-id
 ```
 
 Or use `python main.py setup` to reconfigure interactively.

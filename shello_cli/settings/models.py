@@ -114,6 +114,6 @@ class UserSettings:
 
 @dataclass
 class ProjectSettings:
-    """Project-level settings stored in .shello/settings.json."""
+    """Project-level settings stored in .shello/settings.yml."""
     
     model: Optional[str] = None
