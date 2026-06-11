@@ -196,7 +196,7 @@ def display_help():
     
     # Commands table
     commands_table = Table(show_header=True, header_style="bold magenta", title="Chat Commands")
-    commands_table.add_column("Command", style="yellow", width=12)
+    commands_table.add_column("Command", style="yellow", width=16)
     commands_table.add_column("Description", style="white")
     
     commands_table.add_row("/quit", "Exit the application")

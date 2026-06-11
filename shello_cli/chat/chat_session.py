@@ -177,6 +177,7 @@ class ChatSession:
                     
                     elif chunk.type == "tool_result":
                         # Tool execution complete — record output and api_message
+                        has_output = bool(accumulated_tool_output)
                         if accumulated_tool_output:
                             self._record_tool_output(accumulated_tool_output, current_tool_call)
                             accumulated_tool_output = ""
@@ -184,7 +185,8 @@ class ChatSession:
                             self._record_tool_result_api_message(chunk.tool_result, current_tool_call)
                             # Display final result status if there was an error
                             if not chunk.tool_result.success and chunk.tool_result.error:
-                                console.print(f"\n✗ Error: {chunk.tool_result.error}", style="bold red")
+                                leading_nl = "\n" if has_output else ""
+                                console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
                             console.print()  # Add spacing after tool output
                         current_command = None  # Clear command tracking
                     

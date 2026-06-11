@@ -433,6 +433,8 @@ def get_user_input_with_clear(name, current_directory=None):
             user_input = sanitize_surrogates(user_input)
         return user_input
     except KeyboardInterrupt:
-        return None
+        # Print a newline so the next prompt is on a new line, and return empty string
+        print()
+        return ""
     except EOFError:
         return None
