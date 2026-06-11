@@ -5,6 +5,12 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.1] - 2026-06-11
+
+### Added
+- **Session-Specific Folders**: Store each session's history file (`history.jsonl`) inside its own directory named `YYYY-MM-DD_HH-MM` (with automatic incremental suffix resolution for duplicates in the same minute).
+- **Session Directory Management**: Pruning, clearing, deleting, viewing, and index rebuilding now recursively manage session folders.
+
 ## [0.8.0] - 2026-06-11
 
 ### Added
@@ -786,7 +792,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.8.1...HEAD
+[0.8.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.8.1
 [0.8.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.8.0
 [0.7.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.1
 [0.7.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.0

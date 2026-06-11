@@ -13,14 +13,11 @@ from .serializer import SessionSerializer
 
 logger = logging.getLogger(__name__)
 
-_SESSION_FILE_RE = re.compile(r"^session_(.+)\.jsonl$")
-
-
 def rebuild_index(session_store_path: Path) -> SessionIndex:
-    """Rebuild SessionIndex by scanning all .jsonl files in the session store.
+    """Rebuild SessionIndex by scanning all history.jsonl files in the session store.
 
     For each valid session file:
-    - Extracts session_id from the filename
+    - Extracts session_id from the parent directory name
     - Parses the first entry for start_time and working_directory
     - Counts all valid entries for entry_count
     - Parses the last entry's timestamp for end_time
@@ -39,12 +36,8 @@ def rebuild_index(session_store_path: Path) -> SessionIndex:
     if not session_store_path.exists():
         return index
 
-    for jsonl_file in sorted(session_store_path.glob("*.jsonl")):
-        match = _SESSION_FILE_RE.match(jsonl_file.name)
-        if not match:
-            continue
-
-        session_id = match.group(1)
+    for jsonl_file in sorted(session_store_path.glob("*/history.jsonl")):
+        session_id = jsonl_file.parent.name
 
         try:
             meta = _extract_metadata(jsonl_file, session_id)

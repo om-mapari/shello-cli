@@ -26,10 +26,10 @@ class SessionViewer:
         formatting, and displays timestamps. Returns True if any api_message
         entries exist (i.e. conversation state is present).
         """
-        session_file = self._store_path / f"session_{session_id}.jsonl"
+        session_file = self._store_path / session_id / "history.jsonl"
 
         if not session_file.exists():
-            console.print(f"[red]Session file not found: session_{session_id}.jsonl[/red]")
+            console.print(f"[red]Session file not found: {session_file}[/red]")
             return False
 
         has_conversation_state = False
@@ -58,7 +58,7 @@ class SessionViewer:
         Returns a list of API message dicts (role, content, tool_calls,
         tool_call_id), or None if no api_message entries are found.
         """
-        session_file = self._store_path / f"session_{session_id}.jsonl"
+        session_file = self._store_path / session_id / "history.jsonl"
 
         if not session_file.exists():
             return None

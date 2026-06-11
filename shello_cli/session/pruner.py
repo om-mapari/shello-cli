@@ -45,12 +45,12 @@ class SessionPruner:
             logger.warning("Failed to write session index: %s", e)
 
     def _session_file(self, session_id: str) -> Path:
-        return self._store / f"session_{session_id}.jsonl"
+        return self._store / session_id / "history.jsonl"
 
     def _total_size(self) -> int:
-        """Return total size in bytes of all .jsonl files in the store."""
+        """Return total size in bytes of all history.jsonl files in the store."""
         total = 0
-        for f in self._store.glob("*.jsonl"):
+        for f in self._store.glob("*/history.jsonl"):
             try:
                 total += f.stat().st_size
             except OSError as e:
@@ -62,7 +62,7 @@ class SessionPruner:
     # ------------------------------------------------------------------
 
     def prune(self) -> int:
-        """Delete oldest sessions until total .jsonl size is within the limit.
+        """Delete oldest sessions until total history.jsonl size is within the limit.
 
         Returns the number of sessions deleted.
         """
@@ -78,12 +78,14 @@ class SessionPruner:
             if self._total_size() <= self._max_bytes:
                 break
             session_file = self._session_file(meta.session_id)
+            session_dir = session_file.parent
             try:
-                if session_file.exists():
-                    session_file.unlink()
-            except (OSError, IOError) as e:
+                if session_dir.exists() and session_dir != self._store:
+                    import shutil
+                    shutil.rmtree(session_dir, ignore_errors=True)
+            except Exception as e:
                 logger.warning(
-                    "Could not delete session file %s, skipping: %s", session_file, e
+                    "Could not delete session directory %s, skipping: %s", session_dir, e
                 )
                 continue
 
@@ -94,23 +96,26 @@ class SessionPruner:
         return deleted
 
     def clear_all(self) -> int:
-        """Delete all session .jsonl files and reset the index to empty.
+        """Delete all session directories and reset the index to empty.
 
         Returns the number of sessions deleted.
         """
         deleted = 0
-        for f in list(self._store.glob("*.jsonl")):
+        import shutil
+        for f in list(self._store.glob("*/history.jsonl")):
+            session_dir = f.parent
             try:
-                f.unlink()
-                deleted += 1
-            except (OSError, IOError) as e:
-                logger.warning("Could not delete session file %s: %s", f, e)
+                if session_dir != self._store:
+                    shutil.rmtree(session_dir, ignore_errors=True)
+                    deleted += 1
+            except Exception as e:
+                logger.warning("Could not delete session directory %s: %s", session_dir, e)
 
         self._save_index(SessionIndex())
         return deleted
 
     def delete_session(self, session_id: str) -> bool:
-        """Delete a specific session file and remove it from the index.
+        """Delete a specific session directory and remove it from the index.
 
         Returns True if the session was found and deleted, False otherwise.
         """
@@ -118,12 +123,13 @@ class SessionPruner:
         if session_id not in index.sessions:
             return False
 
-        session_file = self._session_file(session_id)
+        session_dir = self._store / session_id
         try:
-            if session_file.exists():
-                session_file.unlink()
-        except (OSError, IOError) as e:
-            logger.warning("Could not delete session file %s: %s", session_file, e)
+            if session_dir.exists() and session_dir != self._store:
+                import shutil
+                shutil.rmtree(session_dir, ignore_errors=True)
+        except Exception as e:
+            logger.warning("Could not delete session directory %s: %s", session_dir, e)
 
         index.sessions.pop(session_id, None)
         self._save_index(index)

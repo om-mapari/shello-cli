@@ -51,7 +51,7 @@ class SessionRecorder:
         return self._is_recording
 
     def start(self) -> None:
-        """Create a new session file and begin recording."""
+        """Create a new session directory and file, then begin recording."""
         try:
             self._store_path.mkdir(parents=True, exist_ok=True)
         except OSError as e:
@@ -60,7 +60,16 @@ class SessionRecorder:
             return
 
         self._session_id = self._generate_session_id()
-        session_file = self._store_path / f"session_{self._session_id}.jsonl"
+        session_dir = self._store_path / self._session_id
+
+        try:
+            session_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.warning("Cannot create session directory %s: %s", session_dir, e)
+            self._is_recording = False
+            return
+
+        session_file = session_dir / "history.jsonl"
 
         try:
             self._file_handle = open(session_file, "a", encoding="utf-8")  # noqa: SIM115
@@ -91,14 +100,15 @@ class SessionRecorder:
         Instead of creating a new session, this attaches the recorder to an
         existing session file so all new entries are appended to it.
         """
+        session_dir = self._store_path / session_id
         try:
-            self._store_path.mkdir(parents=True, exist_ok=True)
+            session_dir.mkdir(parents=True, exist_ok=True)
         except OSError as e:
-            logger.warning("Cannot access session store directory %s: %s", self._store_path, e)
+            logger.warning("Cannot access session directory %s: %s", session_dir, e)
             self._is_recording = False
             return
 
-        session_file = self._store_path / f"session_{session_id}.jsonl"
+        session_file = session_dir / "history.jsonl"
         try:
             self._file_handle = open(session_file, "a", encoding="utf-8")  # noqa: SIM115
         except OSError as e:
@@ -198,13 +208,17 @@ class SessionRecorder:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    @staticmethod
-    def _generate_session_id() -> str:
-        """Generate a session ID in the format YYYYMMDD_HHMMSS_{short_random}."""
+    def _generate_session_id(self) -> str:
+        """Generate a session ID in the format YYYY-MM-DD_HH-MM, appending a counter for collisions."""
         now = datetime.now(timezone.utc)
-        timestamp_part = now.strftime("%Y%m%d_%H%M%S")
-        random_part = "".join(random.choices(string.ascii_lowercase + string.digits, k=4))
-        return f"{timestamp_part}_{random_part}"
+        base_id = now.strftime("%Y-%m-%d_%H-%M")
+        
+        session_id = base_id
+        counter = 1
+        while (self._store_path / session_id).exists():
+            session_id = f"{base_id}_{counter}"
+            counter += 1
+        return session_id
 
     def _load_index(self) -> SessionIndex:
         """Load the session index from disk, or return an empty one."""
