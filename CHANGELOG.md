@@ -792,19 +792,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.8.1...HEAD
-[0.8.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.8.1
-[0.8.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.8.0
-[0.7.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.1
-[0.7.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.0
-[0.6.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.6.1
-[0.6.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.6.0
-[0.5.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.2
-[0.5.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.1
-[0.4.3]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.3
-[0.4.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.2
-[0.4.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.1
-[0.4.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.0
-[0.3.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.3.0
-[0.2.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.2.0
-[0.1.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.1.0
