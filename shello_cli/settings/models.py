@@ -7,7 +7,7 @@ at different levels (user, project) and for different components
 """
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional, Any
 
 if TYPE_CHECKING:
     from shello_cli.session.models import SessionHistoryConfig
@@ -110,6 +110,7 @@ class UserSettings:
     command_trust: Optional[CommandTrustConfig] = None
     update_config: Optional[UpdateConfig] = field(default_factory=UpdateConfig)
     session_history: Optional["SessionHistoryConfig"] = None
+    mcp_servers: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -117,3 +118,4 @@ class ProjectSettings:
     """Project-level settings stored in .shello/settings.yml."""
     
     model: Optional[str] = None
+    mcp_servers: Optional[Dict[str, Any]] = None

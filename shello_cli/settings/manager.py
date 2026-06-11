@@ -171,6 +171,9 @@ class SettingsManager:
         # Parse session history config
         session_history = self._parse_session_history(data.get('session_history'))
 
+        # Parse MCP config
+        mcp_servers = data.get('mcp_servers') or data.get('mcpServers')
+
         return UserSettings(
             provider=provider,
             openai_config=openai_config,
@@ -180,6 +183,7 @@ class SettingsManager:
             output_management=output_management,
             command_trust=command_trust,
             session_history=session_history,
+            mcp_servers=mcp_servers,
         )
     
     def _validate_provider(self, provider: str) -> str:
@@ -789,7 +793,8 @@ class SettingsManager:
             
             # Merge loaded data with defaults
             self._project_settings = ProjectSettings(
-                model=data.get('model', default_settings.model)
+                model=data.get('model', default_settings.model),
+                mcp_servers=data.get('mcp_servers') or data.get('mcpServers')
             )
             return self._project_settings
         except (yaml.YAMLError, IOError):

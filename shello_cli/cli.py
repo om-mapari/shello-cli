@@ -720,6 +720,26 @@ def config(edit, get, set_key, value, reset):
         console.print(f"  ⚙️  [bold]Project Override:[/bold]")
         console.print(f"     Model: {project_settings.model}")
 
+    # Display MCP servers configuration
+    has_mcp = False
+    if user_settings.mcp_servers:
+        has_mcp = True
+    if project_settings.mcp_servers:
+        has_mcp = True
+
+    if has_mcp:
+        console.print()
+        console.print("  🔌 [bold]MCP Servers:[/bold]")
+        if user_settings.mcp_servers:
+            for name, cfg in user_settings.mcp_servers.items():
+                cmd = cfg.get("command", "")
+                console.print(f"     • {name} ({cmd}) [dim][global][/dim]")
+        if project_settings.mcp_servers:
+            for name, cfg in project_settings.mcp_servers.items():
+                cmd = cfg.get("command", "")
+                override_text = " [yellow][override][/yellow]" if user_settings.mcp_servers and name in user_settings.mcp_servers else ""
+                console.print(f"     • {name} ({cmd}) [dim][project][/dim]{override_text}")
+
     available_providers = settings_manager.get_available_providers()
     if len(available_providers) > 1:
         console.print()

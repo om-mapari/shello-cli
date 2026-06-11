@@ -218,7 +218,41 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
             "#   max_storage_mb: 50         # Maximum disk space for session files",
         ])
 
+    # MCP Servers Section
+    lines.extend([
+        "",
+        "# =============================================================================",
+        "# MODEL CONTEXT PROTOCOL (MCP) SERVERS (optional)",
+        "# =============================================================================",
+        "# Configure external MCP servers to provide tools to the AI.",
+        "#",
+    ])
+
+    if settings.mcp_servers:
+        lines.extend(_serialize_mcp_servers(settings.mcp_servers))
+    else:
+        lines.extend([
+            "# mcp_servers:",
+            "#   fetch:",
+            "#     command: uvx",
+            "#     args:",
+            "#       - mcp-server-fetch",
+        ])
+
     return "\n".join(lines)
+
+
+def _serialize_mcp_servers(mcp_servers: Optional[Dict[str, Any]]) -> list:
+    """Serialize MCP servers configuration to YAML lines."""
+    if not mcp_servers:
+        return []
+    import yaml
+    lines = ["mcp_servers:"]
+    # We want to format the nested dict with proper indentation
+    yaml_str = yaml.safe_dump(mcp_servers, default_flow_style=False)
+    for line in yaml_str.splitlines():
+        lines.append(f"  {line}")
+    return lines
 
 
 def _serialize_provider_config(key: str, config: ProviderConfig) -> list:

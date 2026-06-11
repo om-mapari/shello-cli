@@ -1,27 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
+import pkgutil
+import rich._unicode_data
+from PyInstaller.utils.hooks import collect_submodules, copy_metadata
 
 block_cipher = None
+
+# Automatically discover and bundle all submodules under shello_cli folder
+shello_submodules = collect_submodules('shello_cli')
+
+# Dynamically collect all unicode submodules required by the rich console renderer
+rich_unicode_imports = [f"rich._unicode_data.{m.name}" for m in pkgutil.iter_modules(rich._unicode_data.__path__)] + ["rich._unicode_data"]
+
+# Bundle metadata for fastmcp to satisfy runtime importlib.metadata requirements
+fastmcp_metadata = copy_metadata('fastmcp') + copy_metadata('fastmcp-slim')
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],  # Removed - code is already collected via hiddenimports
+    datas=fastmcp_metadata,
     hiddenimports=[
-        'shello_cli',
-        'shello_cli.cli',
-        'shello_cli.agent',
-        'shello_cli.agent.shello_agent',
-        'shello_cli.chat',
-        'shello_cli.chat.chat_session',
-        'shello_cli.ui',
-        'shello_cli.ui.ui_renderer',
-        'shello_cli.ui.user_input',
-        'shello_cli.utils',
-        'shello_cli.utils.settings_manager',
-        'shello_cli.tools',
-        'shello_cli.api',
-        'shello_cli.commands',
+        # Core third-party dependencies
         'click',
         'rich',
         'prompt_toolkit',
@@ -32,34 +31,27 @@ a = Analysis(
         'keyring',
         'pyperclip',
         'openai',
-    ],
+        'fastmcp',
+        'anyio',
+    ] + shello_submodules + rich_unicode_imports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
-        # Testing
+        # Exclude heavy testing frameworks only
         'pytest',
         'hypothesis',
         'test',
         'tests',
         '_pytest',
         'coverage',
-        # Unused stdlib modules (heavy)
+        'unittest',
+        # Exclude unused standard library GUI frameworks
         'tkinter',
         'tk',
         'tcl',
-        'unittest',
-        'xmlrpc',
-        'multiprocessing',
         'pydoc',
         'doctest',
-        'sqlite3',
-        # Build tools
-        'distutils',
-        'setuptools',
-        'pkg_resources',
-        'pip',
-        'wheel',
     ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -79,7 +71,7 @@ exe = EXE(
     name='shello',
     debug=False,
     bootloader_ignore_signals=False,
-    strip=False,  # Disabled on Windows (no GNU strip available)
+    strip=False,  # Disabled on Windows
     upx=True,
     upx_exclude=[],
     runtime_tmpdir=None,

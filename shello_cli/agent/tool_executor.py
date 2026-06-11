@@ -48,6 +48,32 @@ class ToolExecutor:
         # Store bash reference for helpers that need it directly
         self._bash_tool = bash
 
+        # Initialize MCP client attribute
+        self._mcp_client = None
+
+        # Load and merge MCP configurations
+        try:
+            from shello_cli.settings.manager import SettingsManager
+            settings_manager = SettingsManager.get_instance()
+            user_settings = settings_manager.load_user_settings()
+            project_settings = settings_manager.load_project_settings()
+
+            merged_mcp_servers = {}
+            if user_settings and hasattr(user_settings, "mcp_servers") and isinstance(user_settings.mcp_servers, dict):
+                merged_mcp_servers.update(user_settings.mcp_servers)
+            if project_settings and hasattr(project_settings, "mcp_servers") and isinstance(project_settings.mcp_servers, dict):
+                merged_mcp_servers.update(project_settings.mcp_servers)
+
+            if merged_mcp_servers:
+                from shello_cli.mcp import create_mcp_client, MCPToolWrapper
+                self._mcp_client = create_mcp_client(merged_mcp_servers)
+                for tool in self._mcp_client.tools:
+                    wrapper = MCPToolWrapper(self._mcp_client, tool)
+                    registry.register(wrapper, name=tool.name)
+        except Exception as e:
+            from shello_cli.ui.ui_renderer import console
+            console.print(f"\n⚠️  [yellow]Failed to initialize MCP servers: {e}[/yellow]\n")
+
     # ------------------------------------------------------------------
     # Dispatch
     # ------------------------------------------------------------------
@@ -94,3 +120,19 @@ class ToolExecutor:
     def clear_cache(self) -> None:
         """Clear the output cache (call on /new or session end)."""
         self._output_cache.clear()
+        self.close_mcp_client()
+
+    def close_mcp_client(self) -> None:
+        """Close the MCP client and clean up background server processes."""
+        if hasattr(self, "_mcp_client") and self._mcp_client is not None:
+            try:
+                self._mcp_client.sync_close()
+            except Exception:
+                pass
+            self._mcp_client = None
+
+    def __del__(self):
+        try:
+            self.close_mcp_client()
+        except Exception:
+            pass
