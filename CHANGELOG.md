@@ -5,6 +5,18 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-06-11
+
+### Added
+- **Model Context Protocol (MCP)**: Support external MCP servers to extend the AI's capabilities with custom tools.
+- **Custom Command Rejection Feedback**: Support sending custom instructions/feedback back to the AI when a command is rejected in the approval dialog.
+
+### Fixed
+- **Settings Salvaging**: Plain-text scan fallback to salvage the configured provider from corrupted user configuration files.
+- **CLI CWD Syncing**: Sync directory changes from direct shell commands to the bash tool's state.
+- **Keyboard Interrupt handling**: Print a newline and return empty string instead of causing UI formatting issues on Ctrl+C.
+- **Tool Error Formatting**: Fixed formatting of tool errors to prevent duplicated or missing newlines.
+
 ## [0.7.1] - 2026-03-23
 
 ### Fixed
@@ -774,7 +786,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Note
 This is the initial release of Shello CLI. While fully functional, expect improvements and potential breaking changes before v1.0.0. Feedback and contributions are welcome!
 
-[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.5.2...HEAD
+[Unreleased]: https://github.com/om-mapari/shello-cli/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.8.0
+[0.7.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.1
+[0.7.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.7.0
+[0.6.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.6.1
+[0.6.0]: https://github.com/om-mapari/shello-cli/releases/tag/v0.6.0
 [0.5.2]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.2
 [0.5.1]: https://github.com/om-mapari/shello-cli/releases/tag/v0.5.1
 [0.4.3]: https://github.com/om-mapari/shello-cli/releases/tag/v0.4.3
