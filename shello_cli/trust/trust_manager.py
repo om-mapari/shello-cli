@@ -60,7 +60,7 @@ See Also:
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Union
 from shello_cli.defaults import DEFAULT_ALLOWLIST, DEFAULT_DENYLIST, DEFAULT_APPROVAL_MODE
 from shello_cli.trust.pattern_matcher import PatternMatcher
 from shello_cli.trust.approval_dialog import ApprovalDialog
@@ -340,7 +340,7 @@ class TrustManager:
         command: str,
         warning_message: Optional[str],
         current_directory: str
-    ) -> bool:
+    ) -> Union[bool, str]:
         """Show approval dialog and return user decision.
         
         This method integrates with the ApprovalDialog component to display
@@ -354,7 +354,7 @@ class TrustManager:
             current_directory: Current working directory for context
             
         Returns:
-            True if user approved the command, False if denied
+            True if user approved the command, False if denied, or a str of custom feedback
             
         Examples:
             >>> manager = TrustManager(TrustConfig())

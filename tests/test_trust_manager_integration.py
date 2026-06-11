@@ -88,6 +88,23 @@ class TestTrustManagerApprovalDialog:
             current_directory="/home/user/project"
         )
 
+    def test_handle_approval_dialog_custom_feedback(self):
+        """Test that handle_approval_dialog returns custom feedback string."""
+        config = TrustConfig()
+        manager = TrustManager(config)
+        
+        # Mock the approval dialog to return custom feedback string
+        feedback = "why are we executing this command"
+        with patch.object(manager._approval_dialog, 'show', return_value=feedback):
+            result = manager.handle_approval_dialog(
+                command="Get-Date",
+                warning_message=None,
+                current_directory="/home/user"
+            )
+            
+            assert result == feedback
+
+
 
 class TestTrustManagerIntegration:
     """Test TrustManager evaluate method integration."""

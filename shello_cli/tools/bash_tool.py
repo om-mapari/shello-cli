@@ -147,7 +147,6 @@ class BashTool(ShelloToolBase):
 
         trust = self._evaluate_command_trust(command, is_safe)
         if not trust.success:
-            yield trust.error or "Command execution denied"
             return trust
 
         if self._is_cd(command):
@@ -239,6 +238,9 @@ class BashTool(ShelloToolBase):
     def get_current_directory(self) -> str:
         return self._current_directory
 
+    def set_current_directory(self, directory: str) -> None:
+        self._current_directory = directory
+
     def get_output_cache(self) -> OutputCache:
         return self._output_cache
 
@@ -323,7 +325,10 @@ class BashTool(ShelloToolBase):
                 warning_message=eval_result.warning_message,
                 current_directory=self._current_directory
             )
-            if not approved:
+            if isinstance(approved, str):
+                return ToolResult(success=False, output=None,
+                                  error=f"Command execution denied by user. Feedback: {approved}")
+            elif not approved:
                 return ToolResult(success=False, output=None,
                                   error="Command execution denied by user")
         return ToolResult(success=True, output=None, error=None)

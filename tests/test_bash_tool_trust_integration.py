@@ -257,3 +257,31 @@ class TestBashToolTrustIntegration:
         
         # Should execute without any checks
         assert result.success is True
+
+    @patch('shello_cli.settings.SettingsManager')
+    def test_execute_with_custom_feedback(self, mock_settings_manager_class):
+        """Test that custom feedback is returned as tool error on execution rejection."""
+        # Setup mock settings manager
+        mock_settings_manager = Mock()
+        mock_settings_manager_class.get_instance.return_value = mock_settings_manager
+        
+        # Configure trust settings
+        trust_config = CommandTrustConfig(
+            enabled=True,
+            yolo_mode=False,
+            approval_mode="user_driven",
+            allowlist=DEFAULT_ALLOWLIST.copy(),
+            denylist=DEFAULT_DENYLIST.copy()
+        )
+        mock_settings_manager.get_command_trust_config.return_value = trust_config
+        
+        # Mock approval dialog to return custom feedback string
+        feedback = "why are we executing this command"
+        with patch('shello_cli.trust.approval_dialog.ApprovalDialog.show', return_value=feedback):
+            bash_tool = BashTool()
+            result = bash_tool.execute("Get-Date")
+            
+            # Should fail and return the feedback formatted in the error
+            assert result.success is False
+            assert result.error == f"Command execution denied by user. Feedback: {feedback}"
+

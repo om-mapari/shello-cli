@@ -63,7 +63,7 @@ See Also:
     - TrustManager: Uses ApprovalDialog for user approval
     - Rich library: Used for UI rendering
 """
-from typing import Optional
+from typing import Optional, Union
 from rich.console import Console
 import sys
 
@@ -84,7 +84,7 @@ class ApprovalDialog:
         command: str,
         warning_message: Optional[str],
         current_directory: str
-    ) -> bool:
+    ) -> Union[bool, str]:
         """Show approval dialog and return user decision.
         
         Args:
@@ -93,7 +93,7 @@ class ApprovalDialog:
             current_directory: Current working directory
             
         Returns:
-            True if approved, False if denied
+            True if approved, False if denied, or a str of custom feedback
             
         Raises:
             No exceptions - handles KeyboardInterrupt and errors gracefully
@@ -114,7 +114,7 @@ class ApprovalDialog:
         command: str,
         warning_message: Optional[str],
         current_directory: str
-    ) -> bool:
+    ) -> Union[bool, str]:
         """Internal method to show the approval dialog.
         
         Args:
@@ -123,10 +123,9 @@ class ApprovalDialog:
             current_directory: Current working directory
             
         Returns:
-            True if approved, False if denied
+            True if approved, False if denied, or a str of custom feedback
         """
         # Visual separator and header
-        console.print()
         console.print("[dim]─────────────────────────────────────────────────────────────[/dim]")
         console.print("[bold yellow]⚠️  COMMAND APPROVAL REQUIRED[/bold yellow]")
         console.print("[dim]─────────────────────────────────────────────────────────────[/dim]")
@@ -141,17 +140,17 @@ class ApprovalDialog:
         console.print(f"  [dim]Command:[/dim]   [bright_white]{command}[/bright_white]")
         console.print(f"  [dim]Directory:[/dim] [cyan]{current_directory}[/cyan]")
         console.print()
-        console.print("  [green][A] Approve[/green]    [red][D] Deny[/red]")
+        console.print("  [green][A] Approve[/green]    [red][D] Deny[/red]    [cyan]Or type custom feedback directly[/cyan]")
         console.print("[dim]─────────────────────────────────────────────────────────────[/dim]")
         
         # Get user input
         return self._get_user_decision()
     
-    def _get_user_decision(self) -> bool:
+    def _get_user_decision(self) -> Union[bool, str]:
         """Get user decision via keyboard input.
         
         Returns:
-            True if approved (A key), False if denied (D key or other)
+            True if approved, False if denied, or a str of custom feedback.
         """
         while True:  # Loop until valid input
             try:
@@ -162,7 +161,7 @@ class ApprovalDialog:
                     console.file.flush()
                 
                 # Use plain print for prompt
-                print("\nYour choice [a/d] (d): ", end="", flush=True)
+                print("\nYour choice [a/d/custom] (d): ", end="", flush=True)
                 
                 # On Windows, use msvcrt for input with manual echo
                 # This fixes the echo issue caused by Rich console terminal state
@@ -187,27 +186,34 @@ class ApprovalDialog:
                             chars.append(char)
                             sys.stdout.write(char)
                             sys.stdout.flush()
-                    choice = ''.join(chars).strip().lower()
+                    raw_choice = ''.join(chars).strip()
                 else:
                     # Unix - regular input works fine
-                    choice = input().strip().lower()
+                    raw_choice = input().strip()
                 
-                # Default to 'd' if empty
-                if not choice:
-                    choice = 'd'
+                # Default to 'd' (deny) if empty
+                if not raw_choice:
+                    console.print("[red]✗ Command denied[/red]")
+                    return False
                 
-                # Take only the last character if multiple were typed
-                if len(choice) > 1:
-                    choice = choice[-1]
+                choice_lower = raw_choice.lower()
                 
-                if choice == 'a':
+                # Check for direct approve/deny
+                if choice_lower in ('a', 'approve'):
                     console.print("[green]✓ Command approved[/green]")
                     return True
-                elif choice == 'd':
+                elif choice_lower in ('d', 'deny'):
                     console.print("[red]✗ Command denied[/red]")
                     return False
                 else:
-                    console.print("[yellow]Invalid choice. Please enter 'a' to approve or 'd' to deny.[/yellow]")
+                    # Custom feedback/instruction for the AI
+                    console.print(f"[yellow]↩ Sending custom feedback to AI: '{raw_choice}'[/yellow]")
+                    return raw_choice
+                    
+            except (KeyboardInterrupt, EOFError):
+                console.print("\n[yellow]Command execution cancelled[/yellow]")
+                return False
+
                     # Loop continues to ask again
                     
             except (KeyboardInterrupt, EOFError):
