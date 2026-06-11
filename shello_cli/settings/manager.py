@@ -98,20 +98,25 @@ class SettingsManager:
             return self._user_settings
             
         except (yaml.YAMLError, IOError) as e:
-            # If file is corrupted or unreadable, return defaults
+            # If file is corrupted or unreadable, try to salvage the provider
+            # by doing a plain text scan before falling back to defaults
             print(f"Warning: Could not load settings file: {e}")
-            print("Using default settings.")
-            self._user_settings = self._create_default_settings()
+            salvaged_provider = self._salvage_provider_from_file()
+            print(f"Using default settings{f' (provider: {salvaged_provider})' if salvaged_provider else ''}.")
+            self._user_settings = self._create_default_settings(salvaged_provider)
             return self._user_settings
     
-    def _create_default_settings(self) -> UserSettings:
+    def _create_default_settings(self, provider: Optional[str] = None) -> UserSettings:
         """Create UserSettings with all defaults.
-        
+
+        Args:
+            provider: Optional provider override (e.g. salvaged from a corrupt file)
+
         Returns:
             UserSettings with default values from defaults.py
         """
         return UserSettings(
-            provider="openai",
+            provider=provider or "openai",
             openai_config=None,
             bedrock_config=None,
             gemini_config=None,
@@ -119,6 +124,25 @@ class SettingsManager:
             output_management=None,
             command_trust=None,
         )
+
+    def _salvage_provider_from_file(self) -> Optional[str]:
+        """Try to extract the provider value from a corrupt YAML file via plain text scan.
+
+        Returns:
+            Provider string if found and valid, else None
+        """
+        valid_providers = ['openai', 'bedrock', 'gemini', 'vertex']
+        try:
+            with open(self._user_settings_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    stripped = line.strip()
+                    if stripped.startswith('provider:'):
+                        value = stripped.split(':', 1)[1].strip().strip('"\'')
+                        if value in valid_providers:
+                            return value
+        except IOError:
+            pass
+        return None
     
     def _parse_user_settings(self, data: Dict[str, Any]) -> UserSettings:
         """Parse user settings data and merge with defaults.
