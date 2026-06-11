@@ -555,6 +555,11 @@ def chat(debug, new, yolo):
                 if execution_result.success:
                     if execution_result.output:
                         console.print(execution_result.output)
+                    # Sync directory change to BashTool so AI commands use the new cwd
+                    if execution_result.directory_changed and execution_result.new_directory:
+                        bash_tool = agent.get_bash_tool()
+                        if bash_tool:
+                            bash_tool.set_current_directory(execution_result.new_directory)
                 else:
                     if execution_result.error:
                         console.print(f"[red]{execution_result.error}[/red]")
