@@ -5,6 +5,14 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.2] - 2026-06-13
+
+### Added
+- **Remote CLI Execution Tool**: Native `run_remote_command` tool to execute shell commands on a remote server using SSH by wrapping the Node.js `ssh-mcp` server.
+- **SSH Connection Configuration**: First-class `ssh` configuration block in `.shello/settings.yml` (project-level) and `~/.shello_cli/user-settings.yml` (global).
+- **Command Trust & Safety**: Full safety checks for remote commands using local trust policies and warning dialogs.
+- **Output Management**: Remote command results are processed with character-based truncation, caching, and formatting.
+
 ## [0.8.1] - 2026-06-11
 
 ### Added

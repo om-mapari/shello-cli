@@ -33,6 +33,7 @@ from shello_cli.settings.models import (
     OutputManagementConfig,
     CommandTrustConfig,
     ProjectSettings,
+    SSHConfig,
 )
 from shello_cli.settings.serializers import generate_yaml_with_comments
 
@@ -174,6 +175,9 @@ class SettingsManager:
         # Parse MCP config
         mcp_servers = data.get('mcp_servers') or data.get('mcpServers')
 
+        # Parse SSH config
+        ssh = self._parse_ssh_config(data.get('ssh'))
+
         return UserSettings(
             provider=provider,
             openai_config=openai_config,
@@ -184,6 +188,7 @@ class SettingsManager:
             command_trust=command_trust,
             session_history=session_history,
             mcp_servers=mcp_servers,
+            ssh=ssh,
         )
     
     def _validate_provider(self, provider: str) -> str:
@@ -367,6 +372,30 @@ class SettingsManager:
         return SessionHistoryConfig(
             enabled=sh_data.get('enabled', True),
             max_storage_mb=sh_data.get('max_storage_mb', 50),
+        )
+
+    def _parse_ssh_config(self, ssh_data: Optional[Dict[str, Any]]) -> Optional[SSHConfig]:
+        """Parse SSH configuration.
+
+        Args:
+            ssh_data: Dictionary with SSH config or None
+
+        Returns:
+            SSHConfig or None if not configured
+        """
+        if ssh_data is None:
+            return None
+
+        return SSHConfig(
+            host=ssh_data.get('host'),
+            port=ssh_data.get('port', 22),
+            username=ssh_data.get('username') or ssh_data.get('user'),
+            password=ssh_data.get('password'),
+            private_key_path=ssh_data.get('private_key_path') or ssh_data.get('key_path') or ssh_data.get('key'),
+            su_password=ssh_data.get('su_password') or ssh_data.get('suPassword'),
+            sudo_password=ssh_data.get('sudo_password') or ssh_data.get('sudoPassword'),
+            disable_sudo=ssh_data.get('disable_sudo') or ssh_data.get('disableSudo', False),
+            timeout=ssh_data.get('timeout', 60),
         )
 
     def _validate_approval_mode(self, approval_mode: str) -> str:
@@ -794,7 +823,8 @@ class SettingsManager:
             # Merge loaded data with defaults
             self._project_settings = ProjectSettings(
                 model=data.get('model', default_settings.model),
-                mcp_servers=data.get('mcp_servers') or data.get('mcpServers')
+                mcp_servers=data.get('mcp_servers') or data.get('mcpServers'),
+                ssh=self._parse_ssh_config(data.get('ssh'))
             )
             return self._project_settings
         except (yaml.YAMLError, IOError):
@@ -835,3 +865,36 @@ class SettingsManager:
         
         # Update cached settings (but don't save to file)
         self._user_settings = user_settings
+
+    def get_ssh_config(self) -> Optional[SSHConfig]:
+        """Get merged SSH configuration. Project overrides user settings."""
+        user_settings = self.load_user_settings()
+        project_settings = self.load_project_settings()
+        
+        # Start with empty/default
+        merged = SSHConfig()
+        
+        # Check if user settings or project settings have ssh config
+        has_config = False
+        
+        # Apply user settings if present
+        if user_settings.ssh:
+            has_config = True
+            for field_name in merged.__dataclass_fields__:
+                val = getattr(user_settings.ssh, field_name)
+                if val is not None:
+                    setattr(merged, field_name, val)
+                    
+        # Apply project settings if present (overrides user settings)
+        if project_settings.ssh:
+            has_config = True
+            for field_name in merged.__dataclass_fields__:
+                val = getattr(project_settings.ssh, field_name)
+                if val is not None:
+                    setattr(merged, field_name, val)
+                    
+        # If no configuration was found or no host is specified, return None
+        if not has_config or not merged.host:
+            return None
+            
+        return merged

@@ -28,12 +28,14 @@ def _ensure_registered() -> None:
     from shello_cli.tools.bash_tool import BashTool
     from shello_cli.tools.json_analyzer_tool import JsonAnalyzerTool
     from shello_cli.tools.get_cached_output_tool import GetCachedOutputTool
+    from shello_cli.tools.remote_bash_tool import RemoteBashTool
 
     cache = OutputCache()
     bash = BashTool(output_cache=cache)
     registry.register(bash, name=BashTool.tool_name)
     registry.register(JsonAnalyzerTool(bash_tool=bash), name=JsonAnalyzerTool.tool_name)
     registry.register(GetCachedOutputTool(cache=cache), name=GetCachedOutputTool.tool_name)
+    registry.register(RemoteBashTool(output_cache=cache), name=RemoteBashTool.tool_name)
 
 
 _ensure_registered()

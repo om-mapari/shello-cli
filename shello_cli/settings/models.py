@@ -98,6 +98,21 @@ class UpdateConfig:
 
 
 @dataclass
+class SSHConfig:
+    """Configuration for remote SSH connection used by remote CLI execution."""
+    
+    host: Optional[str] = None
+    port: int = 22
+    username: Optional[str] = None
+    password: Optional[str] = None
+    private_key_path: Optional[str] = None
+    su_password: Optional[str] = None
+    sudo_password: Optional[str] = None
+    disable_sudo: bool = False
+    timeout: int = 60
+
+
+@dataclass
 class UserSettings:
     """User-level settings stored in ~/.shello_cli/user-settings.yml."""
     
@@ -111,6 +126,7 @@ class UserSettings:
     update_config: Optional[UpdateConfig] = field(default_factory=UpdateConfig)
     session_history: Optional["SessionHistoryConfig"] = None
     mcp_servers: Optional[Dict[str, Any]] = None
+    ssh: Optional[SSHConfig] = None
 
 
 @dataclass
@@ -119,3 +135,5 @@ class ProjectSettings:
     
     model: Optional[str] = None
     mcp_servers: Optional[Dict[str, Any]] = None
+    ssh: Optional[SSHConfig] = None
+
