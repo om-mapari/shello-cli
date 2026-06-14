@@ -438,3 +438,111 @@ def get_user_input_with_clear(name, current_directory=None):
         return ""
     except EOFError:
         return None
+
+
+def select_option(title: str, options: list, default_index: int = 0) -> any:
+    """Display a selection menu using prompt_toolkit and return the chosen value.
+    
+    Args:
+        title: The prompt title/question to display
+        options: A list of tuples (label, value)
+        default_index: Default selected option index
+        
+    Returns:
+        The selected value
+    """
+    from prompt_toolkit import Application
+    from prompt_toolkit.formatted_text import FormattedText
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.layout import Layout
+    from prompt_toolkit.layout.containers import HSplit, Window
+    from prompt_toolkit.layout.controls import FormattedTextControl
+    from prompt_toolkit.styles import Style
+    from rich.console import Console
+    
+    console = Console()
+    console.print(f"\n{title}")
+    
+    state = {"selected": default_index, "result": None}
+    
+    kb = KeyBindings()
+    
+    @kb.add("up")
+    @kb.add("k")
+    def _up(event):
+        state["selected"] = (state["selected"] - 1) % len(options)
+        
+    @kb.add("down")
+    @kb.add("j")
+    def _down(event):
+        state["selected"] = (state["selected"] + 1) % len(options)
+        
+    @kb.add("enter")
+    def _enter(event):
+        state["result"] = options[state["selected"]][1]
+        event.app.exit()
+        
+    # Support direct key input for numbers if 1-9 are mapped
+    for idx in range(min(len(options), 9)):
+        key = str(idx + 1)
+        @kb.add(key)
+        def _num_press(event, key=key):
+            state["result"] = options[int(key) - 1][1]
+            event.app.exit()
+            
+    @kb.add("escape")
+    @kb.add("c-c")
+    def _cancel(event):
+        state["result"] = options[default_index][1]
+        event.app.exit()
+        
+    def _get_content():
+        lines = []
+        for i, (label, val) in enumerate(options):
+            # Show number prefix for keyboard accessibility (1., 2., etc.)
+            num_prefix = f" [{i + 1}]" if i < 9 else "    "
+            if i == state["selected"]:
+                lines.append(("class:selected", f"  ❯{num_prefix} {label}\n"))
+            else:
+                lines.append(("", f"   {num_prefix} {label}\n"))
+        return FormattedText(lines)
+        
+    layout = Layout(
+        HSplit([
+            Window(
+                content=FormattedTextControl(text=_get_content, focusable=True),
+                wrap_lines=False,
+            )
+        ])
+    )
+    
+    style = Style.from_dict({
+        "selected": "bold reverse cyan",
+    })
+    
+    app: Application = Application(
+        layout=layout,
+        key_bindings=kb,
+        style=style,
+        full_screen=False,
+        mouse_support=False,
+    )
+    
+    try:
+        app.run()
+        # Clear the options from the terminal
+        import sys
+        num_lines = len(options)
+        sys.stdout.write(f"\033[{num_lines}F\033[J")
+        sys.stdout.flush()
+    except KeyboardInterrupt:
+        try:
+            import sys
+            num_lines = len(options)
+            sys.stdout.write(f"\033[{num_lines}F\033[J")
+            sys.stdout.flush()
+        except Exception:
+            pass
+        return options[default_index][1]
+        
+    return state["result"]

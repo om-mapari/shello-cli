@@ -185,8 +185,9 @@ class ChatSession:
                             self._record_tool_result_api_message(chunk.tool_result, current_tool_call)
                             # Display final result status if there was an error
                             if not chunk.tool_result.success and chunk.tool_result.error:
-                                leading_nl = "\n" if has_output else ""
-                                console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
+                                if "execution denied by user" not in chunk.tool_result.error:
+                                    leading_nl = "\n" if has_output else ""
+                                    console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
                             console.print()  # Add spacing after tool output
                         current_command = None  # Clear command tracking
                     

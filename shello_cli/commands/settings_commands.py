@@ -242,12 +242,16 @@ def setup_openai_provider(existing_settings):
     Returns:
         Tuple of (openai_config, bedrock_config) where bedrock_config is preserved from existing
     """
-    console.print("\n📡 [bold]OpenAI-compatible API Setup:[/bold]")
-    console.print("  1. OpenAI (https://api.openai.com/v1)")
-    console.print("  2. OpenRouter (https://openrouter.ai/api/v1)")
-    console.print("  3. Custom URL")
-    
-    api_choice = click.prompt("\nChoose API", type=click.IntRange(1, 3), default=1)
+    from shello_cli.ui.user_input import select_option
+    api_choice = select_option(
+        "📡 [bold]OpenAI-compatible API Setup:[/bold]",
+        [
+            ("OpenAI (https://api.openai.com/v1)", 1),
+            ("OpenRouter (https://openrouter.ai/api/v1)", 2),
+            ("Custom URL", 3)
+        ],
+        default_index=0
+    )
     
     if api_choice == 1:
         base_url = "https://api.openai.com/v1"
@@ -312,12 +316,16 @@ def setup_bedrock_provider(existing_settings):
     aws_region = click.prompt("Enter AWS region", type=str, default="us-east-1")
     
     # Credential method
-    console.print("\n🔐 [bold]AWS Credentials:[/bold]")
-    console.print("  1. AWS Profile (recommended)")
-    console.print("  2. Explicit credentials (access key + secret key)")
-    console.print("  3. Default credential chain (environment/IAM)")
-    
-    cred_choice = click.prompt("\nChoose credential method", type=click.IntRange(1, 3), default=1)
+    from shello_cli.ui.user_input import select_option
+    cred_choice = select_option(
+        "🔐 [bold]AWS Credentials:[/bold]",
+        [
+            ("AWS Profile (recommended)", 1),
+            ("Explicit credentials (access key + secret key)", 2),
+            ("Default credential chain (environment/IAM)", 3)
+        ],
+        default_index=0
+    )
     
     aws_profile = None
     aws_access_key = None

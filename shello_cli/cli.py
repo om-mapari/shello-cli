@@ -82,7 +82,18 @@ def _interactive_pick(title: str, items: list[str], current: str | None = None) 
         "hint": "ansidarkgray",
     })
 
-    Application(layout=layout, key_bindings=kb, style=style, full_screen=False, mouse_support=False).run()
+    app = Application(layout=layout, key_bindings=kb, style=style, full_screen=False, mouse_support=False)
+    app.run()
+
+    # Clear the picker UI from terminal scrollback
+    try:
+        import sys
+        num_lines = len(items) + 5
+        sys.stdout.write(f"\033[{num_lines}F\033[J")
+        sys.stdout.flush()
+    except Exception:
+        pass
+
     return state["result"]
 
 
@@ -778,11 +789,15 @@ def setup():
         except Exception:
             existing_settings = None
 
-    console.print("🤖 [bold]Select AI Provider:[/bold]")
-    console.print("  1. OpenAI-compatible API (OpenAI, OpenRouter, custom)")
-    console.print("  2. AWS Bedrock (Claude, Nova, etc.)")
-
-    provider_choice = click.prompt("\nChoose provider", type=click.IntRange(1, 2), default=1)
+    from shello_cli.ui.user_input import select_option
+    provider_choice = select_option(
+        "🤖 [bold]Select AI Provider:[/bold]",
+        [
+            ("OpenAI-compatible API (OpenAI, OpenRouter, custom)", 1),
+            ("AWS Bedrock (Claude, Nova, etc.)", 2)
+        ],
+        default_index=0
+    )
 
     if provider_choice == 1:
         provider = "openai"
