@@ -17,6 +17,8 @@ Most AI CLIs generate code. Shello debugs production systems: Cloud ☁️, Kube
 
 **Logs too big? Errors hidden? Shello handles it pretty well.**
 
+![Shello CLI — System Architecture](docs/system-architecture.svg)
+
 ## Quick Start
 
 **One-line installation:**
