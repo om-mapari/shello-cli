@@ -5,6 +5,18 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-06-16
+
+### Added
+- **Stateful Shell Execution**: Background process persistence for local shell commands across multiple agent turns, implementing OpenHands-style soft timeouts.
+- **Process Control Signals**: Support for sending `C-c` (SIGINT) and `C-d` (EOF/Close Stdin) to the active subprocess, and full environment `reset`.
+- **Interactive Stdin Injection**: Support for feeding stdin inputs directly to the active process.
+- **Rich UI Visualization**: Contextual box-drawing layouts representing local vs. remote executions, interactive polling statuses, stdin inputs, process signals, and timeouts.
+- **Robust Local & Remote Test Suites**: Comprehensive unit testing for interactive shell inputs, process signals, and remote connection management.
+
+### Changed
+- **Remote Execution Constraints**: Clearer validation and error handling for remote commands, preventing unsupported interactive stdin operations.
+
 ## [0.8.4] - 2026-06-15
 
 ### Added
