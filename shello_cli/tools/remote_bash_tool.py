@@ -35,7 +35,7 @@ class SSHConnectionManager:
         if not cfg or not cfg.host:
             raise ValueError(
                 "Remote execution is not configured. "
-                "Please configure remote-server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
+                "Please configure remote_server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
             )
 
         client = paramiko.SSHClient()
@@ -133,7 +133,7 @@ class RemoteBashTool(ShelloToolBase):
                 output=None,
                 error=(
                     "Remote execution is not configured. "
-                    "Please configure remote-server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
+                    "Please configure remote_server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
                 )
             )
 

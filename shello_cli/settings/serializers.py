@@ -232,7 +232,7 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
         lines.extend(_serialize_remote_server_config(settings.remote_server))
     else:
         lines.extend([
-            "# remote-server:",
+            "# remote_server:",
             "#   host: 127.0.0.1",
             "#   port: 22",
             "#   username: root",
@@ -395,7 +395,7 @@ def _serialize_session_history(config: Any) -> list:
 
 def _serialize_remote_server_config(config: RemoteServerConfig) -> list:
     """Serialize RemoteServerConfig to YAML lines."""
-    lines = ["remote-server:"]
+    lines = ["remote_server:"]
     if config.host is not None:
         lines.append(f"  host: {config.host}")
     if config.port is not None:

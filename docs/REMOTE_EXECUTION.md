@@ -25,10 +25,10 @@ You can configure the remote server either globally (in user-level settings) or 
 
 ### Configuration Schema
 
-Add a `remote-server` block to your configuration file:
+Add a `remote_server` block to your configuration file:
 
 ```yaml
-remote-server:
+remote_server:
   host: 13.126.25.225            # Remote host IP address or hostname (Required)
   port: 22                       # SSH port (Optional, default: 22)
   username: ec2user              # SSH username (Required)
@@ -38,9 +38,6 @@ remote-server:
   disable_sudo: false            # Set true to completely disable sudo commands (Optional, default: false)
   timeout: 60                    # Connection and command execution timeout in seconds (Optional, default: 60)
 ```
-
-> [!NOTE]
-> For backwards compatibility, the legacy `ssh` config key is also parsed, but `remote-server` is the preferred key name.
 
 ---
 

@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conditional Tool Registration**: The `run_remote_command` tool is now only registered when a remote server configuration is present.
 
 ### Changed
-- **Remote Server Configuration Settings**: Renamed the remote configuration block key from `ssh` to `remote-server` while maintaining backwards compatibility for existing `ssh` settings.
+- **Remote Server Configuration Settings**: Renamed the remote configuration block key from `ssh` to `remote-server` (the legacy `ssh` config key is no longer parsed or supported).
 - **Aligned Exit Help Commands**: Aligned the `/quit` and `/exit` commands in the Shello CLI help table to a single row.
 
 ## [0.8.3] - 2026-06-14

@@ -176,7 +176,7 @@ class SettingsManager:
         mcp_servers = data.get('mcp_servers') or data.get('mcpServers')
 
         # Parse Remote Server config
-        remote_server_data = data.get('remote-server') or data.get('remote_server') or data.get('ssh')
+        remote_server_data = data.get('remote_server')
         remote_server = self._parse_remote_server_config(remote_server_data)
 
         return UserSettings(
@@ -822,7 +822,7 @@ class SettingsManager:
                 data = yaml.safe_load(f) or {}
             
             # Merge loaded data with defaults
-            remote_server_data = data.get('remote-server') or data.get('remote_server') or data.get('ssh')
+            remote_server_data = data.get('remote_server')
             self._project_settings = ProjectSettings(
                 model=data.get('model', default_settings.model),
                 mcp_servers=data.get('mcp_servers') or data.get('mcpServers'),

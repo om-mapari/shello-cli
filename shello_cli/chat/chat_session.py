@@ -42,11 +42,12 @@ class ChatSession:
         
         # Check if previous execution was interrupted
         if self._last_interrupted:
-            interrupt_context = f"\n\n[SYSTEM: Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}]"
+            msg = f"Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}"
+            self.agent.add_system_message(msg)
+            if self._recorder and self._recorder.is_recording:
+                self._recorder.record_api_message({"role": "system", "content": msg})
             self._last_interrupted = False
             self._interrupted_command = None
-        else:
-            interrupt_context = ""
         
         # Format system context
         context = (
@@ -55,7 +56,7 @@ class ChatSession:
             f"- Shell: {self.system_info['shell']} ({self.system_info['shell_executable']})\n"
             f"- Working Directory: {self.system_info['cwd']}\n"
             f"- Date/Time: {current_datetime}\n\n"
-            f"User message: {user_message}{interrupt_context}"
+            f"User message: {user_message}"
         )
         
         # Record user_prompt entry (use raw message for readability)
@@ -69,8 +70,10 @@ class ChatSession:
         """Continue an existing conversation with a new user message"""
         # Check if previous execution was interrupted
         if self._last_interrupted:
-            interrupt_context = f"\n\n[SYSTEM: Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}]"
-            user_message = user_message + interrupt_context
+            msg = f"Previous command was interrupted by user (Ctrl+C): {self._interrupted_command}"
+            self.agent.add_system_message(msg)
+            if self._recorder and self._recorder.is_recording:
+                self._recorder.record_api_message({"role": "system", "content": msg})
             self._last_interrupted = False
             self._interrupted_command = None
 

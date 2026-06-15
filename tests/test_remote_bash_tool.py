@@ -16,10 +16,10 @@ def test_remote_server_settings_parsing_and_merging():
         manager._user_settings_path = Path(temp_dir) / "user-settings.yml"
         manager._project_settings_path = Path(temp_dir) / "project-settings.yml"
 
-        # Write user settings with remote-server config
+        # Write user settings with remote_server config
         user_data = {
             "provider": "openai",
-            "remote-server": {
+            "remote_server": {
                 "host": "192.168.1.1",
                 "port": 2222,
                 "username": "user1",
@@ -30,7 +30,7 @@ def test_remote_server_settings_parsing_and_merging():
         with open(manager._user_settings_path, "w") as f:
             yaml.dump(user_data, f)
 
-        # Write project settings with overriding remote_server config (test alternative underscore notation)
+        # Write project settings with overriding remote_server config
         project_data = {
             "remote_server": {
                 "host": "10.0.0.1",
@@ -47,8 +47,8 @@ def test_remote_server_settings_parsing_and_merging():
 
         cfg = manager.get_remote_server_config()
         
-        assert cfg is not None
         # Project settings overrides
+        assert cfg is not None
         assert cfg.host == "10.0.0.1"
         assert cfg.username == "projuser"
         assert cfg.sudo_password == "sudopassword"
@@ -57,6 +57,68 @@ def test_remote_server_settings_parsing_and_merging():
         assert cfg.password == "userpass"
         assert cfg.timeout == 30
         assert cfg.disable_sudo is False
+
+
+def test_remote_server_settings_hyphenated_ignored():
+    """Verify that hyphenated 'remote-server' config block is ignored and does not configure the remote server."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        manager = SettingsManager()
+        manager._user_settings_path = Path(temp_dir) / "user-settings.yml"
+        manager._project_settings_path = Path(temp_dir) / "project-settings.yml"
+
+        # Write user settings with hyphenated config
+        user_data = {
+            "provider": "openai",
+            "remote-server": {
+                "host": "192.168.1.1",
+                "port": 2222,
+                "username": "user1",
+                "password": "userpass",
+                "timeout": 30
+            }
+        }
+        with open(manager._user_settings_path, "w") as f:
+            yaml.dump(user_data, f)
+
+        # Force load
+        manager._user_settings = None
+        manager._project_settings = None
+
+        cfg = manager.get_remote_server_config()
+        
+        # Should be None because 'remote-server' key is ignored
+        assert cfg is None
+
+
+def test_remote_server_settings_legacy_ssh_ignored():
+    """Verify that legacy 'ssh' config block is ignored and does not configure the remote server."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        manager = SettingsManager()
+        manager._user_settings_path = Path(temp_dir) / "user-settings.yml"
+        manager._project_settings_path = Path(temp_dir) / "project-settings.yml"
+
+        # Write user settings with legacy 'ssh' config
+        user_data = {
+            "provider": "openai",
+            "ssh": {
+                "host": "192.168.1.1",
+                "port": 2222,
+                "username": "user1",
+                "password": "userpass",
+                "timeout": 30
+            }
+        }
+        with open(manager._user_settings_path, "w") as f:
+            yaml.dump(user_data, f)
+
+        # Force load
+        manager._user_settings = None
+        manager._project_settings = None
+
+        cfg = manager.get_remote_server_config()
+        
+        # Should be None because 'ssh' key is ignored
+        assert cfg is None
 
 
 def test_remote_bash_tool_schema():
