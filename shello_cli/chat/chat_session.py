@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 import os
 from shello_cli.ui.ui_renderer import (
     console,
-    render_tool_execution
+    render_tool_execution,
+    render_tool_result_status
 )
 from rich.markdown import Markdown
 from rich.live import Live
+from rich.text import Text
 from shello_cli.ui.custom_markdown import EnhancedMarkdown
 import getpass
 import socket
@@ -186,13 +188,34 @@ class ChatSession:
                             accumulated_tool_output = ""
                         if chunk.tool_result:
                             self._record_tool_result_api_message(chunk.tool_result, current_tool_call)
-                            # Display final result status if there was an error
+                            error_type = chunk.tool_result.error_type
+
                             if not chunk.tool_result.success and chunk.tool_result.error:
-                                if "execution denied by user" not in chunk.tool_result.error:
+                                # Display result status — contextual based on error_type
+                                if error_type in ("soft_timeout", "no_change_timeout", "process_control"):
+                                    # Not a hard error — render with appropriate colour/icon
+                                    render_tool_result_status(
+                                        error_type=error_type,
+                                        error_msg=chunk.tool_result.error,
+                                        has_output=has_output
+                                    )
+                                elif "execution denied by user" not in chunk.tool_result.error:
+                                    # Hard failure — keep the red error line
                                     leading_nl = "\n" if has_output else ""
                                     console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
+
+                            elif chunk.tool_result.success and error_type == "process_control":
+                                # process_control success (e.g. reset) — output only goes to AI,
+                                # never streamed, so show it here as a brief confirmation
+                                if chunk.tool_result.output and not has_output:
+                                    line = Text()
+                                    line.append("ℹ  ", style="bold cyan")
+                                    line.append(chunk.tool_result.output, style="cyan")
+                                    console.print(line)
+
                             console.print()  # Add spacing after tool output
                         current_command = None  # Clear command tracking
+
                     
                     elif chunk.type == "done":
                         # Streaming complete

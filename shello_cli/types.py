@@ -33,6 +33,16 @@ class ToolResult:
     data: Optional[Any] = None
     truncation_info: Optional['TruncationResult'] = None
     api_content: Optional[str] = None
+    error_type: Optional[str] = None
+    """Semantic error category for UI rendering.
+
+    Values:
+      'soft_timeout'     — command timed out but process is still alive in background
+      'no_change_timeout'— no new output for N seconds, process still alive
+      'process_denied'   — user denied command execution
+      'process_control'  — C-c / C-d / reset acknowledgement (not a real failure)
+    If None, treat as a normal hard failure.
+    """
 
 
 @dataclass

@@ -357,12 +357,16 @@ Optimizations: Progress bars compressed (saved {lines_saved} lines)
             accumulated.append(chunk)
             yield chunk  # User sees output normally
         
-        # Stream complete - now process
-        full_output = ''.join(accumulated)
-        
-        # Process through full pipeline
-        result = self.process_output(full_output, command)
+        # Stream complete - get truncation result
+        result = None
+        if hasattr(stream, "value") and stream.value and hasattr(stream.value, "truncation_info"):
+            result = stream.value.truncation_info
+            
+        if result is None:
+            # Fallback if called with a plain iterator or if result was not processed in generator
+            full_output = ''.join(accumulated)
+            result = self.process_output(full_output, command)
         
         # Yield summary at end (only if truncated)
-        if result.was_truncated and result.summary:
+        if result and result.was_truncated and result.summary:
             yield '\n' + result.summary

@@ -898,5 +898,14 @@ class SettingsManager:
         # If no configuration was found or no host is specified, return None
         if not has_config or not merged.host:
             return None
+
+        # Apply typed defaults for fields that are still None after merge
+        # (i.e. neither user nor project config specified them)
+        if merged.port is None:
+            merged.port = 22
+        if merged.timeout is None:
+            merged.timeout = 60
+        if merged.disable_sudo is None:
+            merged.disable_sudo = False
             
         return merged

@@ -64,3 +64,13 @@ When the AI assistant needs to execute a command with elevated privileges (root)
 Just like local execution, all remote commands are evaluated by the **Trust Manager**:
 - **Allowlist / Denylist**: Commands are checked against your configured trust lists.
 - **Approval Dialogs**: If a command is classified as destructive (e.g. `rm -rf`, `format`, etc.), Shello CLI will prompt you with an interactive confirmation dialog showing the exact command and remote path context (`[remote] ~`) before it runs on the server.
+
+### Host Key Verification (TOFU)
+
+Shello CLI uses a **Trust On First Use (TOFU)** approach for SSH host key verification via paramiko's `AutoAddPolicy`. This means:
+
+- The host key is **automatically accepted on first connection** without verification.
+- Subsequent connections reuse the cached in-memory SSH client — no host key is persisted to `~/.ssh/known_hosts`.
+- This is a **deliberate tradeoff** for ease of use in a developer tooling context.
+
+> **⚠️ Security Note for Sensitive Environments**: If you are connecting to a production or high-security server, TOFU exposes you to a potential MITM attack on the first connection. For hardened setups, manually verify the server's fingerprint out-of-band and ensure your network path is trusted (e.g. use a VPN or jump host).

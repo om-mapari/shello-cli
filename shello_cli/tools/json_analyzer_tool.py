@@ -23,19 +23,7 @@ if TYPE_CHECKING:
     from shello_cli.tools.bash_tool import BashTool
 
 
-def _detect_shell_type() -> str:
-    if platform.system() != "Windows":
-        return "bash"
-    if os.environ.get("BASH") or os.environ.get("BASH_VERSION"):
-        return "bash"
-    if (os.environ.get("SHELL") and "bash" in os.environ.get("SHELL", "").lower()) \
-            or os.environ.get("SHLVL"):
-        return "bash"
-    if os.environ.get("PSExecutionPolicyPreference") or \
-            (os.environ.get("PSModulePath")
-             and not os.environ.get("PROMPT", "").startswith("$P$G")):
-        return "powershell"
-    return "cmd"
+from shello_cli.utils.system_info import detect_shell
 
 
 class JsonAnalyzerTool(ShelloToolBase):
@@ -77,7 +65,7 @@ class JsonAnalyzerTool(ShelloToolBase):
                        When None, uses direct subprocess (tests / standalone).
         """
         self._bash_tool = bash_tool
-        self._shell_type = _detect_shell_type()
+        self._shell_type, _ = detect_shell()
 
     @property
     def schema(self) -> ShelloTool:

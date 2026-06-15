@@ -7,6 +7,7 @@ import os
 import platform
 import queue
 import threading
+import time
 from typing import Optional, Generator
 
 from shello_cli.types import ToolResult, ShelloTool
@@ -15,23 +16,23 @@ from shello_cli.tools.output.cache import OutputCache
 from shello_cli.tools.output.manager import OutputManager
 from shello_cli.tools.output.types import TruncationResult, OutputType, TruncationStrategy
 from shello_cli.utils.output_utils import strip_line_padding, sanitize_surrogates
+from shello_cli.utils.system_info import detect_shell
 
 
-def _detect_shell() -> tuple[str, Optional[str]]:
-    """Detect which shell to use. Returns (shell_type, executable_or_None)."""
-    if platform.system() != 'Windows':
-        return 'bash', None
+class GeneratorWrapper:
+    def __init__(self, gen):
+        self.gen = gen
+        self.value = None
 
-    if os.environ.get('BASH') or os.environ.get('BASH_VERSION'):
-        return 'bash', None
-    if (os.environ.get('SHELL') and 'bash' in os.environ.get('SHELL', '').lower()) \
-            or os.environ.get('SHLVL'):
-        return 'bash', None
-    if os.environ.get('PSExecutionPolicyPreference') or \
-            (os.environ.get('PSModulePath')
-             and not os.environ.get('PROMPT', '').startswith('$P$G')):
-        return 'powershell', 'powershell.exe'
-    return 'cmd', None
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        try:
+            return next(self.gen)
+        except StopIteration as e:
+            self.value = e.value
+            raise
 
 
 class BashTool(ShelloToolBase):
@@ -70,11 +71,27 @@ class BashTool(ShelloToolBase):
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "Shell command to execute."
+                        "description": (
+                            "Shell command to execute, or stdin input if is_input=true, or empty to poll. "
+                            "To abort/interrupt the active background process, set command to 'C-c' with is_input=true. "
+                            "To send EOF (close stdin) to the active background process, set command to 'C-d' with is_input=true."
+                        )
                     },
                     "is_safe": {
                         "type": "boolean",
                         "description": "true=read-only (ls, cat), false=destructive (rm, dd). When unsure, use false."
+                    },
+                    "is_input": {
+                        "type": "boolean",
+                        "description": "If true, treats command as standard input (stdin) to the active running process. Default is false."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Max duration in seconds to wait for output. Default is 30."
+                    },
+                    "reset": {
+                        "type": "boolean",
+                        "description": "If true, terminates any active background process, clears state, and starts fresh. Default is false."
                     }
                 },
                 "required": ["command", "is_safe"]
@@ -86,7 +103,12 @@ class BashTool(ShelloToolBase):
         self._current_directory: str = os.getcwd()
         self._output_cache = output_cache or OutputCache()
         self._output_manager = OutputManager(cache=self._output_cache)
-        self._shell_type, self._shell_executable = _detect_shell()
+        self._shell_type, self._shell_executable = detect_shell()
+        self._active_process: Optional[subprocess.Popen] = None
+        self._out_queue: Optional[queue.Queue] = None
+        self._reader_thread: Optional[threading.Thread] = None
+        self._accumulated_output: list[str] = []
+        self._active_process_command: Optional[str] = None
 
     @property
     def schema(self) -> ShelloTool:
@@ -96,140 +118,243 @@ class BashTool(ShelloToolBase):
     # ShelloToolBase interface
     # ------------------------------------------------------------------
 
-    def execute(self, command: str = "", is_safe: Optional[bool] = None, timeout: int = 30) -> ToolResult:
-        if not command or not command.strip():
-            return ToolResult(success=False, output=None, error="No command provided")
-
-        trust = self._evaluate_command_trust(command, is_safe)
-        if not trust.success:
-            return trust
-
-        if self._is_cd(command):
-            return self._handle_cd_command(command)
-
-        try:
-            result = self._run_subprocess(command, timeout)
-            output = sanitize_surrogates(result.stdout)
-            error = sanitize_surrogates(result.stderr) if result.stderr else result.stderr
-            output = strip_line_padding(output)
-
-            if result.returncode == 0:
-                trunc = self._output_manager.process_output(output, command)
-                final = trunc.output
-                if trunc.was_truncated and trunc.summary:
-                    final = trunc.output + '\n' + trunc.summary
-                return ToolResult(
-                    success=True,
-                    output=final or "Command completed successfully",
-                    error=None,
-                    truncation_info=trunc
-                )
-            else:
-                return ToolResult(
-                    success=False,
-                    output=output or None,
-                    error=error or f"Command failed with exit code {result.returncode}"
-                )
-
-        except subprocess.TimeoutExpired:
-            return ToolResult(success=False, output=None,
-                              error=f"Command timed out after {timeout} seconds")
-        except Exception as e:
-            return ToolResult(success=False, output=None,
-                              error=f"Error executing command: {e}")
+    def execute(self, command: str = "", is_safe: Optional[bool] = None, timeout: int = 30,
+                is_input: bool = False, reset: bool = False) -> ToolResult:
+        wrapper = GeneratorWrapper(self._execute_generator(command, is_safe, timeout, is_input, reset))
+        for _ in wrapper:
+            pass
+        return wrapper.value
 
     def execute_stream(self, command: str = "", is_safe: Optional[bool] = None,
-                       timeout: int = 30) -> Generator[str, None, ToolResult]:
-        if not command or not command.strip():
-            if False:
-                yield
-            return ToolResult(success=False, output=None, error="No command provided")
+                       timeout: int = 30, is_input: bool = False, reset: bool = False) -> Generator[str, None, ToolResult]:
+        command_for_stream = command if command else getattr(self, "_active_process_command", "") or "active_process"
+        wrapper = GeneratorWrapper(self._execute_generator(command, is_safe, timeout, is_input, reset))
+        yield from self._output_manager.process_stream(wrapper, command_for_stream)
+        return wrapper.value
 
-        trust = self._evaluate_command_trust(command, is_safe)
-        if not trust.success:
-            return trust
-
-        if self._is_cd(command):
-            result = self._handle_cd_command(command)
-            yield result.output or result.error or ""
-            return result
-
-        try:
-            process = self._start_process(command)
-            accumulated: list[str] = []
-            out_queue: queue.Queue = queue.Queue()
-
-            def _reader():
+    def _reset_active_process(self):
+        if self._active_process:
+            if self._active_process.poll() is None:
                 try:
-                    while True:
-                        line = process.stdout.readline()
-                        if line:
-                            out_queue.put(sanitize_surrogates(line))
-                        elif process.poll() is not None:
-                            break
+                    self._active_process.terminate()
+                    self._active_process.wait(timeout=0.5)
                 except Exception:
-                    pass
-                finally:
-                    out_queue.put(None)
-
-            thread = threading.Thread(target=_reader, daemon=True)
-            thread.start()
-
-            def _raw_gen():
-                while True:
                     try:
-                        line = out_queue.get(timeout=0.1)
-                        if line is None:
+                        self._active_process.kill()
+                    except Exception:
+                        pass
+            self._active_process = None
+        self._out_queue = None
+        self._reader_thread = None
+        self._accumulated_output = []
+        self._active_process_command = None
+
+    def _execute_generator(self, command: str = "", is_safe: Optional[bool] = None, timeout: int = 30,
+                           is_input: bool = False, reset: bool = False) -> Generator[str, None, ToolResult]:
+        if reset:
+            self._reset_active_process()
+            if not command or not command.strip() or command.strip().lower() in ("reset", "reset session"):
+                return ToolResult(success=True, output="Session reset successfully", error=None,
+                                  error_type="process_control")
+
+        process_active = self._active_process is not None and self._active_process.poll() is None
+        
+        if process_active:
+            if is_input:
+                if command == "C-c":
+                    self._reset_active_process()
+                    return ToolResult(
+                        success=False,
+                        output=None,
+                        error="Process interrupted (SIGINT)",
+                        data={"exit_code": -1},
+                        error_type="process_control"
+                    )
+                elif command == "C-d":
+                    try:
+                        if self._active_process.stdin:
+                            self._active_process.stdin.close()
+                    except Exception as e:
+                        return ToolResult(
+                            success=False,
+                            output=None,
+                            error=f"Error closing stdin: {e}",
+                            data={"exit_code": -1}
+                        )
+                else:
+                    try:
+                        if self._active_process.stdin:
+                            self._active_process.stdin.write(command + '\n')
+                            self._active_process.stdin.flush()
+                        else:
+                            return ToolResult(
+                                success=False,
+                                output=None,
+                                error="Active process stdin is not writable",
+                                data={"exit_code": -1}
+                            )
+                    except Exception as e:
+                        return ToolResult(
+                            success=False,
+                            output=None,
+                            error=f"Error writing to process stdin: {e}",
+                            data={"exit_code": -1}
+                        )
+            else:
+                if command == "":
+                    pass
+                else:
+                    return ToolResult(
+                        success=False,
+                        output=None,
+                        error="A process is already running. You must complete, reset, or abort (C-c) it first, or use is_input=true to interact."
+                    )
+        else:
+            if is_input:
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No active process to send input to"
+                )
+            if not command or not command.strip():
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error="No command provided and no active process to poll"
+                )
+            
+            trust = self._evaluate_command_trust(command, is_safe)
+            if not trust.success:
+                return trust
+                
+            if self._is_cd(command):
+                return self._handle_cd_command(command)
+                
+            try:
+                self._active_process = self._start_process(command)
+                self._active_process_command = command
+                self._out_queue = queue.Queue()
+                self._accumulated_output = []
+                
+                proc = self._active_process
+                q = self._out_queue
+                def _reader():
+                    try:
+                        while True:
+                            char = proc.stdout.read(1)
+                            if char:
+                                q.put(char)
+                            else:
+                                break
+                    except Exception:
+                        pass
+                    finally:
+                        q.put(None)
+                
+                self._reader_thread = threading.Thread(target=_reader, daemon=True)
+                self._reader_thread.start()
+            except Exception as e:
+                self._reset_active_process()
+                return ToolResult(
+                    success=False,
+                    output=None,
+                    error=f"Failed to start process: {e}"
+                )
+
+        start_time = time.time()
+        last_output_time = start_time
+        NO_CHANGE_TIMEOUT = 10.0
+        
+        proc = self._active_process
+        q = self._out_queue
+        invocation_output = []
+        timed_out = False
+        timeout_reason = ""
+        
+        while True:
+            try:
+                chunk = q.get(timeout=0.05)
+                if chunk is not None:
+                    invocation_output.append(chunk)
+                    self._accumulated_output.append(chunk)
+                    yield chunk
+                    last_output_time = time.time()
+                else:
+                    break
+            except queue.Empty:
+                if proc.poll() is not None:
+                    while True:
+                        try:
+                            chunk = q.get_nowait()
+                            if chunk is None:
+                                break
+                            invocation_output.append(chunk)
+                            self._accumulated_output.append(chunk)
+                            yield chunk
+                        except queue.Empty:
                             break
-                        accumulated.append(line)
-                        yield line
-                    except queue.Empty:
-                        if process.poll() is not None:
-                            while True:
-                                try:
-                                    line = out_queue.get_nowait()
-                                    if line is None:
-                                        break
-                                    accumulated.append(line)
-                                    yield line
-                                except queue.Empty:
-                                    break
-                            break
-                thread.join(timeout=1)
+                    break
+                
+                if time.time() - start_time > timeout:
+                    timed_out = True
+                    timeout_reason = f"Command timed out after {timeout} seconds"
+                    break
+                
+                if time.time() - last_output_time > NO_CHANGE_TIMEOUT:
+                    timed_out = True
+                    timeout_reason = f"No output produced for {NO_CHANGE_TIMEOUT} seconds (soft timeout)"
+                    break
 
-            for chunk in self._output_manager.process_stream(_raw_gen(), command):
-                yield chunk
-
-            output = strip_line_padding(''.join(accumulated))
-            cache_stats = self._output_cache.get_stats()
-            last_id = f"cmd_{cache_stats['next_id'] - 1:03d}" if cache_stats['next_id'] > 1 else None
-            trunc = TruncationResult(
-                output=output,
-                was_truncated=False,
-                total_chars=len(output),
-                shown_chars=len(output),
-                total_lines=output.count('\n') + 1,
-                shown_lines=output.count('\n') + 1,
-                output_type=OutputType.DEFAULT,
-                strategy=TruncationStrategy.FIRST_LAST,
-                cache_id=last_id,
-                summary=""
-            )
-
-            success = process.returncode in (0, None)
+        raw_output = "".join(invocation_output)
+        stripped = strip_line_padding(sanitize_surrogates(raw_output))
+        
+        if timed_out:
+            command_for_cache = self._active_process_command or "active_process"
+            trunc = self._output_manager.process_output(stripped, command_for_cache)
+            final_output = trunc.output
+            if trunc.was_truncated and trunc.summary:
+                final_output = trunc.output + '\n' + trunc.summary
+            
             return ToolResult(
-                success=success,
-                output=output or ("Command completed successfully" if success else None),
-                error=None if success else f"Command failed with exit code {process.returncode}",
+                success=False,
+                output=final_output or None,
+                error=timeout_reason,
+                data={"exit_code": -1},
+                truncation_info=trunc,
+                error_type="soft_timeout" if "timed out after" in timeout_reason else "no_change_timeout"
+            )
+            
+        return_code = proc.poll()
+        if return_code is None:
+            try:
+                return_code = proc.wait(timeout=1.0)
+            except Exception:
+                return_code = -1
+        self._reset_active_process()
+        
+        success = (return_code == 0)
+        command_for_cache = self._active_process_command or "active_process"
+        trunc = self._output_manager.process_output(stripped, command_for_cache)
+        final_output = trunc.output
+        if trunc.was_truncated and trunc.summary:
+            final_output = trunc.output + '\n' + trunc.summary
+            
+        if success:
+            return ToolResult(
+                success=True,
+                output=final_output or "Command completed successfully",
+                error=None,
+                data={"exit_code": return_code},
                 truncation_info=trunc
             )
-
-        except subprocess.TimeoutExpired:
-            return ToolResult(success=False, output=None,
-                              error=f"Command timed out after {timeout} seconds")
-        except Exception as e:
-            return ToolResult(success=False, output=None,
-                              error=f"Error executing command: {e}")
+        else:
+            return ToolResult(
+                success=False,
+                output=final_output or None,
+                error=f"Command failed with exit code {return_code}",
+                data={"exit_code": return_code},
+                truncation_info=trunc
+            )
 
     # ------------------------------------------------------------------
     # Public helpers (used by agent / tests)
@@ -273,12 +398,14 @@ class BashTool(ShelloToolBase):
                 ['powershell.exe', '-Command', command],
                 cwd=self._current_directory,
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                stdin=subprocess.PIPE,
                 bufsize=0, encoding='utf-8', errors='replace'
             )
         return subprocess.Popen(
             command, shell=True,
             cwd=self._current_directory,
             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
             bufsize=0, encoding='utf-8', errors='replace'
         )
 

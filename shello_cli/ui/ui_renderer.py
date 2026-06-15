@@ -20,42 +20,7 @@ def print_header(title):
 
 
 
-def render_terminal_command(command, output_filter, cwd=None, user="user", hostname="win"):
-    """Modern two-line terminal command rendering with box-drawing characters"""
-    if cwd:
-        try:
-            home_path = str(Path.home())
-            short_cwd = cwd.replace(home_path, "~") if home_path in cwd else cwd
-        except Exception:
-            short_cwd = cwd
-    else:
-        short_cwd = "~"
-    
-    # First line: top box with user@hostname and path
-    first_line = Text()
-    first_line.append("┌─[", style="white")
-    first_line.append("💻 ", style="blue")
-    first_line.append(user, style="bold green")
-    first_line.append("@", style="white")
-    first_line.append(hostname, style="bold cyan")
-    first_line.append("]─[", style="white")
-    first_line.append(short_cwd, style="bold magenta")
-    first_line.append("]", style="white")
-    
-    if output_filter:
-        first_line.append("─[", style="white")
-        first_line.append(f"📊 Filter: {output_filter}", style="yellow")
-        first_line.append("]", style="white")
-    
-    console.print(first_line)
-    
-    # Second line: bottom box with command
-    second_line = Text()
-    second_line.append("└─", style="white")
-    second_line.append("$ ", style="bold yellow")
-    second_line.append(command, style="bright_white bold")
-    
-    console.print(second_line)
+
 
 
 def render_direct_command_output(command: str, cwd=None, user="user", hostname="win"):
@@ -106,6 +71,7 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     
     This function renders any tool execution in a consistent format.
     For shell commands, it shows user@hostname with the command.
+    For remote commands, it shows a remote server indicator.
     For other tools, it shows a simpler format with just icon and path.
     
     Args:
@@ -118,6 +84,7 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     # Tool icons mapping
     tool_icons = {
         "run_shell_command": "💻",
+        "run_remote_command": "🖥️",
         "analyze_json": "🔍",
         "python_code_executor": "🐍",
         "file_read": "📄",
@@ -137,49 +104,115 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     else:
         short_cwd = "~"
     
-    # First line: top box - different format for shell commands vs other tools
+    # First line: top box - different format for shell/remote vs other tools
     first_line = Text()
     first_line.append("┌─[", style="white")
     
     if tool_name == "run_shell_command":
-        # For shell commands, show icon + user@hostname
+        # Local shell: show icon + user@hostname
         first_line.append(f"{icon} ", style="blue")
         first_line.append(user, style="bold green")
         first_line.append("@", style="white")
         first_line.append(hostname, style="bold cyan")
+        first_line.append("]─[", style="white")
+        first_line.append(short_cwd, style="bold magenta")
+    elif tool_name == "run_remote_command":
+        # Remote SSH: show icon + remote user@host
+        first_line.append(f"{icon} ", style="blue")
+        
+        # Try to retrieve remote server config
+        remote_user = None
+        remote_host = None
+        try:
+            from shello_cli.settings import SettingsManager
+            cfg = SettingsManager.get_instance().get_remote_server_config()
+            if cfg:
+                if isinstance(cfg.username, str):
+                    remote_user = cfg.username
+                if isinstance(cfg.host, str):
+                    remote_host = cfg.host
+        except Exception:
+            pass
+            
+        if remote_user and remote_host:
+            first_line.append(remote_user, style="bold yellow")
+            first_line.append("@", style="white")
+            first_line.append(remote_host, style="bold yellow")
+        elif remote_host:
+            first_line.append(remote_host, style="bold yellow")
+        elif remote_user:
+            first_line.append(remote_user, style="bold yellow")
+        else:
+            first_line.append("remote", style="bold yellow")
+            
+        first_line.append("]─[", style="white")
+        first_line.append("~", style="bold magenta")
     else:
-        # For other tools, just show icon (no trailing space)
+        # Other tools: just show icon
         first_line.append(icon, style="blue")
+        first_line.append("]─[", style="white")
+        first_line.append(short_cwd, style="bold magenta")
     
-    first_line.append("]─[", style="white")
-    first_line.append(short_cwd, style="bold magenta")
     first_line.append("]", style="white")
-    
     console.print(first_line)
     
-    # Second line: tool name and main parameter
+    # Second line: action/command display
     second_line = Text()
     second_line.append("└─", style="white")
     
-    if tool_name == "run_shell_command":
-        # For shell commands, show the command directly
+    if tool_name in ("run_shell_command", "run_remote_command"):
         command = parameters.get("command", "")
-        second_line.append("$ ", style="bold yellow")
-        second_line.append(command, style="bright_white bold")
+        is_input = parameters.get("is_input", False)
+        reset = parameters.get("reset", False)
+
+        if reset:
+            # Session reset
+            if command and command.strip():
+                # Reset + launch new command in one call — show both
+                second_line.append("↺ ", style="bold yellow")
+                second_line.append("[reset] ", style="dim yellow")
+                second_line.append("→ $ ", style="bold yellow")
+                second_line.append(command, style="bright_white bold")
+            else:
+                second_line.append("↺ ", style="bold yellow")
+                second_line.append("[reset session]", style="dim yellow")
+        elif is_input:
+            # Stdin write — visually distinct from a shell command
+            if command == "C-c":
+                second_line.append("⌃C ", style="bold red")
+                second_line.append("[send interrupt]", style="dim red")
+            elif command == "C-d":
+                second_line.append("⌃D ", style="bold yellow")
+                second_line.append("[close stdin / EOF]", style="dim yellow")
+            else:
+                second_line.append("→ stdin: ", style="bold dim cyan")
+                second_line.append(command, style="cyan bold")
+        elif command == "":
+            # Polling call — empty command means "check on active process"
+            second_line.append("$ ", style="bold yellow")
+            second_line.append("[polling active process...]", style="dim white italic")
+        else:
+            # Normal command
+            second_line.append("$ ", style="bold yellow")
+            second_line.append(command, style="bright_white bold")
     else:
-        # For other tools, show ⟩ then tool name and parameters
+        # Other tools: show ⟩ then tool name and clean key=value parameters
         second_line.append("⟩ ", style="bold yellow")
         second_line.append(f"{tool_name}", style="bold cyan")
         second_line.append("(", style="white")
         
-        # Format parameters
+        # Format parameters cleanly: booleans as true/false, strings unquoted (unless needed)
         param_parts = []
         for key, value in parameters.items():
-            # Truncate long values
-            str_value = str(value)
-            if len(str_value) > 60:
-                str_value = str_value[:57] + "..."
-            param_parts.append(f"{key}={repr(str_value)}")
+            if isinstance(value, bool):
+                formatted = "true" if value else "false"
+            elif isinstance(value, str):
+                truncated = value if len(value) <= 60 else value[:57] + "..."
+                # Only quote if contains spaces or special chars
+                formatted = f"'{truncated}'" if any(c in truncated for c in (" ", ",", "(")) else truncated
+            else:
+                formatted = str(value)
+            param_parts.append(f"{key}={formatted}")
         
         second_line.append(", ".join(param_parts), style="bright_white")
         second_line.append(")", style="white")
@@ -187,12 +220,47 @@ def render_tool_execution(tool_name: str, parameters: dict, cwd=None, user="user
     console.print(second_line)
 
 
+def render_tool_result_status(error_type: str, error_msg: str, has_output: bool) -> None:
+    """Render a contextual status line for tool results that are not hard errors.
 
+    Instead of a single red '✗ Error:' for every non-success result, this renders
+    a message styled to match the semantic meaning of the outcome.
+
+    Args:
+        error_type: One of 'soft_timeout', 'no_change_timeout', 'process_control'
+        error_msg:  The raw error/status message from the tool
+        has_output: Whether the tool already printed output above this line
+    """
+    leading_nl = "\n" if has_output else ""
+
+    if error_type == "soft_timeout":
+        # Process hit wall-clock timeout but is still alive in background
+        line = Text()
+        line.append(f"{leading_nl}⏳ Running in background", style="bold yellow")
+        line.append(" — no output yet (continues on next message)", style="dim yellow")
+        console.print(line)
+
+    elif error_type == "no_change_timeout":
+        # Process produced no new output for N seconds — may be waiting for input
+        line = Text()
+        line.append(f"{leading_nl}⏳ Running in background", style="bold yellow")
+        line.append(" — waiting for more output or user input", style="dim yellow")
+        console.print(line)
+
+    elif error_type == "process_control":
+        # C-c / C-d / reset / unsupported op — informational, not alarming
+        if error_msg:
+            line = Text()
+            line.append(f"{leading_nl}ℹ  ", style="bold cyan")
+            line.append(error_msg, style="cyan")
+            console.print(line)
+    # All other error_types fall through — caller handles them as hard errors
 
 
 def display_help():
     """Display keyboard shortcuts and commands help"""
     console.print("\n[cyan]📚 Shello CLI Help & Shortcuts:[/cyan]")
+
     
     # Commands table
     commands_table = Table(show_header=True, header_style="bold magenta", title="Chat Commands")

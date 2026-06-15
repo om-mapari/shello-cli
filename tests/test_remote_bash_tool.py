@@ -278,3 +278,69 @@ def test_remote_bash_tool_execute_sudo_success(mock_get_client, mock_settings_ma
             "printf '%s\\n' 'sudopassword' | sudo -p \"\" -S sh -c 'systemctl restart nginx'",
             timeout=60.0
         )
+
+
+def test_remote_bash_tool_is_input_not_supported():
+    """Test that is_input=True returns an explicit error — remote SSH does not support interactive stdin."""
+    with patch("shello_cli.tools.remote_bash_tool.SSHConnectionManager.get_client") as mock_get_client:
+        tool = RemoteBashTool()
+        result = tool.execute(command="some input", is_safe=True, is_input=True)
+
+        assert result.success is False
+        assert result.error is not None
+        assert "is_input" in result.error or "interactive" in result.error.lower()
+        # No SSH connection should be opened
+        mock_get_client.assert_not_called()
+
+
+def test_remote_bash_tool_reset_returns_informative_message():
+    """Test that reset=True returns a success message — remote SSH has no persistent state to reset."""
+    with patch("shello_cli.tools.remote_bash_tool.SSHConnectionManager.get_client") as mock_get_client:
+        tool = RemoteBashTool()
+        result = tool.execute(command="", is_safe=True, reset=True)
+
+        assert result.success is True
+        assert result.output is not None
+        assert "reset" in result.output.lower() or "state" in result.output.lower()
+        # No SSH connection should be opened
+        mock_get_client.assert_not_called()
+
+
+def test_render_tool_execution_remote():
+    """Test that render_tool_execution displays the remote user and host if configured."""
+    from shello_cli.ui.ui_renderer import render_tool_execution
+    
+    with patch("shello_cli.settings.SettingsManager.get_instance") as mock_get_instance:
+        mock_manager = Mock()
+        mock_get_instance.return_value = mock_manager
+        mock_manager.get_remote_server_config.return_value = RemoteServerConfig(username="testuser", host="192.168.1.100")
+        
+        with patch("shello_cli.ui.ui_renderer.console") as mock_console:
+            render_tool_execution("run_remote_command", {"command": "uptime"})
+            
+            assert mock_console.print.call_count >= 1
+            first_print_arg = mock_console.print.call_args_list[0][0][0]
+            text_str = first_print_arg.plain if hasattr(first_print_arg, "plain") else str(first_print_arg)
+            assert "testuser@192.168.1.100" in text_str
+            assert "~" in text_str
+
+
+def test_render_tool_execution_remote_fallback():
+    """Test that render_tool_execution displays 'remote' fallback if not configured."""
+    from shello_cli.ui.ui_renderer import render_tool_execution
+    
+    with patch("shello_cli.settings.SettingsManager.get_instance") as mock_get_instance:
+        mock_manager = Mock()
+        mock_get_instance.return_value = mock_manager
+        mock_manager.get_remote_server_config.return_value = None
+        
+        with patch("shello_cli.ui.ui_renderer.console") as mock_console:
+            render_tool_execution("run_remote_command", {"command": "uptime"})
+            
+            assert mock_console.print.call_count >= 1
+            first_print_arg = mock_console.print.call_args_list[0][0][0]
+            text_str = first_print_arg.plain if hasattr(first_print_arg, "plain") else str(first_print_arg)
+            assert "remote" in text_str
+
+
+

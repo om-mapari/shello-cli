@@ -50,6 +50,9 @@ Tool Selection:
 - Use run_shell_command for shell commands, file operations, CLI tools
 - Use analyze_json FIRST when you don't know JSON structure
 - Use get_cached_output to retrieve truncated output
+- For interactive process control using run_shell_command:
+  * To abort/interrupt the active background process, call run_shell_command with command="C-c" and is_input=True
+  * To send EOF (close stdin) to the active background process, call run_shell_command with command="C-d" and is_input=True
 
 Working Directory:
 - Maintain current working directory - use absolute paths when possible

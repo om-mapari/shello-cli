@@ -95,7 +95,7 @@ class RemoteBashTool(ShelloToolBase):
                 "properties": {
                     "command": {
                         "type": "string",
-                        "description": "Shell command to execute on the remote SSH server."
+                        "description": "Shell command to execute on the remote SSH server, or stdin input if is_input=true, or empty to poll."
                     },
                     "is_safe": {
                         "type": "boolean",
@@ -104,6 +104,18 @@ class RemoteBashTool(ShelloToolBase):
                     "use_sudo": {
                         "type": "boolean",
                         "description": "Execute the command with sudo on the remote machine."
+                    },
+                    "is_input": {
+                        "type": "boolean",
+                        "description": "If true, treats command as standard input (stdin) to the active running process. Default is false."
+                    },
+                    "timeout": {
+                        "type": "integer",
+                        "description": "Max duration in seconds to wait for output. Default is 60."
+                    },
+                    "reset": {
+                        "type": "boolean",
+                        "description": "If true, terminates any active background process, clears state, and starts fresh. Default is false."
                     }
                 },
                 "required": ["command", "is_safe"]
@@ -120,7 +132,28 @@ class RemoteBashTool(ShelloToolBase):
     def schema(self) -> ShelloTool:
         return self._SCHEMA
 
-    def execute(self, command: str = "", is_safe: Optional[bool] = None, use_sudo: bool = False, timeout: int = 60) -> ToolResult:
+    def execute(self, command: str = "", is_safe: Optional[bool] = None, use_sudo: bool = False, timeout: int = 60,
+                is_input: bool = False, reset: bool = False) -> ToolResult:
+        # Remote SSH execution is one-shot and stateless — interactive modes are not supported
+        if is_input:
+            return ToolResult(
+                success=False,
+                output=None,
+                error=(
+                    "Remote interactive input (is_input=true) is not supported. "
+                    "SSH exec_command is one-shot and has no persistent stdin channel. "
+                    "Use command chaining instead (e.g. 'echo \"input\" | command')."
+                ),
+                error_type="process_control"
+            )
+        if reset:
+            return ToolResult(
+                success=True,
+                output="Remote session has no persistent process state to reset.",
+                error=None,
+                error_type="process_control"
+            )
+
         if not command or not command.strip():
             return ToolResult(success=False, output=None, error="No command provided")
 

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import Optional
 import subprocess
 import os
-import platform
 from shello_cli.utils.output_utils import strip_line_padding
+from shello_cli.utils.system_info import detect_shell
 
 
 @dataclass
@@ -44,26 +44,7 @@ class DirectExecutor:
         """
         self._current_directory: str = os.getcwd()
         self._bash_tool = bash_tool
-        self._detect_shell()
-    
-    def _detect_shell(self):
-        """Detect which shell to use for command execution."""
-        os_name = platform.system()
-        
-        if os_name == 'Windows':
-            # Check for bash first (Git Bash, WSL, etc.)
-            if os.environ.get('BASH') or os.environ.get('BASH_VERSION'):
-                self._shell_type = 'bash'
-            elif (os.environ.get('SHELL') and 'bash' in os.environ.get('SHELL', '').lower()) or \
-                 os.environ.get('SHLVL'):
-                self._shell_type = 'bash'
-            elif os.environ.get('PSExecutionPolicyPreference') or \
-                 (os.environ.get('PSModulePath') and not os.environ.get('PROMPT', '').startswith('$P$G')):
-                self._shell_type = 'powershell'
-            else:
-                self._shell_type = 'cmd'
-        else:
-            self._shell_type = 'bash'
+        self._shell_type, _ = detect_shell()
     
 
     def execute(self, command: str, args: Optional[str] = None, is_safe: Optional[bool] = None) -> ExecutionResult:
