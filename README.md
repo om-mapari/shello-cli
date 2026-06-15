@@ -4,12 +4,12 @@
 
 **AI-Agent for SRE & DevOps — Built for production, not playgrounds.**
 
-[![Latest Release](https://img.shields.io/github/release/om-mapari/shello-cli.svg?style=flat-square)](https://github.com/om-mapari/shello-cli/releases)
+[![Latest Release](https://flat.badgen.net/github/release/om-mapari/shello-cli)](https://github.com/om-mapari/shello-cli/releases)
 [![Build and Release](https://github.com/om-mapari/shello-cli/actions/workflows/release.yml/badge.svg?style=flat-square)](https://github.com/om-mapari/shello-cli/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg?style=flat-square)](https://www.python.org/downloads/)
-[![Downloads](https://img.shields.io/github/downloads/om-mapari/shello-cli/total.svg?style=flat-square)](https://github.com/om-mapari/shello-cli/releases)
-[![Stars](https://img.shields.io/github/stars/om-mapari/shello-cli.svg?style=flat-square)](https://github.com/om-mapari/shello-cli/stargazers)
+[![Downloads](https://flat.badgen.net/github/assets-dl/om-mapari/shello-cli)](https://github.com/om-mapari/shello-cli/releases)
+[![Stars](https://flat.badgen.net/github/stars/om-mapari/shello-cli)](https://github.com/om-mapari/shello-cli/stargazers)
 
 ---
 
