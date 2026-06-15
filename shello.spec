@@ -33,6 +33,8 @@ a = Analysis(
         'openai',
         'fastmcp',
         'anyio',
+        'paramiko',
+        'cryptography',
     ] + shello_submodules + rich_unicode_imports,
     hookspath=[],
     hooksconfig={},

@@ -41,12 +41,18 @@ class ToolExecutor:
         # registered throw-away instances for schema-only access).
         registry._REGISTRY.clear()
 
+        from shello_cli.settings import SettingsManager
+        settings_manager = SettingsManager.get_instance()
+        remote_cfg = settings_manager.get_remote_server_config()
+
         bash = BashTool(output_cache=self._output_cache)
-        remote_bash = RemoteBashTool(output_cache=self._output_cache)
         registry.register(bash, name="run_shell_command")
         registry.register(JsonAnalyzerTool(bash_tool=bash), name="analyze_json")
         registry.register(GetCachedOutputTool(cache=self._output_cache), name="get_cached_output")
-        registry.register(remote_bash, name="run_remote_command")
+        
+        if remote_cfg:
+            remote_bash = RemoteBashTool(output_cache=self._output_cache)
+            registry.register(remote_bash, name="run_remote_command")
 
         # Store bash reference for helpers that need it directly
         self._bash_tool = bash
@@ -56,8 +62,6 @@ class ToolExecutor:
 
         # Load and merge MCP configurations
         try:
-            from shello_cli.settings.manager import SettingsManager
-            settings_manager = SettingsManager.get_instance()
             user_settings = settings_manager.load_user_settings()
             project_settings = settings_manager.load_project_settings()
 
@@ -67,49 +71,9 @@ class ToolExecutor:
             if project_settings and hasattr(project_settings, "mcp_servers") and isinstance(project_settings.mcp_servers, dict):
                 merged_mcp_servers.update(project_settings.mcp_servers)
 
-            # Check for first-class SSH configuration and dynamically add ssh-mcp server if not manuals
-            ssh_config = settings_manager.get_ssh_config()
-            if ssh_config:
-                import pathlib
-                repo_root = pathlib.Path(__file__).parent.parent.parent
-                ssh_mcp_js = repo_root / "ssh-mcp" / "build" / "index.js"
-                
-                if not ssh_mcp_js.exists():
-                    ssh_mcp_js = pathlib.Path.cwd() / "ssh-mcp" / "build" / "index.js"
-
-                args = [
-                    str(ssh_mcp_js.resolve()),
-                    f"--host={ssh_config.host}",
-                    f"--port={ssh_config.port}",
-                    f"--user={ssh_config.username}",
-                ]
-                if ssh_config.password:
-                    args.append(f"--password={ssh_config.password}")
-                if ssh_config.private_key_path:
-                    args.append(f"--key={ssh_config.private_key_path}")
-                if ssh_config.su_password:
-                    args.append(f"--suPassword={ssh_config.su_password}")
-                if ssh_config.sudo_password:
-                    args.append(f"--sudoPassword={ssh_config.sudo_password}")
-                if ssh_config.disable_sudo:
-                    args.append("--disableSudo")
-                if ssh_config.timeout:
-                    args.append(f"--timeout={ssh_config.timeout * 1000}")
-
-                # Only register if user hasn't manually registered ssh-mcp under mcp_servers
-                has_manual_ssh_mcp = any("ssh-mcp" in server_name for server_name in merged_mcp_servers)
-                if not has_manual_ssh_mcp:
-                    merged_mcp_servers["ssh-mcp-internal"] = {
-                        "command": "node",
-                        "args": args
-                    }
-
             if merged_mcp_servers:
                 from shello_cli.mcp import create_mcp_client, MCPToolWrapper
                 self._mcp_client = create_mcp_client(merged_mcp_servers)
-                
-                # Inject the client into remote_bash tool so it can run remote commands
-                remote_bash.set_mcp_client(self._mcp_client)
                 
                 for tool in self._mcp_client.tools:
                     # Skip registering the raw exec and sudo-exec tools directly to avoid LLM confusion

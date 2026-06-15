@@ -199,8 +199,7 @@ def display_help():
     commands_table.add_column("Command", style="yellow", width=16)
     commands_table.add_column("Description", style="white")
     
-    commands_table.add_row("/quit", "Exit the application")
-    commands_table.add_row("/exit", "Exit the application")
+    commands_table.add_row("/quit, /exit", "Exit the application")
     commands_table.add_row("/new", "Start a new conversation")
     commands_table.add_row("/history", "Browse and resume past sessions")
     commands_table.add_row("/history clear", "Delete all session history")

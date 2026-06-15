@@ -24,6 +24,7 @@ from .models import (
     CommandTrustConfig,
     UserSettings,
     ProjectSettings,
+    RemoteServerConfig,
 )
 from .manager import SettingsManager
 
@@ -36,6 +37,7 @@ __all__ = [
     "CommandTrustConfig",
     "UserSettings",
     "ProjectSettings",
+    "RemoteServerConfig",
     # Helper functions
     "get_settings",
     "get_api_key",

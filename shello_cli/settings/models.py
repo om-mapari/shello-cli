@@ -98,8 +98,8 @@ class UpdateConfig:
 
 
 @dataclass
-class SSHConfig:
-    """Configuration for remote SSH connection used by remote CLI execution."""
+class RemoteServerConfig:
+    """Configuration for remote server SSH connection used by remote CLI execution."""
     
     host: Optional[str] = None
     port: int = 22
@@ -126,7 +126,7 @@ class UserSettings:
     update_config: Optional[UpdateConfig] = field(default_factory=UpdateConfig)
     session_history: Optional["SessionHistoryConfig"] = None
     mcp_servers: Optional[Dict[str, Any]] = None
-    ssh: Optional[SSHConfig] = None
+    remote_server: Optional[RemoteServerConfig] = None
 
 
 @dataclass
@@ -135,5 +135,5 @@ class ProjectSettings:
     
     model: Optional[str] = None
     mcp_servers: Optional[Dict[str, Any]] = None
-    ssh: Optional[SSHConfig] = None
+    remote_server: Optional[RemoteServerConfig] = None
 

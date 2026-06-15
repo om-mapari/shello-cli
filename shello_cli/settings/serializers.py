@@ -6,7 +6,7 @@ files with inline comments, examples, and section headers.
 """
 
 from typing import Any, Dict, Optional
-from .models import UserSettings, ProviderConfig, OutputManagementConfig, CommandTrustConfig, UpdateConfig, SSHConfig
+from .models import UserSettings, ProviderConfig, OutputManagementConfig, CommandTrustConfig, UpdateConfig, RemoteServerConfig
 
 
 def generate_yaml_with_comments(settings: UserSettings) -> str:
@@ -218,21 +218,21 @@ def generate_yaml_with_comments(settings: UserSettings) -> str:
             "#   max_storage_mb: 50         # Maximum disk space for session files",
         ])
 
-    # SSH Configuration Section
+    # Remote Server Configuration Section
     lines.extend([
         "",
         "# =============================================================================",
-        "# REMOTE SSH CONFIGURATION (optional)",
+        "# REMOTE SERVER CONFIGURATION (optional)",
         "# =============================================================================",
-        "# Configure remote SSH connection for remote CLI execution.",
+        "# Configure remote server connection for remote CLI execution.",
         "#",
     ])
 
-    if settings.ssh:
-        lines.extend(_serialize_ssh_config(settings.ssh))
+    if settings.remote_server:
+        lines.extend(_serialize_remote_server_config(settings.remote_server))
     else:
         lines.extend([
-            "# ssh:",
+            "# remote-server:",
             "#   host: 127.0.0.1",
             "#   port: 22",
             "#   username: root",
@@ -393,12 +393,13 @@ def _serialize_session_history(config: Any) -> list:
     return lines
 
 
-def _serialize_ssh_config(config: SSHConfig) -> list:
-    """Serialize SSHConfig to YAML lines."""
-    lines = ["ssh:"]
+def _serialize_remote_server_config(config: RemoteServerConfig) -> list:
+    """Serialize RemoteServerConfig to YAML lines."""
+    lines = ["remote-server:"]
     if config.host is not None:
         lines.append(f"  host: {config.host}")
-    lines.append(f"  port: {config.port}")
+    if config.port is not None:
+        lines.append(f"  port: {config.port}")
     if config.username is not None:
         lines.append(f"  username: {config.username}")
     if config.password is not None:
@@ -409,6 +410,8 @@ def _serialize_ssh_config(config: SSHConfig) -> list:
         lines.append(f"  su_password: '{config.su_password}'")
     if config.sudo_password is not None:
         lines.append(f"  sudo_password: '{config.sudo_password}'")
-    lines.append(f"  disable_sudo: {str(config.disable_sudo).lower()}")
-    lines.append(f"  timeout: {config.timeout}")
+    if config.disable_sudo is not None:
+        lines.append(f"  disable_sudo: {str(config.disable_sudo).lower()}")
+    if config.timeout is not None:
+        lines.append(f"  timeout: {config.timeout}")
     return lines

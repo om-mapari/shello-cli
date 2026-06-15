@@ -5,6 +5,17 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.4] - 2026-06-15
+
+### Added
+- **Native SSH Remote Command Execution**: Replaced the Node.js `ssh-mcp` wrapper implementation in `RemoteBashTool` with a native Python implementation using `paramiko`.
+- **Connection Caching**: Added `SSHConnectionManager` to cache and reuse SSH connections.
+- **Conditional Tool Registration**: The `run_remote_command` tool is now only registered when a remote server configuration is present.
+
+### Changed
+- **Remote Server Configuration Settings**: Renamed the remote configuration block key from `ssh` to `remote-server` while maintaining backwards compatibility for existing `ssh` settings.
+- **Aligned Exit Help Commands**: Aligned the `/quit` and `/exit` commands in the Shello CLI help table to a single row.
+
 ## [0.8.3] - 2026-06-14
 
 ### Added

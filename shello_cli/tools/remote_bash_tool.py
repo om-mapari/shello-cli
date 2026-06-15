@@ -2,13 +2,69 @@
 Remote shell command execution tool for Shello CLI.
 """
 
-from typing import Optional, Generator
+from typing import Optional, Generator, Any
+import paramiko
+
 from shello_cli.types import ToolResult, ShelloTool
 from shello_cli.tools.base import ShelloToolBase
 from shello_cli.tools.output.cache import OutputCache
 from shello_cli.tools.output.manager import OutputManager
-from shello_cli.tools.output.types import TruncationResult, OutputType, TruncationStrategy
 from shello_cli.utils.output_utils import strip_line_padding, sanitize_surrogates
+
+
+class SSHConnectionManager:
+    """Manages cached SSH connections using paramiko."""
+    
+    _client: Optional[paramiko.SSHClient] = None
+
+    @classmethod
+    def get_client(cls) -> paramiko.SSHClient:
+        """Get or create a cached SSH connection client."""
+        if cls._client is not None:
+            try:
+                transport = cls._client.get_transport()
+                if transport and transport.is_active():
+                    return cls._client
+            except Exception:
+                pass
+            cls.close()
+
+        # Load remote server config
+        from shello_cli.settings import SettingsManager
+        cfg = SettingsManager.get_instance().get_remote_server_config()
+        if not cfg or not cfg.host:
+            raise ValueError(
+                "Remote execution is not configured. "
+                "Please configure remote-server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
+            )
+
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        connect_kwargs = {
+            "hostname": cfg.host,
+            "port": cfg.port or 22,
+            "username": cfg.username,
+            "timeout": float(cfg.timeout or 60),
+        }
+        if cfg.password:
+            connect_kwargs["password"] = cfg.password
+        if cfg.private_key_path:
+            connect_kwargs["key_filename"] = cfg.private_key_path
+
+        client.connect(**connect_kwargs)
+        cls._client = client
+        return client
+
+    @classmethod
+    def close(cls) -> None:
+        """Close the cached SSH client."""
+        if cls._client:
+            try:
+                cls._client.close()
+            except Exception:
+                pass
+            cls._client = None
 
 
 class RemoteBashTool(ShelloToolBase):
@@ -55,8 +111,8 @@ class RemoteBashTool(ShelloToolBase):
         }
     )
 
-    def __init__(self, mcp_client=None, output_cache: Optional[OutputCache] = None):
-        self._mcp_client = mcp_client
+    def __init__(self, mcp_client: Optional[Any] = None, output_cache: Optional[OutputCache] = None):
+        # mcp_client is kept for signature compatibility
         self._output_cache = output_cache or OutputCache()
         self._output_manager = OutputManager(cache=self._output_cache)
 
@@ -64,70 +120,67 @@ class RemoteBashTool(ShelloToolBase):
     def schema(self) -> ShelloTool:
         return self._SCHEMA
 
-    def set_mcp_client(self, mcp_client) -> None:
-        """Inject MCP client reference dynamically."""
-        self._mcp_client = mcp_client
-
     def execute(self, command: str = "", is_safe: Optional[bool] = None, use_sudo: bool = False, timeout: int = 60) -> ToolResult:
         if not command or not command.strip():
             return ToolResult(success=False, output=None, error="No command provided")
 
-        if not self._mcp_client:
+        # 1. Get Remote Server config
+        from shello_cli.settings import SettingsManager
+        cfg = SettingsManager.get_instance().get_remote_server_config()
+        if not cfg or not cfg.host:
             return ToolResult(
                 success=False,
                 output=None,
                 error=(
                     "Remote execution is not configured. "
-                    "Please configure SSH settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
+                    "Please configure remote-server settings in .shello/settings.yml or ~/.shello_cli/user-settings.yml."
                 )
             )
 
-        # 1. Evaluate command trust using TrustManager
+        # 2. Evaluate command trust using TrustManager
         trust = self._evaluate_command_trust(command, is_safe)
         if not trust.success:
             return trust
 
-        # 2. Decide tool name (exec or sudo-exec)
-        tool_name = "exec"
-        from shello_cli.settings.manager import SettingsManager
-        ssh_cfg = SettingsManager.get_instance().get_ssh_config()
-        
         # If disable_sudo is True in the config, override use_sudo to False
-        if ssh_cfg and getattr(ssh_cfg, 'disable_sudo', False):
+        if cfg.disable_sudo:
             use_sudo = False
-            
-        if use_sudo:
-            tool_name = "sudo-exec"
 
-        # 3. Call the remote MCP server tool
+        # 3. Connect and execute the remote command natively
         try:
-            result = self._mcp_client.call_async_from_sync(
-                self._mcp_client.call_tool_mcp,
-                name=tool_name,
-                arguments={"command": command},
-                timeout=float(timeout),
-            )
-
-            # Build output string from content blocks
-            output_parts = []
-            for block in result.content:
-                if hasattr(block, "text") and block.text:
-                    output_parts.append(block.text)
-                elif hasattr(block, "data"):
-                    mime = getattr(block, "mimeType", "image/*")
-                    output_parts.append(f"[Image content: {mime}]")
+            client = SSHConnectionManager.get_client()
+            
+            # Wrap command for execution
+            if use_sudo:
+                if cfg.sudo_password:
+                    pwd_escaped = cfg.sudo_password.replace("'", "'\\''")
+                    cmd_escaped = command.replace("'", "'\\''")
+                    wrapped = "printf '%s\\n' '{}' | sudo -p \"\" -S sh -c '{}'".format(pwd_escaped, cmd_escaped)
                 else:
-                    output_parts.append(str(block))
+                    cmd_escaped = command.replace("'", "'\\''")
+                    wrapped = "sudo -n sh -c '{}'".format(cmd_escaped)
+            else:
+                cmd_escaped = command.replace("'", "'\\''")
+                wrapped = "sh -c '{}'".format(cmd_escaped)
 
-            output = sanitize_surrogates("\n".join(output_parts))
+            # Execute via paramiko
+            stdin, stdout, stderr = client.exec_command(wrapped, timeout=float(timeout))
+            
+            # Read output and error streams
+            out = stdout.read().decode('utf-8', errors='replace')
+            err = stderr.read().decode('utf-8', errors='replace')
+            exit_status = stdout.channel.recv_exit_status()
+
+            output = sanitize_surrogates(out)
+            error = sanitize_surrogates(err) if err else None
             output = strip_line_padding(output)
 
-            is_error = getattr(result, "isError", False)
-            if is_error:
+            if exit_status != 0:
+                err_msg = error or output or f"Remote command failed with exit status {exit_status}"
                 return ToolResult(
                     success=False,
                     output=output or None,
-                    error=output or f"Remote command execution failed"
+                    error=err_msg
                 )
 
             # 4. Truncate and cache the output
