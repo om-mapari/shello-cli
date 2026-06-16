@@ -111,6 +111,7 @@ class ChatSession:
         current_tool_call = None
         current_command = None  # Track current executing command
         live_display_active = True  # Track if live display is still active
+        live = None
         
         try:
             stream = self.agent.process_user_message_stream(message)
@@ -120,121 +121,127 @@ class ChatSession:
                 console.print()
                 return
             
-            # Use Live display for streaming markdown updates
-            with Live(EnhancedMarkdown(""), console=console, refresh_per_second=10) as live:
-                for chunk in stream:
-                    if chunk.type == "content":
-                        # Accumulate content and update live markdown display
-                        if chunk.content:
-                            accumulated_content += chunk.content
-                            if live_display_active:
+            for chunk in stream:
+                if chunk.type == "content":
+                    # Accumulate content and update live markdown display
+                    if chunk.content:
+                        accumulated_content += chunk.content
+                        if live_display_active:
+                            if live is None:
+                                live = Live(EnhancedMarkdown(accumulated_content), console=console, refresh_per_second=10)
+                                live.start()
+                            else:
                                 live.update(EnhancedMarkdown(accumulated_content))
-                            # else: live is stopped after tool output — accumulate silently,
-                            # will be printed in full once streaming is done
-                    
-                    elif chunk.type == "tool_calls":
-                        # Tool calls received - finalize any accumulated content before showing tools
-                        if chunk.tool_calls:
-                            # Record accumulated AI response before tool calls
-                            if accumulated_content:
-                                self._record_ai_response(accumulated_content)
-                            # Always record assistant api_message with tool_calls (even if no text content)
-                            self._record_assistant_api_message(accumulated_content, chunk.tool_calls)
-
-                            if live_display_active:
-                                # Live display is active - stop it (this preserves what's shown)
-                                live.stop()
-                                live_display_active = False
-                                # Content was shown via live display, just add spacing
-                                if accumulated_content:
-                                    console.print()
-                            else:
-                                # Live display was already stopped - content needs to be printed now
-                                if accumulated_content:
-                                    console.print(EnhancedMarkdown(accumulated_content))
-                                    console.print()
-                            accumulated_content = ""  # Reset for next section
-                    
-                    elif chunk.type == "tool_call":
-                        # Individual tool call starting
-                        if chunk.tool_call:
-                            current_tool_call = chunk.tool_call
-                            accumulated_tool_output = ""
-                            # Extract command for interrupt tracking
-                            func_data = chunk.tool_call.get("function", {})
-                            if func_data.get("name") == "run_shell_command":
-                                try:
-                                    args = json.loads(func_data.get("arguments", "{}"))
-                                    current_command = args.get("command", "")
-                                except Exception:
-                                    current_command = "unknown command"
-                            else:
-                                current_command = f"{func_data.get('name', 'tool')} execution"
-                            
-                            self._handle_tool_call(chunk.tool_call)
-                            self._record_tool_execution(chunk.tool_call)
-                            console.print()  # Add newline after tool header
-                    
-                    elif chunk.type == "tool_output":
-                        # Stream tool output as it arrives
-                        if chunk.content:
-                            accumulated_tool_output += chunk.content
-                            console.print(chunk.content, end="", markup=False)
-                            console.file.flush()
-                    
-                    elif chunk.type == "tool_result":
-                        # Tool execution complete — record output and api_message
-                        has_output = bool(accumulated_tool_output)
-                        if accumulated_tool_output:
-                            self._record_tool_output(accumulated_tool_output, current_tool_call)
-                            accumulated_tool_output = ""
-                        if chunk.tool_result:
-                            self._record_tool_result_api_message(chunk.tool_result, current_tool_call)
-                            error_type = chunk.tool_result.error_type
-
-                            if not chunk.tool_result.success and chunk.tool_result.error:
-                                # Display result status — contextual based on error_type
-                                if error_type in ("soft_timeout", "no_change_timeout", "process_control", "hard_timeout"):
-                                    # Not a hard error — render with appropriate colour/icon
-                                    render_tool_result_status(
-                                        error_type=error_type,
-                                        error_msg=chunk.tool_result.error,
-                                        has_output=has_output
-                                    )
-                                elif "execution denied by user" not in chunk.tool_result.error:
-                                    # Hard failure — keep the red error line
-                                    leading_nl = "\n" if has_output else ""
-                                    console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
-
-                            elif chunk.tool_result.success and error_type == "process_control":
-                                # process_control success (e.g. reset) — output only goes to AI,
-                                # never streamed, so show it here as a brief confirmation
-                                if chunk.tool_result.output and not has_output:
-                                    line = Text()
-                                    line.append("ℹ  ", style="bold cyan")
-                                    line.append(chunk.tool_result.output, style="cyan")
-                                    console.print(line)
-
-                            console.print()  # Add spacing after tool output
-                        current_command = None  # Clear command tracking
-
-                    
-                    elif chunk.type == "done":
-                        # Streaming complete
-                        break
+                        # else: live is stopped after tool output — accumulate silently,
+                        # will be printed in full once streaming is done
                 
-                # After the loop ends, handle any remaining accumulated content
-                if accumulated_content:
-                    self._record_ai_response(accumulated_content)
-                    self._record_assistant_api_message(accumulated_content, None)
-                    if live_display_active:
-                        # Live display is still active - stop it and let it show the final content
+                elif chunk.type == "tool_calls":
+                    # Tool calls received - finalize any accumulated content before showing tools
+                    if chunk.tool_calls:
+                        # Record accumulated AI response before tool calls
+                        if accumulated_content:
+                            self._record_ai_response(accumulated_content)
+                        # Always record assistant api_message with tool_calls (even if no text content)
+                        self._record_assistant_api_message(accumulated_content, chunk.tool_calls)
+
+                        if live_display_active:
+                            # Live display is active - stop it (this preserves what's shown)
+                            if live is not None:
+                                live.stop()
+                                live = None
+                            live_display_active = False
+                            # Content was shown via live display, just add spacing
+                            if accumulated_content:
+                                console.print()
+                        else:
+                            # Live display was already stopped - content needs to be printed now
+                            if accumulated_content:
+                                console.print(EnhancedMarkdown(accumulated_content))
+                                console.print()
+                        accumulated_content = ""  # Reset for next section
+                
+                elif chunk.type == "tool_call":
+                    # Individual tool call starting
+                    if chunk.tool_call:
+                        current_tool_call = chunk.tool_call
+                        accumulated_tool_output = ""
+                        # Extract command for interrupt tracking
+                        func_data = chunk.tool_call.get("function", {})
+                        if func_data.get("name") == "run_shell_command":
+                            try:
+                                args = json.loads(func_data.get("arguments", "{}"))
+                                current_command = args.get("command", "")
+                            except Exception:
+                                current_command = "unknown command"
+                        else:
+                            current_command = f"{func_data.get('name', 'tool')} execution"
+                        
+                        self._handle_tool_call(chunk.tool_call)
+                        self._record_tool_execution(chunk.tool_call)
+                        console.print()  # Add newline after tool header
+                
+                elif chunk.type == "tool_output":
+                    # Stream tool output as it arrives
+                    if chunk.content:
+                        accumulated_tool_output += chunk.content
+                        console.print(Text.from_ansi(chunk.content.replace("\r", "")), end="")
+                        console.file.flush()
+                
+                elif chunk.type == "tool_result":
+                    # Tool execution complete — record output and api_message
+                    has_output = bool(accumulated_tool_output)
+                    if accumulated_tool_output:
+                        self._record_tool_output(accumulated_tool_output, current_tool_call)
+                        accumulated_tool_output = ""
+                    if chunk.tool_result:
+                        self._record_tool_result_api_message(chunk.tool_result, current_tool_call)
+                        error_type = chunk.tool_result.error_type
+
+                        if not chunk.tool_result.success and chunk.tool_result.error:
+                            # Display result status — contextual based on error_type
+                            if error_type in ("soft_timeout", "no_change_timeout", "process_control", "hard_timeout"):
+                                # Not a hard error — render with appropriate colour/icon
+                                render_tool_result_status(
+                                    error_type=error_type,
+                                    error_msg=chunk.tool_result.error,
+                                    has_output=has_output
+                                )
+                            elif "execution denied by user" not in chunk.tool_result.error:
+                                # Hard failure — keep the red error line
+                                leading_nl = "\n" if has_output else ""
+                                console.print(f"{leading_nl}✗ Error: {chunk.tool_result.error}", style="bold red")
+
+                        elif chunk.tool_result.success and error_type == "process_control":
+                            # process_control success (e.g. reset) — output only goes to AI,
+                            # never streamed, so show it here as a brief confirmation
+                            if chunk.tool_result.output and not has_output:
+                                line = Text()
+                                line.append("ℹ  ", style="bold cyan")
+                                line.append(chunk.tool_result.output, style="cyan")
+                                console.print(line)
+
+                        console.print()  # Add spacing after tool output
+                    current_command = None  # Clear command tracking
+
+                
+                elif chunk.type == "done":
+                    # Streaming complete
+                    break
+            
+            # After the loop ends, handle any remaining accumulated content
+            if accumulated_content:
+                self._record_ai_response(accumulated_content)
+                self._record_assistant_api_message(accumulated_content, None)
+                if live_display_active:
+                    # Live display is still active - stop it and let it show the final content
+                    if live is not None:
                         live.stop()
-                        live_display_active = False
-                    else:
-                        # Live was stopped after tool output — print the full post-tool
-                        # AI response now that streaming is complete
-                        console.print(EnhancedMarkdown(accumulated_content))
+                        live = None
+                    live_display_active = False
+                else:
+                    # Live was stopped after tool output — print the full post-tool
+                    # AI response now that streaming is complete
+                    console.print(EnhancedMarkdown(accumulated_content))
             
             # Final newline after response
             console.print()
@@ -265,6 +272,12 @@ class ChatSession:
             import traceback
             console.print(traceback.format_exc(), style="dim red")
             console.print()
+        finally:
+            if live is not None:
+                try:
+                    live.stop()
+                except Exception:
+                    pass
 
     # ------------------------------------------------------------------
     # Recording helpers

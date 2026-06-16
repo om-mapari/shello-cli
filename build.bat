@@ -10,7 +10,7 @@ if exist build rmdir /s /q build
 if exist dist\shello rmdir /s /q dist\shello
 
 REM Build the executable
-pyinstaller shello.spec --clean
+.venv\Scripts\pyinstaller.exe shello.spec --clean
 
 echo.
 if exist dist\shello.exe (

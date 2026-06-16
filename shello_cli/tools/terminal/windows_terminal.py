@@ -237,12 +237,13 @@ class WindowsTerminal(TerminalInterface):
             if is_input:
                 command = stripped_text
             else:
-                command = f"{stripped_text}; {self._metadata_suffix()}"
+                command = f". {{ {stripped_text} }} | Out-Default; {self._metadata_suffix()}"
         else:
             command = text
 
         if enter and not command.endswith("\n"):
             command += "\n"
+        self.last_sent_command = command
         self._write_to_stdin(command)
 
     def _metadata_suffix(self) -> str:
@@ -329,7 +330,7 @@ class WindowsTerminal(TerminalInterface):
 
     def read_screen(self) -> str:
         """Return the accumulated visible PowerShell output."""
-        return self._get_buffered_output(clear=False)
+        return self._get_buffered_output(clear=False).replace("\r", "")
 
     def clear_screen(self) -> None:
         """Clear the visible screen and reset buffered output."""

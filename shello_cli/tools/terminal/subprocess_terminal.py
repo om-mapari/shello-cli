@@ -274,6 +274,8 @@ class SubprocessTerminal(TerminalInterface):
         if not self._initialized:
             raise RuntimeError("PTY terminal is not initialized")
 
+        self.last_sent_command = text
+
         upper = text.upper().strip()
         payload: Optional[bytes] = None
 

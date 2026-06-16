@@ -95,6 +95,7 @@ class TerminalInterface(ABC):
         self.username = username
         self._initialized = False
         self._closed = False
+        self.last_sent_command = ""
 
     @abstractmethod
     def initialize(self) -> None:

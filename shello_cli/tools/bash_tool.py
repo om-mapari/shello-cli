@@ -345,7 +345,12 @@ class BashTool(ShelloToolBase):
             # and won't match the PowerShell echo of the running command
             echo_cmd = command if (command and not is_input) else (self._active_process_command or "")
             if session.terminal.is_powershell():
-                current_clean_output = _remove_powershell_echo(current_clean_output, echo_cmd, is_input=False)
+                current_clean_output = _remove_powershell_echo(
+                    current_clean_output,
+                    echo_cmd,
+                    is_input=False,
+                    last_sent_command=getattr(session.terminal, "last_sent_command", None)
+                )
             else:
                 if not is_input:
                     current_clean_output = _remove_command_prefix(current_clean_output, echo_cmd)

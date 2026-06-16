@@ -55,19 +55,25 @@ def _remove_command_prefix(command_output: str, command: str) -> str:
     return command_output.lstrip().removeprefix(command.lstrip()).lstrip()
 
 
-def _remove_powershell_echo(command_output: str, command: str, is_input: bool = False) -> str:
+def _remove_powershell_echo(command_output: str, command: str, is_input: bool = False, last_sent_command: Optional[str] = None) -> str:
     command_output = command_output.lstrip()
     command = command.strip()
     if command_output:
         first_line = command_output.splitlines()[0].strip()
+        last_sent = last_sent_command.strip() if last_sent_command else None
+        
+        matched = False
         if not is_input:
-            if command and first_line.startswith(command):
-                _, separator, rest = command_output.partition("\n")
-                command_output = rest if separator else ""
+            if (command and first_line.startswith(command)) or (last_sent and first_line.startswith(last_sent)):
+                matched = True
         else:
-            if command and first_line == command:
-                _, separator, rest = command_output.partition("\n")
-                command_output = rest if separator else ""
+            if (command and first_line == command) or (last_sent and first_line == last_sent):
+                matched = True
+                
+        if matched:
+            _, separator, rest = command_output.partition("\n")
+            command_output = rest if separator else ""
+            
     return re.sub(r"(?:\r?\n)?PS [^\r\n]*>\s*$", "", command_output).lstrip()
 
 
@@ -145,7 +151,12 @@ class TerminalSession(TerminalSessionBase):
             command_output = raw_command_output
         self.prev_output = raw_command_output
         if self.terminal.is_powershell():
-            command_output = _remove_powershell_echo(command_output, command, is_input=is_input)
+            command_output = _remove_powershell_echo(
+                command_output,
+                command,
+                is_input=is_input,
+                last_sent_command=getattr(self.terminal, "last_sent_command", None)
+            )
         else:
             if not is_input:
                 command_output = _remove_command_prefix(command_output, command)
