@@ -5,10 +5,20 @@ All notable changes to Shello CLI will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-06-16
+
+### Added
+- **PowerShell Path Queries**: Extended JSON structure analysis with ConvertFrom-Json target paths on Windows/PowerShell.
+- **Interactive Process Control**: Enhanced terminal-style UI rendering with process state, timeouts, and signals. Support for hard timeouts, EOF close stdin, and reset environment.
+- **Project Overview Documents**: Comprehensive documentation covering Shello CLI's product capabilities, codebase structure, and technical developer runbook.
+
+### Fixed
+- **Integration Test Robustness**: Improved OpenAI client and message processor integration tests to gracefully handle invalid API keys and credentials.
+
 ## [0.9.0] - 2026-06-16
 
 ### Added
-- **Stateful Shell Execution**: Background process persistence for local shell commands across multiple agent turns, implementing OpenHands-style soft timeouts.
+- **Stateful Shell Execution**: Background process persistence for local shell commands across multiple agent turns, implementing soft timeouts.
 - **Process Control Signals**: Support for sending `C-c` (SIGINT) and `C-d` (EOF/Close Stdin) to the active subprocess, and full environment `reset`.
 - **Interactive Stdin Injection**: Support for feeding stdin inputs directly to the active process.
 - **Rich UI Visualization**: Contextual box-drawing layouts representing local vs. remote executions, interactive polling statuses, stdin inputs, process signals, and timeouts.

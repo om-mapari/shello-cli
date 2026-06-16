@@ -127,9 +127,10 @@ class ChatSession:
                         # Accumulate content and update live markdown display
                         if chunk.content:
                             accumulated_content += chunk.content
-                            # Only update live display if it's still active
                             if live_display_active:
                                 live.update(EnhancedMarkdown(accumulated_content))
+                            # else: live is stopped after tool output — accumulate silently,
+                            # will be printed in full once streaming is done
                     
                     elif chunk.type == "tool_calls":
                         # Tool calls received - finalize any accumulated content before showing tools
@@ -179,6 +180,7 @@ class ChatSession:
                         if chunk.content:
                             accumulated_tool_output += chunk.content
                             console.print(chunk.content, end="", markup=False)
+                            console.file.flush()
                     
                     elif chunk.type == "tool_result":
                         # Tool execution complete — record output and api_message
@@ -192,7 +194,7 @@ class ChatSession:
 
                             if not chunk.tool_result.success and chunk.tool_result.error:
                                 # Display result status — contextual based on error_type
-                                if error_type in ("soft_timeout", "no_change_timeout", "process_control"):
+                                if error_type in ("soft_timeout", "no_change_timeout", "process_control", "hard_timeout"):
                                     # Not a hard error — render with appropriate colour/icon
                                     render_tool_result_status(
                                         error_type=error_type,
@@ -230,8 +232,8 @@ class ChatSession:
                         live.stop()
                         live_display_active = False
                     else:
-                        # Live was stopped earlier (after tool_calls), but we have new content
-                        # This content hasn't been displayed yet, so print it now
+                        # Live was stopped after tool output — print the full post-tool
+                        # AI response now that streaming is complete
                         console.print(EnhancedMarkdown(accumulated_content))
             
             # Final newline after response

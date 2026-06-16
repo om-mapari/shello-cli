@@ -1,6 +1,6 @@
 # Shell Execution & Interactive Process Control
 
-Shello CLI features a robust, stateful execution engine for local shell commands (`run_shell_command`) and remote commands (`run_remote_command`). It implements OpenHands-style soft timeouts, background process persistence, interactive stdin injection, signal control (Ctrl+C, Ctrl+D), and contextual UI rendering.
+Shello CLI features a robust, stateful execution engine for local shell commands (`run_shell_command`) and remote commands (`run_remote_command`). It implements soft timeouts, background process persistence, interactive stdin injection, signal control (Ctrl+C, Ctrl+D), and contextual UI rendering.
 
 This document describes the design, API contracts, execution flows, and UI mapping of the shell execution subsystem.
 

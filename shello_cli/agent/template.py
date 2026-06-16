@@ -167,7 +167,8 @@ Cache System:
 - Line syntax: "-100" (last 100), "+50" (first 50), "+20,-80" (both ends), "10-50" (range)
 
 Filter Examples:
-  ✅ aws lambda list-functions | jq '.Functions[].FunctionName'
+  ✅ (Bash/Zsh) aws lambda list-functions | jq '.Functions[].FunctionName'
+  ✅ (PowerShell) (aws lambda list-functions | ConvertFrom-Json).Functions.FunctionName
   ✅ docker ps --format "{{{{.Names}}}}"
   ✅ kubectl get pods -o name
   ❌ aws lambda list-functions (dumps everything)
@@ -177,7 +178,9 @@ Filter Examples:
 <json_handling>
 CRITICAL - Never dump raw JSON.
 - Unknown structure: use analyze_json(command="...") first
-- Known structure: pipe to jq (e.g., | jq '.Items[].Name')
+- Known structure:
+  * On Bash/Zsh: pipe to jq (e.g., | jq '.Items[].Name')
+  * On PowerShell: use member-access property paths (e.g., (command | ConvertFrom-Json).Items.Name)
 </json_handling>
 
 <error_handling>

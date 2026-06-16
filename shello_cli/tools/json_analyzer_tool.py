@@ -37,12 +37,13 @@ class JsonAnalyzerTool(ShelloToolBase):
             "name": "analyze_json",
             "description": (
                 "Analyze JSON structure of a command output WITHOUT showing raw JSON.\n\n"
-                "USE WHEN: You don't know the JSON structure and need jq paths.\n\n"
-                "HOW: Pass COMMAND (not JSON) -> Returns jq paths with types.\n\n"
+                "USE WHEN: You don't know the JSON structure and need JSON/object paths.\n\n"
+                "HOW: Pass COMMAND (not JSON) -> Returns paths with types (formatted for powershell or jq depending on current shell).\n\n"
                 "EXAMPLE:\n"
                 "  analyze_json(command='aws lambda list-functions')\n"
-                "  -> .Functions[].FunctionName | string\n"
-                "  Then: run_shell_command(\"aws lambda list-functions | jq '.Functions[].FunctionName'\")"
+                "  -> On PowerShell: .Functions.FunctionName | string\n"
+                "  -> On Bash/Zsh: .Functions[].FunctionName | string\n"
+                "  Then use the appropriate ConvertFrom-Json or jq query in run_shell_command."
             ),
             "parameters": {
                 "type": "object",
@@ -100,7 +101,7 @@ class JsonAnalyzerTool(ShelloToolBase):
         return self.analyze_json_string(raw)
 
     def analyze_json_string(self, json_string: str) -> ToolResult:
-        """Analyze an already-captured JSON string and return jq paths.
+        """Analyze an already-captured JSON string and return shell-appropriate paths.
 
         Used by output management when JSON output exceeds character limits.
         """
@@ -110,8 +111,14 @@ class JsonAnalyzerTool(ShelloToolBase):
             return ToolResult(success=False, output=None,
                               error=f"not valid JSON: {e}")
 
-        paths = sorted(self._extract_paths(data))
-        output = "\n".join(["jq path | data type", "=" * 50] + paths)
+        if self._shell_type == "powershell":
+            paths = sorted(self._extract_powershell_paths(data))
+            header = "PowerShell path | data type"
+        else:
+            paths = sorted(self._extract_paths(data))
+            header = "jq path | data type"
+
+        output = "\n".join([header, "=" * 50] + paths)
         return ToolResult(success=True, output=output, error=None)
 
     # ------------------------------------------------------------------
@@ -168,6 +175,30 @@ class JsonAnalyzerTool(ShelloToolBase):
                 paths.extend(self._extract_paths(obj[0], ".[]"))
             else:
                 paths.append(f".[] | {self._type_name(obj[0])}")
+        return paths
+
+    def _extract_powershell_paths(self, obj: Any, ps_path: str = "") -> list[str]:
+        paths: list[str] = []
+        if isinstance(obj, dict):
+            for key, value in obj.items():
+                new_path = f"{ps_path}.{key}" if ps_path else f".{key}"
+                if isinstance(value, dict):
+                    paths.extend(self._extract_powershell_paths(value, new_path))
+                elif isinstance(value, list):
+                    paths.append(f"{new_path} | array[{len(value)}]")
+                    if value:
+                        if not isinstance(value[0], (dict, list)):
+                            paths.append(f"{new_path} | array_item_{self._type_name(value[0])}")
+                        elif isinstance(value[0], dict):
+                            paths.extend(self._extract_powershell_paths(value[0], new_path))
+                else:
+                    paths.append(f"{new_path} | {self._type_name(value)}")
+        elif isinstance(obj, list) and obj:
+            paths.append(f". | array[{len(obj)}]")
+            if isinstance(obj[0], dict):
+                paths.extend(self._extract_powershell_paths(obj[0], ""))
+            else:
+                paths.append(f". | {self._type_name(obj[0])}")
         return paths
 
     def _type_name(self, value: Any) -> str:

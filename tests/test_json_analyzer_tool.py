@@ -10,6 +10,12 @@ from unittest.mock import patch, MagicMock
 from shello_cli.tools.json_analyzer_tool import JsonAnalyzerTool
 
 
+@pytest.fixture(autouse=True)
+def mock_shell_type():
+    with patch('shello_cli.tools.json_analyzer_tool.detect_shell', return_value=('bash', '/bin/bash')):
+        yield
+
+
 class TestJsonAnalyzerToolUnitTests:
     """Unit tests for JSON analyzer tool"""
     
@@ -236,6 +242,57 @@ class TestJsonAnalyzerToolUnitTests:
         assert result.success is False
         assert result.output is None
         assert "timed out" in result.error
+
+class TestJsonAnalyzerToolPowerShellUnitTests:
+    """Unit tests for JSON analyzer tool under PowerShell environment"""
+    
+    @patch('subprocess.run')
+    def test_analyze_powershell_simple_json(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='{"name": "John", "age": 30}',
+            stderr=''
+        )
+        tool = JsonAnalyzerTool()
+        tool._shell_type = 'powershell'
+        result = tool.analyze('some_command')
+        
+        assert result.success is True
+        assert "PowerShell path | data type" in result.output
+        assert ".name | string" in result.output
+        assert ".age | number" in result.output
+
+    @patch('subprocess.run')
+    def test_analyze_powershell_array_of_objects(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='{"users": [{"name": "John", "age": 30}]}',
+            stderr=''
+        )
+        tool = JsonAnalyzerTool()
+        tool._shell_type = 'powershell'
+        result = tool.analyze('some_command')
+        
+        assert result.success is True
+        assert ".users | array[1]" in result.output
+        assert ".users.name | string" in result.output
+        assert ".users.age | number" in result.output
+
+    @patch('subprocess.run')
+    def test_analyze_powershell_root_array(self, mock_run):
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='[{"id": 1, "name": "Item 1"}]',
+            stderr=''
+        )
+        tool = JsonAnalyzerTool()
+        tool._shell_type = 'powershell'
+        result = tool.analyze('some_command')
+        
+        assert result.success is True
+        assert ". | array[1]" in result.output
+        assert ".id | number" in result.output
+        assert ".name | string" in result.output
 
 
 class TestJsonAnalyzerToolIntegration:

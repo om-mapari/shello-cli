@@ -227,7 +227,7 @@ def render_tool_result_status(error_type: str, error_msg: str, has_output: bool)
     a message styled to match the semantic meaning of the outcome.
 
     Args:
-        error_type: One of 'soft_timeout', 'no_change_timeout', 'process_control'
+        error_type: One of 'soft_timeout', 'no_change_timeout', 'process_control', 'hard_timeout'
         error_msg:  The raw error/status message from the tool
         has_output: Whether the tool already printed output above this line
     """
@@ -245,6 +245,16 @@ def render_tool_result_status(error_type: str, error_msg: str, has_output: bool)
         line = Text()
         line.append(f"{leading_nl}⏳ Running in background", style="bold yellow")
         line.append(" — waiting for more output or user input", style="dim yellow")
+        console.print(line)
+
+    elif error_type == "hard_timeout":
+        # Process hit user-specified timeout but is still alive in background
+        line = Text()
+        line.append(f"{leading_nl}⏳ Running in background", style="bold yellow")
+        timeout_str = "timeout limit"
+        if "after " in error_msg:
+            timeout_str = error_msg.partition("after ")[2]
+        line.append(f" — timed out after {timeout_str}", style="dim yellow")
         console.print(line)
 
     elif error_type == "process_control":

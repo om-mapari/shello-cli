@@ -5,10 +5,13 @@ import pytest
 from unittest.mock import Mock, patch
 from hypothesis import settings
 
+import os
 # Register Hypothesis profiles for different testing scenarios
 settings.register_profile("default", max_examples=100, deadline=None)
 settings.register_profile("dev", max_examples=10, deadline=None)
 settings.register_profile("ci", max_examples=100, deadline=None)
+
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "default"))
 
 
 @pytest.fixture(autouse=True)

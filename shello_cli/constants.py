@@ -197,7 +197,7 @@ JSON_ANALYZER_SUMMARY_TEMPLATE = """
 📊 OUTPUT SUMMARY
 ───────────────────────────────────────────────────────────
 Total: {total_chars:,} chars | JSON structure analyzed using json_analyzer_tool
-Above: jq paths for querying the data
+Above: Query paths for filtering/querying the data
 
 💾 Cache ID: {cache_id}
 💡 Use get_cached_output(cache_id="{cache_id}", lines="+50") to see first 50 lines of raw JSON

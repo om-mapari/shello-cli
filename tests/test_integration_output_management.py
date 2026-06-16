@@ -273,6 +273,7 @@ class TestJSONAnalyzerIntegration:
         # Create cache and analyzer
         cache = OutputCache()
         analyzer = JsonAnalyzerTool()
+        analyzer._shell_type = "bash"  # Force bash/jq paths for platform-independent assertion
         
         # Create OutputManager with both
         manager = OutputManager(cache=cache, json_analyzer=analyzer)
